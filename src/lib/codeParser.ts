@@ -14,8 +14,11 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
   let hasCss = false;
   let hasJs = false;
 
+  console.log('Parsing messages:', messages.length);
+
   // Look for code blocks in assistant messages
   const assistantMessages = messages.filter(m => m.role === 'assistant');
+  console.log('Assistant messages:', assistantMessages.length);
   
   for (const message of assistantMessages) {
     const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
@@ -59,8 +62,13 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
     template = 'react-ts';
   }
 
+  console.log('Parsed files:', Object.keys(files));
+  console.log('Template:', template);
+  console.log('Main file:', mainFile);
+
   // If no files found, return a default setup
   if (Object.keys(files).length === 0) {
+    console.log('No files found, using default');
     files['/App.tsx'] = `export default function App() {
   return (
     <div className="p-8">
