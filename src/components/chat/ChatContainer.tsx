@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
+import TypingIndicator from './TypingIndicator';
 import { Message } from '@/hooks/useChat';
 
 interface ChatContainerProps {
@@ -44,10 +45,7 @@ const ChatContainer = ({
             ))
           )}
           {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <div className="animate-pulse">●</div>
-              <span>Thinking...</span>
-            </div>
+            <TypingIndicator />
           )}
         </div>
       </div>

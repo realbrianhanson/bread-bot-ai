@@ -1,41 +1,49 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Settings, LogOut, Sparkles, Globe, Code, FileText } from "lucide-react";
+import { Settings, LogOut, Sparkles, MessageSquarePlus, ChevronLeft, ChevronRight } from "lucide-react";
 import ChatContainer from "@/components/chat/ChatContainer";
+import ConversationList from "@/components/chat/ConversationList";
 import { useChat } from "@/hooks/useChat";
-import { Card } from "@/components/ui/card";
+import { useConversations } from "@/hooks/useConversations";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
 
 const Dashboard = () => {
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
-  const { messages, isLoading, isStreaming, sendMessage, stopStreaming } = useChat();
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { messages, isLoading, isStreaming, sendMessage, stopStreaming } = useChat(activeConversationId || undefined);
+  const {
+    conversations,
+    createConversation,
+    deleteConversation,
+    renameConversation,
+  } = useConversations();
 
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth");
   };
 
-  const quickActions = [
-    {
-      icon: Globe,
-      title: "Web Automation",
-      description: "Automate browser tasks",
-      prompt: "/browse Navigate to example.com and take a screenshot",
-    },
-    {
-      icon: Code,
-      title: "Code Generation",
-      description: "Generate code snippets",
-      prompt: "Help me write a React component for a user profile card",
-    },
-    {
-      icon: FileText,
-      title: "File Processing",
-      description: "Process and analyze files",
-      prompt: "Help me analyze a CSV file with sales data",
-    },
-  ];
+  const handleNewConversation = async () => {
+    const newConv = await createConversation();
+    if (newConv) {
+      setActiveConversationId(newConv.id);
+    }
+  };
+
+  const handleSelectConversation = (id: string) => {
+    setActiveConversationId(id);
+  };
+
+  const handleDeleteConversation = async (id: string) => {
+    await deleteConversation(id);
+    if (activeConversationId === id) {
+      setActiveConversationId(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-background/90">
@@ -67,57 +75,65 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-120px)]">
-          {/* Sidebar - Quick Actions */}
-          <div className="lg:col-span-3 space-y-4">
-            <div className="glass-panel p-4 rounded-lg">
-              <h2 className="text-sm font-semibold mb-3 text-muted-foreground">
-                Quick Actions
-              </h2>
-              <div className="space-y-2">
-                {quickActions.map((action, idx) => (
-                  <Card
-                    key={idx}
-                    className="p-3 cursor-pointer hover:bg-accent/50 transition-colors border-border/50"
-                    onClick={() => sendMessage(action.prompt)}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-lg bg-primary/10">
-                        <action.icon className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-medium truncate">
-                          {action.title}
-                        </h3>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {action.description}
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </div>
-
-            <div className="glass-panel p-4 rounded-lg">
-              <h2 className="text-sm font-semibold mb-2 text-muted-foreground">
-                Welcome
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                {user?.email}
-              </p>
-            </div>
+        <div className="flex gap-4 h-[calc(100vh-120px)]">
+          {/* Conversation Sidebar */}
+          <div 
+            className={`transition-all duration-300 ${
+              sidebarCollapsed ? 'w-0' : 'w-64'
+            } overflow-hidden`}
+          >
+            <ConversationList
+              conversations={conversations}
+              activeConversationId={activeConversationId}
+              onSelectConversation={handleSelectConversation}
+              onNewConversation={handleNewConversation}
+              onDeleteConversation={handleDeleteConversation}
+              onRenameConversation={renameConversation}
+            />
           </div>
 
-          {/* Chat Area */}
-          <div className="lg:col-span-9">
-            <ChatContainer
-              messages={messages}
-              isLoading={isLoading}
-              isStreaming={isStreaming}
-              onSendMessage={sendMessage}
-              onStopStreaming={stopStreaming}
-            />
+          {/* Toggle Sidebar Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="self-start mt-2 h-8 w-8"
+          >
+            {sidebarCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </Button>
+
+          {/* Main Chat Area */}
+          <div className="flex-1">
+            {activeConversationId || messages.length > 0 ? (
+              <ChatContainer
+                messages={messages}
+                isLoading={isLoading}
+                isStreaming={isStreaming}
+                onSendMessage={sendMessage}
+                onStopStreaming={stopStreaming}
+              />
+            ) : (
+              <div className="h-full flex items-center justify-center">
+                <Card className="max-w-md">
+                  <CardHeader>
+                    <CardTitle>Welcome to AI Assistant</CardTitle>
+                    <CardDescription>
+                      Start a new conversation or select an existing one from the sidebar
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button onClick={handleNewConversation} className="w-full">
+                      <MessageSquarePlus className="h-4 w-4 mr-2" />
+                      Start New Chat
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </div>
         </div>
       </div>

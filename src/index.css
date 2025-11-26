@@ -135,4 +135,77 @@ All colors MUST be HSL.
   .gradient-primary {
     background: linear-gradient(135deg, hsl(var(--gradient-from)), hsl(var(--gradient-to)));
   }
+
+  /* Prose styling for markdown content */
+  .prose {
+    @apply text-foreground;
+  }
+  
+  .prose h1,
+  .prose h2,
+  .prose h3,
+  .prose h4,
+  .prose h5,
+  .prose h6 {
+    @apply text-foreground font-semibold mt-4 mb-2;
+  }
+  
+  .prose h1 { @apply text-2xl; }
+  .prose h2 { @apply text-xl; }
+  .prose h3 { @apply text-lg; }
+  
+  .prose p {
+    @apply mb-3 leading-relaxed;
+  }
+  
+  .prose a {
+    @apply text-primary hover:underline;
+  }
+  
+  .prose ul,
+  .prose ol {
+    @apply mb-3 ml-6;
+  }
+  
+  .prose ul {
+    @apply list-disc;
+  }
+  
+  .prose ol {
+    @apply list-decimal;
+  }
+  
+  .prose li {
+    @apply mb-1;
+  }
+  
+  .prose blockquote {
+    @apply border-l-4 border-primary pl-4 italic my-3;
+  }
+  
+  .prose strong {
+    @apply font-semibold;
+  }
+  
+  .prose em {
+    @apply italic;
+  }
+  
+  .prose hr {
+    @apply border-border my-4;
+  }
+  
+  .prose table {
+    @apply w-full border-collapse my-3;
+  }
+  
+  .prose th,
+  .prose td {
+    @apply border border-border px-3 py-2;
+  }
+  
+  .prose th {
+    @apply bg-muted font-semibold;
+  }
 }
+
