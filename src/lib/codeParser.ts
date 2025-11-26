@@ -57,14 +57,23 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
     mainFile = '/index.html';
     template = 'vanilla';
     
-    // Ensure HTML has required elements for vanilla JS
-    if (hasJs && files['/index.html'] && !files['/index.html'].includes('id="app"')) {
-      // Add app div if HTML exists but doesn't have it
-      const html = files['/index.html'];
+    // Check if HTML contains any JS code that references an "app" element
+    const html = files['/index.html'];
+    const needsAppDiv = html && (
+      html.includes('getElementById("app")') || 
+      html.includes("getElementById('app')") ||
+      html.includes('querySelector("#app")') ||
+      html.includes("querySelector('#app')")
+    );
+    
+    // Ensure HTML has required app div if it's referenced in the code
+    if (needsAppDiv && !html.includes('id="app"')) {
       if (html.includes('</body>')) {
         files['/index.html'] = html.replace('</body>', '  <div id="app"></div>\n</body>');
+      } else if (html.includes('<body>')) {
+        files['/index.html'] = html.replace('<body>', '<body>\n  <div id="app"></div>\n');
       } else {
-        // Create complete HTML structure
+        // Create complete HTML structure with app div at the start of body
         files['/index.html'] = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -74,7 +83,6 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
 </head>
 <body>
   <div id="app"></div>
-  ${html}
 </body>
 </html>`;
       }
