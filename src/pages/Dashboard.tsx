@@ -50,10 +50,7 @@ const Dashboard = () => {
       {/* Header */}
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🧄</span>
-            <h1 className="text-xl font-bold gradient-text">GarlicBread.ai</h1>
-          </div>
+          <span className="text-2xl">🧄</span>
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
