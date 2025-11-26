@@ -57,8 +57,10 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
     mainFile = '/index.html';
     template = 'vanilla';
     
-    // Check if HTML contains any JS code that references an "app" element
     let html = files['/index.html'];
+    console.log('Original HTML:', html.substring(0, 200));
+    
+    // Check if HTML contains any JS code that references an "app" element
     const needsAppDiv = html && (
       html.includes('getElementById("app")') || 
       html.includes("getElementById('app')") ||
@@ -66,11 +68,25 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
       html.includes("querySelector('#app')")
     );
     
+    console.log('Needs app div:', needsAppDiv);
+    console.log('Has app div:', html.includes('id="app"'));
+    
     // Ensure HTML has required app div if it's referenced in the code
     if (needsAppDiv && !html.includes('id="app"')) {
-      // Insert the app div right after the opening body tag, before any scripts
-      if (html.includes('<body>')) {
-        files['/index.html'] = html.replace(/<body([^>]*)>/, '<body$1>\n  <div id="app"></div>');
+      // Find where to insert the app div - right after body tag opens
+      const bodyMatch = html.match(/<body[^>]*>/i);
+      if (bodyMatch) {
+        const bodyTag = bodyMatch[0];
+        const bodyIndex = html.indexOf(bodyTag);
+        const insertPosition = bodyIndex + bodyTag.length;
+        
+        // Insert app div right after body tag
+        files['/index.html'] = 
+          html.substring(0, insertPosition) + 
+          '\n  <div id="app"></div>\n' + 
+          html.substring(insertPosition);
+        
+        console.log('Modified HTML:', files['/index.html'].substring(0, 300));
       } else {
         // If no body tag found, wrap everything in proper HTML structure
         files['/index.html'] = `<!DOCTYPE html>
@@ -85,6 +101,7 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
   ${html}
 </body>
 </html>`;
+        console.log('Wrapped HTML with structure');
       }
     }
   } else if (files['/App.tsx']) {
