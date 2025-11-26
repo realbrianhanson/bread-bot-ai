@@ -48,29 +48,21 @@ const CodePreview = ({ files, mainFile }: CodePreviewProps) => {
       </div>
 
       {/* Sandpack Preview */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden bg-white">
         <SandpackProvider
           key={key}
           files={files}
           template="react-ts"
-          theme="dark"
-          options={{
-            activeFile: mainFile,
-            autorun: true,
-            autoReload: true,
-          }}
-          customSetup={{
-            dependencies: {
-              'lucide-react': 'latest',
-              'tailwindcss': 'latest',
-            },
-          }}
+          theme="light"
         >
           <SandpackPreview 
             showNavigator={false}
             showOpenInCodeSandbox={false}
             showRefreshButton={false}
-            style={{ height: '100%' }}
+            style={{ 
+              height: '100%',
+              width: '100%',
+            }}
           />
         </SandpackProvider>
       </div>
