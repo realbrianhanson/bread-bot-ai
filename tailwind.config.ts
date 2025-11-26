@@ -47,6 +47,14 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        glass: {
+          DEFAULT: "rgba(var(--glass-background), 0.7)",
+          strong: "rgba(var(--glass-background), 0.9)",
+        },
+        gradient: {
+          from: "hsl(var(--gradient-from))",
+          to: "hsl(var(--gradient-to))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
