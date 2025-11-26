@@ -56,6 +56,29 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
   if (hasHtml) {
     mainFile = '/index.html';
     template = 'vanilla';
+    
+    // Ensure HTML has required elements for vanilla JS
+    if (hasJs && files['/index.html'] && !files['/index.html'].includes('id="app"')) {
+      // Add app div if HTML exists but doesn't have it
+      const html = files['/index.html'];
+      if (html.includes('</body>')) {
+        files['/index.html'] = html.replace('</body>', '  <div id="app"></div>\n</body>');
+      } else {
+        // Create complete HTML structure
+        files['/index.html'] = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preview</title>
+</head>
+<body>
+  <div id="app"></div>
+  ${html}
+</body>
+</html>`;
+      }
+    }
   } else if (files['/App.tsx']) {
     mainFile = '/App.tsx';
     template = 'react-ts';
