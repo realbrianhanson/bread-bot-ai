@@ -28,15 +28,17 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
       const language = match[1] || 'javascript';
       const code = match[2].trim();
       
+      console.log('Found code block:', language, 'length:', code.length);
+      
       // Determine file name and type based on language and content
       if (language === 'html') {
         files['/index.html'] = code;
         hasHtml = true;
       } else if (language === 'css') {
-        files['/styles.css'] = code;
+        files['/src/styles.css'] = code;
         hasCss = true;
       } else if (language === 'javascript' || language === 'js') {
-        files['/script.js'] = code;
+        files['/src/index.js'] = code;
         hasJs = true;
       } else if (language === 'typescript' || language === 'tsx') {
         if (code.includes('export default') || code.includes('function App')) {
