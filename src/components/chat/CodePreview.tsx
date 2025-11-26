@@ -1,4 +1,4 @@
-import { Sandpack } from '@codesandbox/sandpack-react';
+import { SandpackProvider, SandpackPreview } from '@codesandbox/sandpack-react';
 import { Maximize2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -49,16 +49,12 @@ const CodePreview = ({ files, mainFile }: CodePreviewProps) => {
 
       {/* Sandpack Preview */}
       <div className="flex-1 overflow-hidden">
-        <Sandpack
+        <SandpackProvider
           key={key}
           files={files}
           template="react-ts"
           theme="dark"
           options={{
-            showNavigator: false,
-            showTabs: Object.keys(files).length > 1,
-            showLineNumbers: true,
-            editorHeight: '100%',
             activeFile: mainFile,
             autorun: true,
             autoReload: true,
@@ -69,7 +65,14 @@ const CodePreview = ({ files, mainFile }: CodePreviewProps) => {
               'tailwindcss': 'latest',
             },
           }}
-        />
+        >
+          <SandpackPreview 
+            showNavigator={false}
+            showOpenInCodeSandbox={false}
+            showRefreshButton={false}
+            style={{ height: '100%' }}
+          />
+        </SandpackProvider>
       </div>
     </div>
   );
