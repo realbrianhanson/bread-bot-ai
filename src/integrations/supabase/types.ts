@@ -152,6 +152,45 @@ export type Database = {
         }
         Relationships: []
       }
+      subscriptions: {
+        Row: {
+          created_at: string | null
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          tier: Database["public"]["Enums"]["subscription_tier"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          tier?: Database["public"]["Enums"]["subscription_tier"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          tier?: Database["public"]["Enums"]["subscription_tier"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           completed_at: string | null
@@ -207,6 +246,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tier_limits: {
+        Row: {
+          browser_tasks_per_month: number
+          chat_messages_per_month: number
+          features: Json | null
+          price_monthly_cents: number
+          stripe_price_id: string | null
+          tier: Database["public"]["Enums"]["subscription_tier"]
+        }
+        Insert: {
+          browser_tasks_per_month: number
+          chat_messages_per_month: number
+          features?: Json | null
+          price_monthly_cents: number
+          stripe_price_id?: string | null
+          tier: Database["public"]["Enums"]["subscription_tier"]
+        }
+        Update: {
+          browser_tasks_per_month?: number
+          chat_messages_per_month?: number
+          features?: Json | null
+          price_monthly_cents?: number
+          stripe_price_id?: string | null
+          tier?: Database["public"]["Enums"]["subscription_tier"]
+        }
+        Relationships: []
       }
       usage_tracking: {
         Row: {
@@ -272,6 +338,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_user_tier_and_usage: {
+        Args: { p_user_id: string }
+        Returns: {
+          browser_tasks_limit: number
+          browser_tasks_used: number
+          can_use_own_keys: boolean
+          chat_messages_limit: number
+          chat_messages_used: number
+          tier: Database["public"]["Enums"]["subscription_tier"]
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -282,6 +359,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      subscription_tier: "free" | "pro" | "enterprise"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -410,6 +488,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      subscription_tier: ["free", "pro", "enterprise"],
     },
   },
 } as const
