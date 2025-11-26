@@ -81,11 +81,16 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
           files={files}
           template={template}
           theme="light"
+          options={{
+            externalResources: [],
+            bundlerURL: undefined,
+          }}
         >
           <SandpackPreview 
             showNavigator={false}
             showOpenInCodeSandbox={false}
             showRefreshButton={false}
+            showOpenNewtab={false}
             style={{ 
               height: '100%',
               width: '100%',
