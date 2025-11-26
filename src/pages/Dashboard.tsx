@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Settings, LogOut, Sparkles, MessageSquarePlus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Settings, LogOut, MessageSquarePlus, ChevronLeft, ChevronRight } from "lucide-react";
 import ChatContainer from "@/components/chat/ChatContainer";
 import ConversationList from "@/components/chat/ConversationList";
 import { useChat } from "@/hooks/useChat";
@@ -51,7 +51,7 @@ const Dashboard = () => {
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-primary" />
+            <span className="text-2xl">🧄</span>
             <h1 className="text-xl font-bold gradient-text">GarlicBread.ai</h1>
           </div>
           <div className="flex items-center gap-2">
