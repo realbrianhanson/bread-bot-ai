@@ -1,4 +1,4 @@
-import React, { useState, KeyboardEvent } from 'react';
+import { useState, KeyboardEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Square } from 'lucide-react';
@@ -10,7 +10,7 @@ interface ChatInputProps {
   onStop?: () => void;
 }
 
-const ChatInput: React.FC<ChatInputProps> = ({
+const ChatInput = ({
   onSend,
   disabled = false,
   isStreaming = false,

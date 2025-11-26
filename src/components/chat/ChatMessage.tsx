@@ -1,4 +1,3 @@
-import React from 'react';
 import { Message } from '@/hooks/useChat';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { User, Bot } from 'lucide-react';
@@ -7,7 +6,7 @@ interface ChatMessageProps {
   message: Message;
 }
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
+const ChatMessage = ({ message }: ChatMessageProps) => {
   const isUser = message.role === 'user';
 
   return (

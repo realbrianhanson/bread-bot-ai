@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -9,7 +8,7 @@ interface TaskStatusProps {
   message?: string;
 }
 
-const TaskStatus: React.FC<TaskStatusProps> = ({ status, message }) => {
+const TaskStatus = ({ status, message }: TaskStatusProps) => {
   const getStatusColor = () => {
     switch (status) {
       case 'completed':
