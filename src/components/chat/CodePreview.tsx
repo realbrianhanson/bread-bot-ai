@@ -6,9 +6,10 @@ import { useState } from 'react';
 interface CodePreviewProps {
   files: Record<string, string>;
   mainFile: string;
+  template?: 'react-ts' | 'vanilla' | 'static';
 }
 
-const CodePreview = ({ files, mainFile }: CodePreviewProps) => {
+const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProps) => {
   const [key, setKey] = useState(0);
 
   const handleRefresh = () => {
@@ -52,7 +53,7 @@ const CodePreview = ({ files, mainFile }: CodePreviewProps) => {
         <SandpackProvider
           key={key}
           files={files}
-          template="react-ts"
+          template={template}
           theme="light"
         >
           <SandpackPreview 

@@ -3,11 +3,13 @@ import { Message } from '@/hooks/useChat';
 export interface ParsedCode {
   files: Record<string, string>;
   mainFile: string;
+  template: 'react-ts' | 'vanilla' | 'static';
 }
 
 export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
   const files: Record<string, string> = {};
   let mainFile = '/App.tsx';
+  let template: 'react-ts' | 'vanilla' | 'static' = 'react-ts';
 
   // Look for code blocks in assistant messages
   const assistantMessages = messages.filter(m => m.role === 'assistant');
@@ -21,28 +23,22 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
       const code = match[2].trim();
       
       // Determine file name and type based on language and content
-      let fileName = '/App.tsx';
-      
-      if (language === 'typescript' || language === 'tsx') {
-        fileName = '/App.tsx';
-        mainFile = '/App.tsx';
-      } else if (language === 'javascript' || language === 'jsx') {
-        fileName = '/App.jsx';
-        mainFile = '/App.jsx';
-      } else if (language === 'css') {
-        fileName = '/styles.css';
-      } else if (language === 'html') {
-        fileName = '/index.html';
+      if (language === 'html') {
+        files['/index.html'] = code;
         mainFile = '/index.html';
-      }
-      
-      // Check if code looks like a complete component
-      if (code.includes('export default') || code.includes('function App')) {
-        files[fileName] = code;
+        template = 'static';
       } else if (language === 'css') {
-        files[fileName] = code;
-      } else if (language === 'html') {
-        files[fileName] = code;
+        files['/styles.css'] = code;
+      } else if (language === 'javascript' || language === 'js') {
+        files['/script.js'] = code;
+      } else if (language === 'typescript' || language === 'tsx') {
+        files['/App.tsx'] = code;
+        mainFile = '/App.tsx';
+        template = 'react-ts';
+      } else if (language === 'jsx') {
+        files['/App.jsx'] = code;
+        mainFile = '/App.jsx';
+        template = 'react-ts';
       }
     }
   }
@@ -60,7 +56,8 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
   );
 }`;
     mainFile = '/App.tsx';
+    template = 'react-ts';
   }
 
-  return { files, mainFile };
+  return { files, mainFile, template };
 };

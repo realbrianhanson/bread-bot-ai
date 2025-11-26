@@ -132,6 +132,7 @@ const Dashboard = () => {
                   <CodePreview
                     files={parsedCode.files}
                     mainFile={parsedCode.mainFile}
+                    template={parsedCode.template}
                   />
                 </ResizablePanel>
               </ResizablePanelGroup>
