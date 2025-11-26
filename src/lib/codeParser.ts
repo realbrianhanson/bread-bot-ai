@@ -69,19 +69,16 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
     
     // Ensure HTML has required app div if it's referenced in the code
     if (needsAppDiv) {
-      if (!html.includes('id="app"')) {
-        // Find the body tag and insert app div immediately after it
-        const bodyMatch = html.match(/<body[^>]*>/i);
-        if (bodyMatch) {
-          const bodyTag = bodyMatch[0];
-          const insertPosition = html.indexOf(bodyTag) + bodyTag.length;
-          html = 
-            html.substring(0, insertPosition) + 
-            '\n  <div id="app"></div>' + 
-            html.substring(insertPosition);
-        } else {
-          // No body tag - wrap in complete HTML
-          html = `<!DOCTYPE html>
+      // Extract all script tags
+      const scripts: string[] = [];
+      html = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, (match) => {
+        scripts.push(match);
+        return ''; // Remove script from original position
+      });
+      
+      // Ensure we have proper HTML structure
+      if (!html.includes('<body')) {
+        html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -89,24 +86,24 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
   <title>Preview</title>
 </head>
 <body>
-  <div id="app"></div>
 ${html}
 </body>
 </html>`;
-        }
       }
       
-      // Wrap inline scripts that use getElementById("app") in DOMContentLoaded
-      html = html.replace(
-        /<script([^>]*)>([\s\S]*?getElementById\(["']app["']\)[\s\S]*?)<\/script>/gi,
-        (match, attrs, content) => {
-          // Skip if already has DOMContentLoaded or addEventListener
-          if (content.includes('DOMContentLoaded') || content.includes('addEventListener')) {
-            return match;
-          }
-          return `<script${attrs}>\n  document.addEventListener('DOMContentLoaded', function() {\n${content}\n  });\n</script>`;
-        }
-      );
+      // Add app div at the start of body if it doesn't exist
+      if (!html.includes('id="app"')) {
+        html = html.replace(/<body[^>]*>/i, (match) => {
+          return `${match}\n  <div id="app"></div>`;
+        });
+      }
+      
+      // Add all scripts at the end of body
+      if (scripts.length > 0) {
+        html = html.replace(/<\/body>/i, (match) => {
+          return '\n' + scripts.join('\n') + '\n' + match;
+        });
+      }
       
       files['/index.html'] = html;
     }
