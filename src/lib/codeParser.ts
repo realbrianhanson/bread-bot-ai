@@ -10,6 +10,9 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
   const files: Record<string, string> = {};
   let mainFile = '/App.tsx';
   let template: 'react-ts' | 'vanilla' | 'static' = 'react-ts';
+  let hasHtml = false;
+  let hasCss = false;
+  let hasJs = false;
 
   // Look for code blocks in assistant messages
   const assistantMessages = messages.filter(m => m.role === 'assistant');
@@ -25,22 +28,35 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
       // Determine file name and type based on language and content
       if (language === 'html') {
         files['/index.html'] = code;
-        mainFile = '/index.html';
-        template = 'static';
+        hasHtml = true;
       } else if (language === 'css') {
         files['/styles.css'] = code;
+        hasCss = true;
       } else if (language === 'javascript' || language === 'js') {
         files['/script.js'] = code;
+        hasJs = true;
       } else if (language === 'typescript' || language === 'tsx') {
-        files['/App.tsx'] = code;
-        mainFile = '/App.tsx';
-        template = 'react-ts';
+        if (code.includes('export default') || code.includes('function App')) {
+          files['/App.tsx'] = code;
+        }
       } else if (language === 'jsx') {
-        files['/App.jsx'] = code;
-        mainFile = '/App.jsx';
-        template = 'react-ts';
+        if (code.includes('export default') || code.includes('function App')) {
+          files['/App.jsx'] = code;
+        }
       }
     }
+  }
+
+  // Determine template and main file
+  if (hasHtml) {
+    mainFile = '/index.html';
+    template = 'vanilla';
+  } else if (files['/App.tsx']) {
+    mainFile = '/App.tsx';
+    template = 'react-ts';
+  } else if (files['/App.jsx']) {
+    mainFile = '/App.jsx';
+    template = 'react-ts';
   }
 
   // If no files found, return a default setup
