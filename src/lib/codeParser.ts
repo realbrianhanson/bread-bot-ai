@@ -55,30 +55,19 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
   // Determine template and main file
   if (hasHtml) {
     mainFile = '/index.html';
-    template = 'vanilla';
+    template = 'static'; // Use static template for better HTML handling
     
     let html = files['/index.html'];
     
-    // Check if HTML contains any JS code that references an "app" element
-    const needsAppDiv = html && (
-      html.includes('getElementById("app")') || 
-      html.includes("getElementById('app')") ||
-      html.includes('querySelector("#app")') ||
-      html.includes("querySelector('#app')")
-    );
+    // Always ensure proper HTML structure for vanilla HTML/JS
+    const hasBody = html.includes('<body');
+    const hasDoctype = html.toLowerCase().includes('<!doctype');
     
-    // Ensure HTML has required app div if it's referenced in the code
-    if (needsAppDiv) {
-      // Extract all script tags
-      const scripts: string[] = [];
-      html = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, (match) => {
-        scripts.push(match);
-        return ''; // Remove script from original position
-      });
+    if (!hasDoctype || !hasBody) {
+      // Wrap in complete HTML structure
+      const contentToWrap = html.replace(/<!DOCTYPE[^>]*>/i, '').replace(/<\/?html[^>]*>/gi, '').replace(/<\/?head[^>]*>/gi, '').replace(/<\/?body[^>]*>/gi, '');
       
-      // Ensure we have proper HTML structure
-      if (!html.includes('<body')) {
-        html = `<!DOCTYPE html>
+      html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -86,27 +75,18 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
   <title>Preview</title>
 </head>
 <body>
-${html}
+  <div id="app"></div>
+  ${contentToWrap}
 </body>
 </html>`;
-      }
-      
-      // Add app div at the start of body if it doesn't exist
+    } else {
+      // Ensure app div exists at the start of body
       if (!html.includes('id="app"')) {
-        html = html.replace(/<body[^>]*>/i, (match) => {
-          return `${match}\n  <div id="app"></div>`;
-        });
+        html = html.replace(/<body([^>]*)>/i, '<body$1>\n  <div id="app"></div>\n');
       }
-      
-      // Add all scripts at the end of body
-      if (scripts.length > 0) {
-        html = html.replace(/<\/body>/i, (match) => {
-          return '\n' + scripts.join('\n') + '\n' + match;
-        });
-      }
-      
-      files['/index.html'] = html;
     }
+    
+    files['/index.html'] = html;
   } else if (files['/App.tsx']) {
     mainFile = '/App.tsx';
     template = 'react-ts';
