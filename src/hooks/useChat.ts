@@ -115,6 +115,12 @@ export const useChat = (projectId?: string) => {
           throw new Error('Failed to save message');
         }
 
+        // Get current session for authorization
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error('No active session');
+        }
+
         // Call edge function for streaming response
         abortControllerRef.current = new AbortController();
         
@@ -131,7 +137,7 @@ export const useChat = (projectId?: string) => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              Authorization: `Bearer ${session.access_token}`,
             },
             body: JSON.stringify({ messages: messagesForAPI }),
             signal: abortControllerRef.current.signal,
