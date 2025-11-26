@@ -1,34 +1,63 @@
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { LogOut, Settings, Sparkles } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Settings, LogOut, Sparkles, Globe, Code, FileText } from "lucide-react";
+import ChatContainer from "@/components/chat/ChatContainer";
+import { useChat } from "@/hooks/useChat";
+import { Card } from "@/components/ui/card";
 
-export default function Dashboard() {
+const Dashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { messages, isLoading, isStreaming, sendMessage, stopStreaming } = useChat();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
+  };
+
+  const quickActions = [
+    {
+      icon: Globe,
+      title: "Web Automation",
+      description: "Automate browser tasks",
+      prompt: "/browse Navigate to example.com and take a screenshot",
+    },
+    {
+      icon: Code,
+      title: "Code Generation",
+      description: "Generate code snippets",
+      prompt: "Help me write a React component for a user profile card",
+    },
+    {
+      icon: FileText,
+      title: "File Processing",
+      description: "Process and analyze files",
+      prompt: "Help me analyze a CSV file with sales data",
+    },
+  ];
 
   return (
-    <div className="min-h-screen gradient-primary">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-background/90">
       {/* Header */}
-      <header className="border-b border-white/10 glass">
+      <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-white">🧄 GarlicBread.ai</h1>
+            <Sparkles className="h-6 w-6 text-primary" />
+            <h1 className="text-xl font-bold gradient-text">GarlicBread.ai</h1>
           </div>
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate('/settings')}
-              className="text-white hover:bg-white/10"
+              onClick={() => navigate("/settings")}
             >
               <Settings className="h-5 w-5" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              onClick={signOut}
-              className="text-white hover:bg-white/10"
+              onClick={handleSignOut}
             >
               <LogOut className="h-5 w-5" />
             </Button>
@@ -37,54 +66,63 @@ export default function Dashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="glass-strong rounded-2xl p-8 mb-6 border border-white/20">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/20 mb-4">
-                <Sparkles className="w-8 h-8 text-primary" />
+      <div className="container mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-120px)]">
+          {/* Sidebar - Quick Actions */}
+          <div className="lg:col-span-3 space-y-4">
+            <div className="glass-panel p-4 rounded-lg">
+              <h2 className="text-sm font-semibold mb-3 text-muted-foreground">
+                Quick Actions
+              </h2>
+              <div className="space-y-2">
+                {quickActions.map((action, idx) => (
+                  <Card
+                    key={idx}
+                    className="p-3 cursor-pointer hover:bg-accent/50 transition-colors border-border/50"
+                    onClick={() => sendMessage(action.prompt)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <action.icon className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-medium truncate">
+                          {action.title}
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {action.description}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
               </div>
-              <h2 className="text-3xl font-bold mb-2">Welcome to GarlicBread.ai</h2>
-              <p className="text-muted-foreground mb-6">
-                Create AI-powered browser automations, generate code, and build applications
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Logged in as: {user?.email}
+            </div>
+
+            <div className="glass-panel p-4 rounded-lg">
+              <h2 className="text-sm font-semibold mb-2 text-muted-foreground">
+                Welcome
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {user?.email}
               </p>
             </div>
           </div>
 
-          {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="glass rounded-xl p-6 border border-white/10 hover:border-white/20 transition-all cursor-pointer">
-              <h3 className="font-semibold mb-2">🌐 Web Automation</h3>
-              <p className="text-sm text-muted-foreground">
-                Automate web browsing tasks and data extraction
-              </p>
-            </div>
-            <div className="glass rounded-xl p-6 border border-white/10 hover:border-white/20 transition-all cursor-pointer">
-              <h3 className="font-semibold mb-2">💻 Code Generation</h3>
-              <p className="text-sm text-muted-foreground">
-                Generate React components, scripts, and full apps
-              </p>
-            </div>
-            <div className="glass rounded-xl p-6 border border-white/10 hover:border-white/20 transition-all cursor-pointer">
-              <h3 className="font-semibold mb-2">📁 File Processing</h3>
-              <p className="text-sm text-muted-foreground">
-                Upload, process, and generate files automatically
-              </p>
-            </div>
-          </div>
-
-          {/* Chat Interface Placeholder */}
-          <div className="glass-strong rounded-2xl p-6 border border-white/20">
-            <div className="text-center text-muted-foreground">
-              <p className="mb-4">AI chat interface coming soon...</p>
-              <p className="text-sm">This will be where you interact with the AI agent</p>
-            </div>
+          {/* Chat Area */}
+          <div className="lg:col-span-9">
+            <ChatContainer
+              messages={messages}
+              isLoading={isLoading}
+              isStreaming={isStreaming}
+              onSendMessage={sendMessage}
+              onStopStreaming={stopStreaming}
+            />
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
-}
+};
+
+export default Dashboard;

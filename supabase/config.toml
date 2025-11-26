@@ -1,1 +1,7 @@
 project_id = "tiqrilqdnjcwxxmcewca"
+
+[functions.chat]
+verify_jwt = true
+
+[functions.browser-task]
+verify_jwt = true
