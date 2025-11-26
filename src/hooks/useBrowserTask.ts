@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { useSubscription } from '@/hooks/useSubscription';
 
 export interface BrowserTask {
   id: string;
@@ -15,10 +16,16 @@ export const useBrowserTask = () => {
   const [currentTask, setCurrentTask] = useState<BrowserTask | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
   const { user } = useAuth();
+  const { canRunBrowserTask, refreshSubscription } = useSubscription();
 
   const executeTask = useCallback(
     async (task: string, projectId?: string) => {
       if (!user) return;
+
+      // Check if user can run browser task
+      if (!canRunBrowserTask()) {
+        return;
+      }
 
       setIsExecuting(true);
       setCurrentTask({ id: '', status: 'pending' });
@@ -96,9 +103,11 @@ export const useBrowserTask = () => {
         });
         setIsExecuting(false);
         setCurrentTask(null);
+        // Refresh subscription to update usage
+        refreshSubscription();
       }
     },
-    [user]
+    [user, canRunBrowserTask, refreshSubscription]
   );
 
   return {

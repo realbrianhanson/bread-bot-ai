@@ -5,12 +5,27 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Save, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Save, Eye, EyeOff, Crown, RefreshCw } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useSubscription } from '@/hooks/useSubscription';
 
 export default function Settings() {
   const { user, signOut } = useAuth();
+  const { 
+    tier, 
+    subscribed, 
+    subscriptionEnd, 
+    canUseOwnKeys,
+    chatMessagesUsed,
+    chatMessagesLimit,
+    browserTasksUsed,
+    browserTasksLimit,
+    getUsagePercentage,
+    refreshSubscription
+  } = useSubscription();
   const navigate = useNavigate();
   const [showKeys, setShowKeys] = useState({ browserUse: false, anthropic: false });
   const [apiKeys, setApiKeys] = useState({
@@ -18,10 +33,13 @@ export default function Settings() {
     anthropic: '',
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [managingSubscription, setManagingSubscription] = useState(false);
 
   useEffect(() => {
-    loadApiKeys();
-  }, []);
+    if (canUseOwnKeys) {
+      loadApiKeys();
+    }
+  }, [canUseOwnKeys]);
 
   const loadApiKeys = async () => {
     if (!user) return;
@@ -53,7 +71,6 @@ export default function Settings() {
     setIsLoading(true);
 
     try {
-      // Save Browser Use key
       if (apiKeys.browserUse) {
         await supabase
           .from('api_keys')
@@ -65,7 +82,6 @@ export default function Settings() {
           });
       }
 
-      // Save Anthropic key
       if (apiKeys.anthropic) {
         await supabase
           .from('api_keys')
@@ -83,6 +99,29 @@ export default function Settings() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleManageSubscription = async () => {
+    setManagingSubscription(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal');
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, '_blank');
+      }
+    } catch (error) {
+      console.error('Portal error:', error);
+      toast.error('Unable to open subscription portal');
+    } finally {
+      setManagingSubscription(false);
+    }
+  };
+
+  const getTierBadgeVariant = () => {
+    if (tier === 'lifetime') return 'default';
+    if (tier === 'pro') return 'secondary';
+    if (tier === 'starter') return 'outline';
+    return 'outline';
   };
 
   return (
@@ -104,58 +143,142 @@ export default function Settings() {
       <main className="container mx-auto px-4 py-8 max-w-2xl">
         <Card className="glass-strong border-white/20 mb-6">
           <CardHeader>
-            <CardTitle>API Keys</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              {tier === 'lifetime' && <Crown className="h-5 w-5 text-yellow-500" />}
+              Subscription
+            </CardTitle>
             <CardDescription>
-              Manage your API keys for Browser Use and Anthropic Claude
+              Manage your subscription and usage
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="browser-use-key">Browser Use API Key</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="browser-use-key"
-                  type={showKeys.browserUse ? 'text' : 'password'}
-                  value={apiKeys.browserUse}
-                  onChange={(e) => setApiKeys({ ...apiKeys, browserUse: e.target.value })}
-                  placeholder="Enter your Browser Use API key"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setShowKeys({ ...showKeys, browserUse: !showKeys.browserUse })}
-                >
-                  {showKeys.browserUse ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Current Plan</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant={getTierBadgeVariant()}>
+                    {tier === 'lifetime' ? 'Lifetime' : tier.charAt(0).toUpperCase() + tier.slice(1)}
+                  </Badge>
+                  {subscribed && subscriptionEnd && tier !== 'lifetime' && (
+                    <p className="text-xs text-muted-foreground">
+                      Renews {new Date(subscriptionEnd).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refreshSubscription()}
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between text-sm mb-2">
+                  <Label>Chat Messages</Label>
+                  <span className="text-muted-foreground">
+                    {chatMessagesUsed} / {chatMessagesLimit}
+                  </span>
+                </div>
+                <Progress value={getUsagePercentage(chatMessagesUsed, chatMessagesLimit)} />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-sm mb-2">
+                  <Label>Browser Tasks</Label>
+                  <span className="text-muted-foreground">
+                    {browserTasksUsed} / {browserTasksLimit}
+                  </span>
+                </div>
+                <Progress value={getUsagePercentage(browserTasksUsed, browserTasksLimit)} />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="anthropic-key">Anthropic API Key</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="anthropic-key"
-                  type={showKeys.anthropic ? 'text' : 'password'}
-                  value={apiKeys.anthropic}
-                  onChange={(e) => setApiKeys({ ...apiKeys, anthropic: e.target.value })}
-                  placeholder="Enter your Anthropic API key"
-                />
+            <div className="flex gap-2">
+              {subscribed && tier !== 'lifetime' && (
                 <Button
                   variant="outline"
-                  size="icon"
-                  onClick={() => setShowKeys({ ...showKeys, anthropic: !showKeys.anthropic })}
+                  onClick={handleManageSubscription}
+                  disabled={managingSubscription}
+                  className="flex-1"
                 >
-                  {showKeys.anthropic ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  Manage Subscription
                 </Button>
-              </div>
+              )}
+              {tier === 'free' || !subscribed ? (
+                <Button
+                  onClick={() => navigate('/pricing')}
+                  className="flex-1"
+                >
+                  Upgrade Plan
+                </Button>
+              ) : null}
             </div>
-
-            <Button onClick={handleSaveApiKeys} disabled={isLoading} className="w-full">
-              <Save className="mr-2 h-4 w-4" />
-              Save API Keys
-            </Button>
           </CardContent>
         </Card>
+
+        {canUseOwnKeys && (
+          <Card className="glass-strong border-white/20 mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Crown className="h-5 w-5 text-yellow-500" />
+                API Keys (Lifetime Tier)
+              </CardTitle>
+              <CardDescription>
+                Use your own API keys for unlimited usage
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="browser-use-key">Browser Use API Key</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="browser-use-key"
+                    type={showKeys.browserUse ? 'text' : 'password'}
+                    value={apiKeys.browserUse}
+                    onChange={(e) => setApiKeys({ ...apiKeys, browserUse: e.target.value })}
+                    placeholder="Enter your Browser Use API key"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowKeys({ ...showKeys, browserUse: !showKeys.browserUse })}
+                  >
+                    {showKeys.browserUse ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="anthropic-key">Anthropic API Key</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="anthropic-key"
+                    type={showKeys.anthropic ? 'text' : 'password'}
+                    value={apiKeys.anthropic}
+                    onChange={(e) => setApiKeys({ ...apiKeys, anthropic: e.target.value })}
+                    placeholder="Enter your Anthropic API key"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowKeys({ ...showKeys, anthropic: !showKeys.anthropic })}
+                  >
+                    {showKeys.anthropic ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+
+              <Button onClick={handleSaveApiKeys} disabled={isLoading} className="w-full">
+                <Save className="mr-2 h-4 w-4" />
+                Save API Keys
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="glass-strong border-white/20">
           <CardHeader>
