@@ -13,7 +13,7 @@ import { parseCodeFromMessages } from "@/lib/codeParser";
 import { useState, useMemo } from "react";
 
 const Dashboard = () => {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const navigate = useNavigate();
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
@@ -52,6 +52,11 @@ const Dashboard = () => {
 
   // Parse code from messages for live preview
   const parsedCode = useMemo(() => parseCodeFromMessages(messages), [messages]);
+
+  // Show something even if there are errors
+  if (!user) {
+    return null; // AuthContext will handle redirect
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-background/90">
@@ -133,75 +138,93 @@ const Dashboard = () => {
 
           {/* Main Content Area - Split View */}
           <div className="flex-1 min-w-0">
-            {activeConversationId || messages.length > 0 ? (
-              <div className="h-full flex flex-col md:flex-row md:hidden">
-                {/* Mobile: Stack vertically with tabs */}
-                <div className="flex-1 h-1/2 md:h-full">
-                  <ChatContainer
-                    messages={messages}
-                    isLoading={isLoading}
-                    isStreaming={isStreaming}
-                    onSendMessage={sendMessage}
-                    onStopStreaming={stopStreaming}
-                  />
+            {/* Mobile: Stack vertically */}
+            <div className="h-full flex flex-col md:hidden">
+              {(activeConversationId || messages.length > 0) ? (
+                <>
+                  <div className="flex-1 h-1/2">
+                    <ChatContainer
+                      messages={messages}
+                      isLoading={isLoading}
+                      isStreaming={isStreaming}
+                      onSendMessage={sendMessage}
+                      onStopStreaming={stopStreaming}
+                    />
+                  </div>
+                  <div className="flex-1 h-1/2 border-t">
+                    <CodePreview
+                      files={parsedCode.files}
+                      mainFile={parsedCode.mainFile}
+                      template={parsedCode.template}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="h-full flex items-center justify-center p-4">
+                  <Card className="max-w-md w-full">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Welcome to AI Assistant</CardTitle>
+                      <CardDescription className="text-sm">
+                        Start a new conversation or select an existing one from the sidebar
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Button onClick={handleNewConversation} className="w-full">
+                        <MessageSquarePlus className="h-4 w-4 mr-2" />
+                        Start New Chat
+                      </Button>
+                    </CardContent>
+                  </Card>
                 </div>
-                <div className="flex-1 h-1/2 md:h-full border-t md:border-t-0">
-                  <CodePreview
-                    files={parsedCode.files}
-                    mainFile={parsedCode.mainFile}
-                    template={parsedCode.template}
-                  />
-                </div>
-              </div>
-            ) : null}
+              )}
+            </div>
             
             {/* Desktop: Resizable split view */}
-            {(activeConversationId || messages.length > 0) && (
-              <ResizablePanelGroup direction="horizontal" className="h-full hidden md:flex">
-                {/* Chat Panel */}
-                <ResizablePanel defaultSize={50} minSize={30}>
-                  <ChatContainer
-                    messages={messages}
-                    isLoading={isLoading}
-                    isStreaming={isStreaming}
-                    onSendMessage={sendMessage}
-                    onStopStreaming={stopStreaming}
-                  />
-                </ResizablePanel>
+            <div className="h-full hidden md:block">
+              {(activeConversationId || messages.length > 0) ? (
+                <ResizablePanelGroup direction="horizontal" className="h-full">
+                  {/* Chat Panel */}
+                  <ResizablePanel defaultSize={50} minSize={30}>
+                    <ChatContainer
+                      messages={messages}
+                      isLoading={isLoading}
+                      isStreaming={isStreaming}
+                      onSendMessage={sendMessage}
+                      onStopStreaming={stopStreaming}
+                    />
+                  </ResizablePanel>
 
-                {/* Resizable Handle */}
-                <ResizableHandle withHandle />
+                  {/* Resizable Handle */}
+                  <ResizableHandle withHandle />
 
-                {/* Preview Panel */}
-                <ResizablePanel defaultSize={50} minSize={30}>
-                  <CodePreview
-                    files={parsedCode.files}
-                    mainFile={parsedCode.mainFile}
-                    template={parsedCode.template}
-                  />
-                </ResizablePanel>
-              </ResizablePanelGroup>
-            )}
-            
-            {/* Welcome Screen */}
-            {!activeConversationId && messages.length === 0 && (
-              <div className="h-full flex items-center justify-center p-4">
-                <Card className="max-w-md w-full">
-                  <CardHeader>
-                    <CardTitle className="text-lg md:text-xl">Welcome to AI Assistant</CardTitle>
-                    <CardDescription className="text-sm">
-                      Start a new conversation or select an existing one from the sidebar
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Button onClick={handleNewConversation} className="w-full">
-                      <MessageSquarePlus className="h-4 w-4 mr-2" />
-                      Start New Chat
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
+                  {/* Preview Panel */}
+                  <ResizablePanel defaultSize={50} minSize={30}>
+                    <CodePreview
+                      files={parsedCode.files}
+                      mainFile={parsedCode.mainFile}
+                      template={parsedCode.template}
+                    />
+                  </ResizablePanel>
+                </ResizablePanelGroup>
+              ) : (
+                <div className="h-full flex items-center justify-center p-4">
+                  <Card className="max-w-md w-full">
+                    <CardHeader>
+                      <CardTitle className="text-xl">Welcome to AI Assistant</CardTitle>
+                      <CardDescription>
+                        Start a new conversation or select an existing one from the sidebar
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Button onClick={handleNewConversation} className="w-full">
+                        <MessageSquarePlus className="h-4 w-4 mr-2" />
+                        Start New Chat
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
