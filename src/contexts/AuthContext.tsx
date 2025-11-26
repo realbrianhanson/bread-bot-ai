@@ -41,6 +41,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     
     try {
+      // Ensure we have a valid session before making the request
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      if (!currentSession?.access_token) {
+        console.log('No valid session, skipping subscription check');
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('check-subscription');
       if (error) {
         console.error('Error checking subscription:', error);
@@ -65,12 +72,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
         
-        if (session?.user) {
+        // Only refresh subscription after sign-in is complete and we have a valid session
+        if (session?.user && session?.access_token && event === 'SIGNED_IN') {
+          // Add a small delay to ensure token is fully propagated
+          setTimeout(() => refreshSubscription(), 100);
+        } else if (session?.user && session?.access_token) {
           await refreshSubscription();
         }
       }
@@ -82,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       setLoading(false);
       
-      if (session?.user) {
+      if (session?.user && session?.access_token) {
         await refreshSubscription();
       }
     });
