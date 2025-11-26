@@ -154,6 +154,7 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          can_use_own_keys: boolean | null
           created_at: string | null
           current_period_end: string | null
           current_period_start: string | null
@@ -166,6 +167,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          can_use_own_keys?: boolean | null
           created_at?: string | null
           current_period_end?: string | null
           current_period_start?: string | null
@@ -178,6 +180,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          can_use_own_keys?: boolean | null
           created_at?: string | null
           current_period_end?: string | null
           current_period_start?: string | null
@@ -359,7 +362,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
-      subscription_tier: "free" | "pro" | "enterprise"
+      subscription_tier: "free" | "pro" | "enterprise" | "starter" | "lifetime"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -488,7 +491,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
-      subscription_tier: ["free", "pro", "enterprise"],
+      subscription_tier: ["free", "pro", "enterprise", "starter", "lifetime"],
     },
   },
 } as const
