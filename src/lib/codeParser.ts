@@ -55,7 +55,7 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
   // Determine template and main file
   if (hasHtml) {
     mainFile = '/index.html';
-    template = 'static'; // Use static template for better HTML handling
+    template = 'vanilla'; // Use vanilla template for HTML/CSS/JS
     
     let html = files['/index.html'];
     
