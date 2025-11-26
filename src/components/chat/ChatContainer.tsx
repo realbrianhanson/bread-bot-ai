@@ -1,5 +1,4 @@
-import React, { useEffect, useRef } from 'react';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { useEffect, useRef } from 'react';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import { Message } from '@/hooks/useChat';
@@ -12,13 +11,13 @@ interface ChatContainerProps {
   onStopStreaming: () => void;
 }
 
-const ChatContainer: React.FC<ChatContainerProps> = ({
+const ChatContainer = ({
   messages,
   isLoading,
   isStreaming,
   onSendMessage,
   onStopStreaming,
-}) => {
+}: ChatContainerProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -29,7 +28,10 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-background/50 backdrop-blur-sm border border-border/50 rounded-lg overflow-hidden">
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <div 
+        ref={scrollRef}
+        className="flex-1 p-4 overflow-y-auto"
+      >
         <div className="space-y-4 max-w-4xl mx-auto">
           {messages.length === 0 ? (
             <div className="text-center text-muted-foreground py-12">
@@ -48,7 +50,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
 
       <div className="border-t border-border/50 bg-background/30 backdrop-blur-sm p-4">
         <div className="max-w-4xl mx-auto">

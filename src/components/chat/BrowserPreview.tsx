@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Monitor } from 'lucide-react';
@@ -8,7 +7,7 @@ interface BrowserPreviewProps {
   actions?: Array<{ type: string; timestamp: string; [key: string]: any }>;
 }
 
-const BrowserPreview: React.FC<BrowserPreviewProps> = ({ screenshots, actions }) => {
+const BrowserPreview = ({ screenshots, actions }: BrowserPreviewProps) => {
   if (!screenshots?.length && !actions?.length) return null;
 
   return (
