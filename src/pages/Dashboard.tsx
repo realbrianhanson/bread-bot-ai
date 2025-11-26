@@ -16,7 +16,9 @@ const Dashboard = () => {
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+  );
   const { messages, isLoading, isStreaming, sendMessage, stopStreaming } = useChat(activeConversationId || undefined);
   const {
     conversations,
@@ -55,52 +57,72 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-background/90">
       {/* Header */}
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <span className="text-2xl">🧄</span>
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="md:hidden h-8 w-8"
+            >
+              {sidebarCollapsed ? (
+                <ChevronRight className="h-4 w-4" />
+              ) : (
+                <ChevronLeft className="h-4 w-4" />
+              )}
+            </Button>
+            <span className="text-2xl">🧄</span>
+          </div>
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => navigate("/settings")}
+              className="h-8 w-8"
             >
-              <Settings className="h-5 w-5" />
+              <Settings className="h-4 w-4 md:h-5 md:w-5" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
               onClick={handleSignOut}
+              className="h-8 w-8"
             >
-              <LogOut className="h-5 w-5" />
+              <LogOut className="h-4 w-4 md:h-5 md:w-5" />
             </Button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-6">
-        <div className="flex gap-4 h-[calc(100vh-120px)]">
+      <div className="container mx-auto px-2 md:px-4 py-4 md:py-6">
+        <div className="flex gap-2 md:gap-4 h-[calc(100vh-100px)] md:h-[calc(100vh-120px)]">
           {/* Conversation Sidebar */}
           <div 
             className={`transition-all duration-300 ${
-              sidebarCollapsed ? 'w-0' : 'w-64'
-            } overflow-hidden`}
+              sidebarCollapsed ? 'hidden md:block md:w-0' : 'absolute md:relative inset-0 z-20 md:z-0 w-full md:w-64'
+            } overflow-hidden bg-background md:bg-transparent`}
           >
             <ConversationList
               conversations={conversations}
               activeConversationId={activeConversationId}
-              onSelectConversation={handleSelectConversation}
+              onSelectConversation={(id) => {
+                handleSelectConversation(id);
+                // Auto-collapse sidebar on mobile after selection
+                if (window.innerWidth < 768) setSidebarCollapsed(true);
+              }}
               onNewConversation={handleNewConversation}
               onDeleteConversation={handleDeleteConversation}
               onRenameConversation={renameConversation}
             />
           </div>
 
-          {/* Toggle Sidebar Button */}
+          {/* Toggle Sidebar Button - Desktop only */}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="self-start mt-2 h-8 w-8"
+            className="hidden md:flex self-start mt-2 h-8 w-8"
           >
             {sidebarCollapsed ? (
               <ChevronRight className="h-4 w-4" />
@@ -110,9 +132,32 @@ const Dashboard = () => {
           </Button>
 
           {/* Main Content Area - Split View */}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             {activeConversationId || messages.length > 0 ? (
-              <ResizablePanelGroup direction="horizontal" className="h-full">
+              <div className="h-full flex flex-col md:flex-row md:hidden">
+                {/* Mobile: Stack vertically with tabs */}
+                <div className="flex-1 h-1/2 md:h-full">
+                  <ChatContainer
+                    messages={messages}
+                    isLoading={isLoading}
+                    isStreaming={isStreaming}
+                    onSendMessage={sendMessage}
+                    onStopStreaming={stopStreaming}
+                  />
+                </div>
+                <div className="flex-1 h-1/2 md:h-full border-t md:border-t-0">
+                  <CodePreview
+                    files={parsedCode.files}
+                    mainFile={parsedCode.mainFile}
+                    template={parsedCode.template}
+                  />
+                </div>
+              </div>
+            ) : null}
+            
+            {/* Desktop: Resizable split view */}
+            {(activeConversationId || messages.length > 0) && (
+              <ResizablePanelGroup direction="horizontal" className="h-full hidden md:flex">
                 {/* Chat Panel */}
                 <ResizablePanel defaultSize={50} minSize={30}>
                   <ChatContainer
@@ -136,12 +181,15 @@ const Dashboard = () => {
                   />
                 </ResizablePanel>
               </ResizablePanelGroup>
-            ) : (
-              <div className="h-full flex items-center justify-center">
-                <Card className="max-w-md">
+            )}
+            
+            {/* Welcome Screen */}
+            {!activeConversationId && messages.length === 0 && (
+              <div className="h-full flex items-center justify-center p-4">
+                <Card className="max-w-md w-full">
                   <CardHeader>
-                    <CardTitle>Welcome to AI Assistant</CardTitle>
-                    <CardDescription>
+                    <CardTitle className="text-lg md:text-xl">Welcome to AI Assistant</CardTitle>
+                    <CardDescription className="text-sm">
                       Start a new conversation or select an existing one from the sidebar
                     </CardDescription>
                   </CardHeader>
