@@ -75,7 +75,7 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
       </div>
 
       {/* Sandpack Preview */}
-      <div className="flex-1 overflow-hidden bg-white">
+      <div className="flex-1 overflow-hidden">
         <SandpackProvider
           key={key}
           files={files}
@@ -91,9 +91,11 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
             showOpenInCodeSandbox={false}
             showRefreshButton={false}
             showOpenNewtab={false}
+            showSandpackErrorOverlay={false}
             style={{ 
               height: '100%',
               width: '100%',
+              border: 'none',
             }}
           />
         </SandpackProvider>
