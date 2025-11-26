@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { useSubscription } from '@/hooks/useSubscription';
 
 export interface Message {
   id: string;
@@ -16,6 +17,7 @@ export const useChat = (projectId?: string) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const { user } = useAuth();
+  const { canSendMessage, refreshSubscription } = useSubscription();
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Load messages from database
@@ -86,6 +88,11 @@ export const useChat = (projectId?: string) => {
   const sendMessage = useCallback(
     async (content: string) => {
       if (!user || !content.trim()) return;
+
+      // Check if user can send message
+      if (!canSendMessage()) {
+        return;
+      }
 
       setIsLoading(true);
       setIsStreaming(true);
@@ -208,9 +215,11 @@ export const useChat = (projectId?: string) => {
         setIsLoading(false);
         setIsStreaming(false);
         abortControllerRef.current = null;
+        // Refresh subscription to update usage
+        refreshSubscription();
       }
     },
-    [user, projectId, messages]
+    [user, projectId, messages, canSendMessage, refreshSubscription]
   );
 
   const stopStreaming = useCallback(() => {

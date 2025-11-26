@@ -10,6 +10,15 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   loading: boolean;
+  tier: string;
+  subscribed: boolean;
+  subscriptionEnd: string | null;
+  canUseOwnKeys: boolean;
+  chatMessagesUsed: number;
+  browserTasksUsed: number;
+  chatMessagesLimit: number;
+  browserTasksLimit: number;
+  refreshSubscription: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,27 +27,79 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [tier, setTier] = useState('free');
+  const [subscribed, setSubscribed] = useState(false);
+  const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
+  const [canUseOwnKeys, setCanUseOwnKeys] = useState(false);
+  const [chatMessagesUsed, setChatMessagesUsed] = useState(0);
+  const [browserTasksUsed, setBrowserTasksUsed] = useState(0);
+  const [chatMessagesLimit, setChatMessagesLimit] = useState(100);
+  const [browserTasksLimit, setBrowserTasksLimit] = useState(10);
   const navigate = useNavigate();
+
+  const refreshSubscription = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('check-subscription');
+      if (error) {
+        console.error('Error checking subscription:', error);
+        return;
+      }
+      
+      if (data) {
+        setTier(data.tier || 'free');
+        setSubscribed(data.subscribed || false);
+        setSubscriptionEnd(data.subscription_end || null);
+        setCanUseOwnKeys(data.can_use_own_keys || false);
+        setChatMessagesUsed(data.chat_messages_used || 0);
+        setBrowserTasksUsed(data.browser_tasks_used || 0);
+        setChatMessagesLimit(data.chat_messages_limit || 100);
+        setBrowserTasksLimit(data.browser_tasks_limit || 10);
+      }
+    } catch (error) {
+      console.error('Error refreshing subscription:', error);
+    }
+  };
 
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      async (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+        
+        if (session?.user) {
+          await refreshSubscription();
+        }
       }
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      
+      if (session?.user) {
+        await refreshSubscription();
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Periodic refresh every 60 seconds
+  useEffect(() => {
+    if (!user) return;
+    
+    const interval = setInterval(() => {
+      refreshSubscription();
+    }, 60000);
+    
+    return () => clearInterval(interval);
+  }, [user]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -80,7 +141,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, signIn, signUp, signOut, loading }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      signIn, 
+      signUp, 
+      signOut, 
+      loading,
+      tier,
+      subscribed,
+      subscriptionEnd,
+      canUseOwnKeys,
+      chatMessagesUsed,
+      browserTasksUsed,
+      chatMessagesLimit,
+      browserTasksLimit,
+      refreshSubscription
+    }}>
       {children}
     </AuthContext.Provider>
   );

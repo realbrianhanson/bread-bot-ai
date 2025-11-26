@@ -5,3 +5,12 @@ verify_jwt = true
 
 [functions.browser-task]
 verify_jwt = true
+
+[functions.check-subscription]
+verify_jwt = true
+
+[functions.create-checkout]
+verify_jwt = true
+
+[functions.customer-portal]
+verify_jwt = true

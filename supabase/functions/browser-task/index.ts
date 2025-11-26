@@ -191,24 +191,66 @@ serve(async (req) => {
       });
     }
 
-    // Fetch user's Browser Use API key
-    const { data: apiKeyData, error: keyError } = await supabaseClient
-      .from('api_keys')
-      .select('encrypted_key')
-      .eq('user_id', user.id)
-      .eq('provider', 'browser_use')
-      .eq('is_active', true)
-      .maybeSingle();
+    // Check user's tier and usage limits
+    const { data: usageData } = await supabaseClient.rpc('get_user_tier_and_usage', {
+      p_user_id: user.id
+    });
 
-    if (keyError || !apiKeyData) {
-      return new Response(JSON.stringify({ error: 'Browser Use API key not found. Please add it in Settings.' }), {
-        status: 400,
+    const usage = usageData?.[0];
+    if (!usage) {
+      return new Response(JSON.stringify({ error: 'Unable to fetch usage data' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check if user has exceeded their limit
+    if (usage.browser_tasks_used >= usage.browser_tasks_limit) {
+      return new Response(JSON.stringify({ 
+        error: `You've reached your monthly limit of ${usage.browser_tasks_limit} browser tasks. Please upgrade your plan to continue.`,
+        limit_exceeded: true 
+      }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Determine which API key to use
+    let browserUseApiKey: string;
+    
+    if (usage.can_use_own_keys) {
+      // Lifetime tier: try to use user's own key
+      const { data: apiKeyData } = await supabaseClient
+        .from('api_keys')
+        .select('encrypted_key')
+        .eq('user_id', user.id)
+        .eq('provider', 'browser_use')
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (apiKeyData?.encrypted_key) {
+        browserUseApiKey = apiKeyData.encrypted_key;
+        console.log('Using user\'s own Browser Use API key');
+      } else {
+        // Fall back to shared key if user hasn't provided their own
+        browserUseApiKey = Deno.env.get('BROWSER_USE_API_KEY') ?? '';
+        console.log('Using shared Browser Use API key (user has BYOK but no key configured)');
+      }
+    } else {
+      // All other tiers: use shared API key
+      browserUseApiKey = Deno.env.get('BROWSER_USE_API_KEY') ?? '';
+      console.log('Using shared Browser Use API key');
+    }
+
+    if (!browserUseApiKey) {
+      return new Response(JSON.stringify({ error: 'Browser Use API key not configured' }), {
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const { task, projectId } = await req.json();
-    const apiKey = apiKeyData.encrypted_key;
+    const apiKey = browserUseApiKey;
 
     console.log('Creating browser automation task:', task);
 
@@ -280,6 +322,16 @@ serve(async (req) => {
           output_data: { browser_use_task_id: browserUseTaskId },
         })
         .eq('id', taskRecord.id);
+
+      // Track usage
+      await supabaseClient
+        .from('usage_tracking')
+        .insert({
+          user_id: user.id,
+          usage_type: 'browser_task',
+          quantity: 1,
+          task_id: taskRecord.id
+        });
 
       // Start background polling (don't await)
       pollTaskStatus(browserUseTaskId, apiKey, taskRecord.id, supabaseClient, user.id);

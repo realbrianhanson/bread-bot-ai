@@ -32,18 +32,60 @@ serve(async (req) => {
       });
     }
 
-    // Fetch user's Anthropic API key
-    const { data: apiKeyData, error: keyError } = await supabaseClient
-      .from('api_keys')
-      .select('encrypted_key')
-      .eq('user_id', user.id)
-      .eq('provider', 'anthropic')
-      .eq('is_active', true)
-      .maybeSingle();
+    // Check user's tier and usage limits
+    const { data: usageData } = await supabaseClient.rpc('get_user_tier_and_usage', {
+      p_user_id: user.id
+    });
 
-    if (keyError || !apiKeyData) {
-      return new Response(JSON.stringify({ error: 'Anthropic API key not found. Please add it in Settings.' }), {
-        status: 400,
+    const usage = usageData?.[0];
+    if (!usage) {
+      return new Response(JSON.stringify({ error: 'Unable to fetch usage data' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check if user has exceeded their limit
+    if (usage.chat_messages_used >= usage.chat_messages_limit) {
+      return new Response(JSON.stringify({ 
+        error: `You've reached your monthly limit of ${usage.chat_messages_limit} messages. Please upgrade your plan to continue.`,
+        limit_exceeded: true 
+      }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Determine which API key to use
+    let anthropicApiKey: string;
+    
+    if (usage.can_use_own_keys) {
+      // Lifetime tier: try to use user's own key
+      const { data: apiKeyData } = await supabaseClient
+        .from('api_keys')
+        .select('encrypted_key')
+        .eq('user_id', user.id)
+        .eq('provider', 'anthropic')
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (apiKeyData?.encrypted_key) {
+        anthropicApiKey = apiKeyData.encrypted_key;
+        console.log('Using user\'s own Anthropic API key');
+      } else {
+        // Fall back to shared key if user hasn't provided their own
+        anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
+        console.log('Using shared Anthropic API key (user has BYOK but no key configured)');
+      }
+    } else {
+      // All other tiers: use shared API key
+      anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
+      console.log('Using shared Anthropic API key');
+    }
+
+    if (!anthropicApiKey) {
+      return new Response(JSON.stringify({ error: 'Anthropic API key not configured' }), {
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -55,7 +97,7 @@ serve(async (req) => {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'x-api-key': apiKeyData.encrypted_key,
+        'x-api-key': anthropicApiKey,
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
@@ -83,6 +125,15 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // Track usage after successful API call
+    await supabaseClient
+      .from('usage_tracking')
+      .insert({
+        user_id: user.id,
+        usage_type: 'chat_message',
+        quantity: 1
+      });
 
     // Stream the response
     return new Response(response.body, {
