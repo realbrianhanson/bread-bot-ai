@@ -58,7 +58,6 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
     template = 'vanilla';
     
     let html = files['/index.html'];
-    console.log('Original HTML:', html.substring(0, 200));
     
     // Check if HTML contains any JS code that references an "app" element
     const needsAppDiv = html && (
@@ -68,28 +67,21 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
       html.includes("querySelector('#app')")
     );
     
-    console.log('Needs app div:', needsAppDiv);
-    console.log('Has app div:', html.includes('id="app"'));
-    
     // Ensure HTML has required app div if it's referenced in the code
-    if (needsAppDiv && !html.includes('id="app"')) {
-      // Find where to insert the app div - right after body tag opens
-      const bodyMatch = html.match(/<body[^>]*>/i);
-      if (bodyMatch) {
-        const bodyTag = bodyMatch[0];
-        const bodyIndex = html.indexOf(bodyTag);
-        const insertPosition = bodyIndex + bodyTag.length;
-        
-        // Insert app div right after body tag
-        files['/index.html'] = 
-          html.substring(0, insertPosition) + 
-          '\n  <div id="app"></div>\n' + 
-          html.substring(insertPosition);
-        
-        console.log('Modified HTML:', files['/index.html'].substring(0, 300));
-      } else {
-        // If no body tag found, wrap everything in proper HTML structure
-        files['/index.html'] = `<!DOCTYPE html>
+    if (needsAppDiv) {
+      if (!html.includes('id="app"')) {
+        // Find the body tag and insert app div immediately after it
+        const bodyMatch = html.match(/<body[^>]*>/i);
+        if (bodyMatch) {
+          const bodyTag = bodyMatch[0];
+          const insertPosition = html.indexOf(bodyTag) + bodyTag.length;
+          html = 
+            html.substring(0, insertPosition) + 
+            '\n  <div id="app"></div>' + 
+            html.substring(insertPosition);
+        } else {
+          // No body tag - wrap in complete HTML
+          html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -98,11 +90,25 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
 </head>
 <body>
   <div id="app"></div>
-  ${html}
+${html}
 </body>
 </html>`;
-        console.log('Wrapped HTML with structure');
+        }
       }
+      
+      // Wrap inline scripts that use getElementById("app") in DOMContentLoaded
+      html = html.replace(
+        /<script([^>]*)>([\s\S]*?getElementById\(["']app["']\)[\s\S]*?)<\/script>/gi,
+        (match, attrs, content) => {
+          // Skip if already has DOMContentLoaded or addEventListener
+          if (content.includes('DOMContentLoaded') || content.includes('addEventListener')) {
+            return match;
+          }
+          return `<script${attrs}>\n  document.addEventListener('DOMContentLoaded', function() {\n${content}\n  });\n</script>`;
+        }
+      );
+      
+      files['/index.html'] = html;
     }
   } else if (files['/App.tsx']) {
     mainFile = '/App.tsx';
