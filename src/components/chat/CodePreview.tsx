@@ -12,6 +12,13 @@ interface CodePreviewProps {
 const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProps) => {
   const [key, setKey] = useState(0);
 
+  console.log('CodePreview rendering:', { 
+    filesCount: Object.keys(files).length, 
+    files: Object.keys(files),
+    mainFile, 
+    template 
+  });
+
   const handleRefresh = () => {
     setKey(prev => prev + 1);
   };
@@ -22,6 +29,25 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
       previewFrame.requestFullscreen();
     }
   };
+
+  // Show message if no valid code files
+  if (Object.keys(files).length === 0 || (Object.keys(files).length === 1 && files[mainFile]?.includes('Start chatting'))) {
+    return (
+      <div className="flex flex-col h-full bg-background border border-border/50 rounded-lg overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-background/50">
+          <span className="text-sm font-medium">Live Preview</span>
+        </div>
+        <div className="flex-1 flex items-center justify-center p-8 text-center">
+          <div>
+            <h3 className="text-lg font-semibold mb-2">No Code to Preview</h3>
+            <p className="text-muted-foreground">
+              Chat with AI to generate code that will appear here as a live preview
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-background border border-border/50 rounded-lg overflow-hidden">
