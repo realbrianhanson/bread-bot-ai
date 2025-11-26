@@ -4,10 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Settings, LogOut, MessageSquarePlus, ChevronLeft, ChevronRight } from "lucide-react";
 import ChatContainer from "@/components/chat/ChatContainer";
 import ConversationList from "@/components/chat/ConversationList";
+import CodePreview from "@/components/chat/CodePreview";
 import { useChat } from "@/hooks/useChat";
 import { useConversations } from "@/hooks/useConversations";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useState } from "react";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { parseCodeFromMessages } from "@/lib/codeParser";
+import { useState, useMemo } from "react";
 
 const Dashboard = () => {
   const { signOut } = useAuth();
@@ -44,6 +47,9 @@ const Dashboard = () => {
       setActiveConversationId(null);
     }
   };
+
+  // Parse code from messages for live preview
+  const parsedCode = useMemo(() => parseCodeFromMessages(messages), [messages]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-background/90">
@@ -103,16 +109,32 @@ const Dashboard = () => {
             )}
           </Button>
 
-          {/* Main Chat Area */}
+          {/* Main Content Area - Split View */}
           <div className="flex-1">
             {activeConversationId || messages.length > 0 ? (
-              <ChatContainer
-                messages={messages}
-                isLoading={isLoading}
-                isStreaming={isStreaming}
-                onSendMessage={sendMessage}
-                onStopStreaming={stopStreaming}
-              />
+              <ResizablePanelGroup direction="horizontal" className="h-full">
+                {/* Chat Panel */}
+                <ResizablePanel defaultSize={50} minSize={30}>
+                  <ChatContainer
+                    messages={messages}
+                    isLoading={isLoading}
+                    isStreaming={isStreaming}
+                    onSendMessage={sendMessage}
+                    onStopStreaming={stopStreaming}
+                  />
+                </ResizablePanel>
+
+                {/* Resizable Handle */}
+                <ResizableHandle withHandle />
+
+                {/* Preview Panel */}
+                <ResizablePanel defaultSize={50} minSize={30}>
+                  <CodePreview
+                    files={parsedCode.files}
+                    mainFile={parsedCode.mainFile}
+                  />
+                </ResizablePanel>
+              </ResizablePanelGroup>
             ) : (
               <div className="h-full flex items-center justify-center">
                 <Card className="max-w-md">
