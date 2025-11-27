@@ -1,7 +1,7 @@
 import { SandpackProvider, SandpackPreview, useSandpack } from '@codesandbox/sandpack-react';
 import { Maximize2, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface CodePreviewProps {
   files: Record<string, string>;
@@ -11,7 +11,13 @@ interface CodePreviewProps {
 
 const PreviewContent = () => {
   const { sandpack } = useSandpack();
-  const isLoading = sandpack.status === 'initial';
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  const isLoading = (sandpack.status === 'initial' || sandpack.status === 'idle') && !loadingTimeout;
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoadingTimeout(true), 5000);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <>
@@ -23,7 +29,7 @@ const PreviewContent = () => {
           </div>
         </div>
       )}
-      <SandpackPreview 
+      <SandpackPreview
         showNavigator={false}
         showOpenInCodeSandbox={false}
         showRefreshButton={false}
@@ -154,7 +160,7 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
             recompileDelay: 300,
             autorun: true,
             autoReload: true,
-            initMode: 'lazy',
+            initMode: 'immediate',
           }}
         >
           <PreviewContent />
