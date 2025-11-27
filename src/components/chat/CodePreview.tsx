@@ -29,18 +29,20 @@ const PreviewContent = () => {
           </div>
         </div>
       )}
-      <SandpackPreview
-        showNavigator={false}
-        showOpenInCodeSandbox={false}
-        showRefreshButton={false}
-        showOpenNewtab={false}
-        showSandpackErrorOverlay={true}
-        style={{ 
-          height: '100%',
-          width: '100%',
-          border: 'none',
-        }}
-      />
+      <div className="w-full h-full">
+        <SandpackPreview
+          showNavigator={false}
+          showOpenInCodeSandbox={false}
+          showRefreshButton={false}
+          showOpenNewtab={false}
+          showSandpackErrorOverlay={true}
+          style={{ 
+            height: '100%',
+            width: '100%',
+            border: 'none',
+          }}
+        />
+      </div>
     </>
   );
 };
@@ -86,9 +88,9 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
   }
 
   return (
-    <div className="flex flex-col h-full bg-background border border-border/50 rounded-lg overflow-hidden">
+    <div className="w-full h-full flex flex-col bg-background">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-3 py-1 border-b border-border/50 bg-background/50">
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 bg-background/50 shrink-0">
         <span className="text-xs font-medium">Live Preview</span>
         <div className="flex gap-1">
           <Button
@@ -111,7 +113,7 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
       </div>
 
       {/* Sandpack Preview */}
-      <div className="flex-1 min-h-0 relative">
+      <div className="flex-1 h-0 relative">
         <SandpackProvider
           key={key}
           files={files}
