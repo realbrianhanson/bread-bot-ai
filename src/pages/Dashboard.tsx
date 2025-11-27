@@ -61,9 +61,9 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-background via-background/95 to-background/90">
+    <div className="h-screen w-screen flex flex-col bg-gradient-to-br from-background via-background/95 to-background/90 overflow-hidden">
       {/* Header - Full Width */}
-      <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm z-10">
+      <header className="shrink-0 border-b border-border/50 bg-background/80 backdrop-blur-sm z-10">
         <div className="px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Button
@@ -102,7 +102,7 @@ const Dashboard = () => {
       </header>
 
       {/* Mobile View */}
-      <div className="flex-1 flex flex-col md:hidden min-h-0">
+      <div className="flex-1 flex flex-col md:hidden min-h-0 overflow-hidden">
         {/* Mobile Conversation Sidebar Overlay */}
         {!sidebarCollapsed && (
           <div className="absolute inset-0 z-20 bg-background">
@@ -164,9 +164,9 @@ const Dashboard = () => {
       </div>
 
       {/* Desktop View - Full Width Edge-to-Edge */}
-      <div className="flex-1 hidden md:flex min-h-0">
+      <div className="flex-1 hidden md:flex min-h-0 overflow-hidden">
         {(activeConversationId || messages.length > 0) ? (
-          <ResizablePanelGroup direction="horizontal" className="h-full">
+          <ResizablePanelGroup direction="horizontal" className="h-full w-full">
             {/* Left Panel: Conversation List + Chat */}
             <ResizablePanel defaultSize={35} minSize={25} maxSize={50}>
               <div className="h-full flex flex-col border-r border-border">
