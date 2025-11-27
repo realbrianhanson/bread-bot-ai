@@ -7,6 +7,7 @@ import ConversationList from "@/components/chat/ConversationList";
 import CodePreview from "@/components/chat/CodePreview";
 import { useChat } from "@/hooks/useChat";
 import { useConversations } from "@/hooks/useConversations";
+import { useBrowserTask } from "@/hooks/useBrowserTask";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { parseCodeFromMessages } from "@/lib/codeParser";
@@ -26,6 +27,7 @@ const Dashboard = () => {
     deleteConversation,
     renameConversation,
   } = useConversations();
+  const { currentTask, isExecuting, executeTask } = useBrowserTask();
 
   const handleSignOut = async () => {
     await signOut();
@@ -149,6 +151,10 @@ const Dashboard = () => {
                       isStreaming={isStreaming}
                       onSendMessage={sendMessage}
                       onStopStreaming={stopStreaming}
+                      currentTask={currentTask}
+                      isExecutingTask={isExecuting}
+                      onExecuteTask={executeTask}
+                      projectId={activeConversationId || undefined}
                     />
                   </div>
                   <div className="flex-1 h-1/2 border-t">
@@ -191,6 +197,10 @@ const Dashboard = () => {
                       isStreaming={isStreaming}
                       onSendMessage={sendMessage}
                       onStopStreaming={stopStreaming}
+                      currentTask={currentTask}
+                      isExecutingTask={isExecuting}
+                      onExecuteTask={executeTask}
+                      projectId={activeConversationId || undefined}
                     />
                   </ResizablePanel>
 
