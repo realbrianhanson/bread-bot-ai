@@ -61,10 +61,10 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-background/90">
-      {/* Header */}
-      <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-background via-background/95 to-background/90">
+      {/* Header - Full Width */}
+      <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm z-10">
+        <div className="px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -101,142 +101,134 @@ const Dashboard = () => {
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="container mx-auto px-2 md:px-4 py-2">
-        <div className="flex gap-2 md:gap-4 h-[calc(100vh-80px)]">
-          {/* Conversation Sidebar */}
-          <div 
-            className={`transition-all duration-300 ${
-              sidebarCollapsed ? 'hidden md:block md:w-0' : 'absolute md:relative inset-0 z-20 md:z-0 w-full md:w-64'
-            } overflow-hidden bg-background md:bg-transparent`}
-          >
+      {/* Mobile View */}
+      <div className="flex-1 flex flex-col md:hidden min-h-0">
+        {/* Mobile Conversation Sidebar Overlay */}
+        {!sidebarCollapsed && (
+          <div className="absolute inset-0 z-20 bg-background">
             <ConversationList
               conversations={conversations}
               activeConversationId={activeConversationId}
               onSelectConversation={(id) => {
                 handleSelectConversation(id);
-                // Auto-collapse sidebar on mobile after selection
-                if (window.innerWidth < 768) setSidebarCollapsed(true);
+                setSidebarCollapsed(true);
               }}
               onNewConversation={handleNewConversation}
               onDeleteConversation={handleDeleteConversation}
               onRenameConversation={renameConversation}
             />
           </div>
-
-          {/* Toggle Sidebar Button - Desktop only */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="hidden md:flex self-start mt-2 h-8 w-8"
-          >
-            {sidebarCollapsed ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <ChevronLeft className="h-4 w-4" />
-            )}
-          </Button>
-
-          {/* Main Content Area - Split View */}
-          <div className="flex-1 min-w-0">
-            {/* Mobile: Stack vertically */}
-            <div className="h-full flex flex-col md:hidden">
-              {(activeConversationId || messages.length > 0) ? (
-                <>
-                  <div className="flex-1 min-h-0">
-                    <ChatContainer
-                      messages={messages}
-                      isLoading={isLoading}
-                      isStreaming={isStreaming}
-                      onSendMessage={sendMessage}
-                      onStopStreaming={stopStreaming}
-                      currentTask={currentTask}
-                      isExecutingTask={isExecuting}
-                      onExecuteTask={executeTask}
-                      projectId={activeConversationId || undefined}
-                    />
-                  </div>
-                  <div className="flex-1 min-h-0 border-t">
-                    <CodePreview
-                      files={parsedCode.files}
-                      mainFile={parsedCode.mainFile}
-                      template={parsedCode.template}
-                    />
-                  </div>
-                </>
-              ) : (
-                <div className="h-full flex items-center justify-center p-4">
-                  <Card className="max-w-md w-full">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Welcome to AI Assistant</CardTitle>
-                      <CardDescription className="text-sm">
-                        Start a new conversation or select an existing one from the sidebar
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Button onClick={handleNewConversation} className="w-full">
-                        <MessageSquarePlus className="h-4 w-4 mr-2" />
-                        Start New Chat
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
+        )}
+        
+        {(activeConversationId || messages.length > 0) ? (
+          <>
+            <div className="flex-1 min-h-0">
+              <ChatContainer
+                messages={messages}
+                isLoading={isLoading}
+                isStreaming={isStreaming}
+                onSendMessage={sendMessage}
+                onStopStreaming={stopStreaming}
+                currentTask={currentTask}
+                isExecutingTask={isExecuting}
+                onExecuteTask={executeTask}
+                projectId={activeConversationId || undefined}
+              />
             </div>
-            
-            {/* Desktop: Resizable split view */}
-            <div className="h-full hidden md:block">
-              {(activeConversationId || messages.length > 0) ? (
-                <ResizablePanelGroup direction="horizontal" className="h-full">
-                  {/* Chat Panel */}
-                  <ResizablePanel defaultSize={50} minSize={30}>
-                    <ChatContainer
-                      messages={messages}
-                      isLoading={isLoading}
-                      isStreaming={isStreaming}
-                      onSendMessage={sendMessage}
-                      onStopStreaming={stopStreaming}
-                      currentTask={currentTask}
-                      isExecutingTask={isExecuting}
-                      onExecuteTask={executeTask}
-                      projectId={activeConversationId || undefined}
-                    />
-                  </ResizablePanel>
-
-                  {/* Resizable Handle */}
-                  <ResizableHandle withHandle />
-
-                  {/* Preview Panel */}
-                  <ResizablePanel defaultSize={50} minSize={30} className="min-h-[200px]">
-                    <CodePreview
-                      files={parsedCode.files}
-                      mainFile={parsedCode.mainFile}
-                      template={parsedCode.template}
-                    />
-                  </ResizablePanel>
-                </ResizablePanelGroup>
-              ) : (
-                <div className="h-full flex items-center justify-center p-4">
-                  <Card className="max-w-md w-full">
-                    <CardHeader>
-                      <CardTitle className="text-xl">Welcome to AI Assistant</CardTitle>
-                      <CardDescription>
-                        Start a new conversation or select an existing one from the sidebar
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Button onClick={handleNewConversation} className="w-full">
-                        <MessageSquarePlus className="h-4 w-4 mr-2" />
-                        Start New Chat
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
+            <div className="flex-1 min-h-0 border-t">
+              <CodePreview
+                files={parsedCode.files}
+                mainFile={parsedCode.mainFile}
+                template={parsedCode.template}
+              />
             </div>
+          </>
+        ) : (
+          <div className="h-full flex items-center justify-center p-4">
+            <Card className="max-w-md w-full">
+              <CardHeader>
+                <CardTitle className="text-lg">Welcome to AI Assistant</CardTitle>
+                <CardDescription className="text-sm">
+                  Start a new conversation or select an existing one from the sidebar
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={handleNewConversation} className="w-full">
+                  <MessageSquarePlus className="h-4 w-4 mr-2" />
+                  Start New Chat
+                </Button>
+              </CardContent>
+            </Card>
           </div>
-        </div>
+        )}
+      </div>
+
+      {/* Desktop View - Full Width Edge-to-Edge */}
+      <div className="flex-1 hidden md:flex min-h-0">
+        {(activeConversationId || messages.length > 0) ? (
+          <ResizablePanelGroup direction="horizontal" className="h-full">
+            {/* Left Panel: Conversation List + Chat */}
+            <ResizablePanel defaultSize={35} minSize={25} maxSize={50}>
+              <div className="h-full flex flex-col border-r border-border">
+                {/* Conversation List */}
+                <div className="border-b border-border">
+                  <ConversationList
+                    conversations={conversations}
+                    activeConversationId={activeConversationId}
+                    onSelectConversation={handleSelectConversation}
+                    onNewConversation={handleNewConversation}
+                    onDeleteConversation={handleDeleteConversation}
+                    onRenameConversation={renameConversation}
+                  />
+                </div>
+                
+                {/* Chat Container */}
+                <div className="flex-1 min-h-0">
+                  <ChatContainer
+                    messages={messages}
+                    isLoading={isLoading}
+                    isStreaming={isStreaming}
+                    onSendMessage={sendMessage}
+                    onStopStreaming={stopStreaming}
+                    currentTask={currentTask}
+                    isExecutingTask={isExecuting}
+                    onExecuteTask={executeTask}
+                    projectId={activeConversationId || undefined}
+                  />
+                </div>
+              </div>
+            </ResizablePanel>
+
+            {/* Resizable Handle */}
+            <ResizableHandle withHandle />
+
+            {/* Right Panel: Preview */}
+            <ResizablePanel defaultSize={65} minSize={40}>
+              <CodePreview
+                files={parsedCode.files}
+                mainFile={parsedCode.mainFile}
+                template={parsedCode.template}
+              />
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        ) : (
+          <div className="h-full w-full flex items-center justify-center p-4">
+            <Card className="max-w-md w-full">
+              <CardHeader>
+                <CardTitle className="text-xl">Welcome to AI Assistant</CardTitle>
+                <CardDescription>
+                  Start a new conversation or select an existing one
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={handleNewConversation} className="w-full">
+                  <MessageSquarePlus className="h-4 w-4 mr-2" />
+                  Start New Chat
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );
