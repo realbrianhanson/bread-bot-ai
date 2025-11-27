@@ -20,7 +20,7 @@ const PreviewContent = () => {
   }, []);
 
   return (
-    <>
+    <div className="absolute inset-0">
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
           <div className="flex flex-col items-center gap-2">
@@ -29,21 +29,19 @@ const PreviewContent = () => {
           </div>
         </div>
       )}
-      <div className="w-full h-full">
-        <SandpackPreview
-          showNavigator={false}
-          showOpenInCodeSandbox={false}
-          showRefreshButton={false}
-          showOpenNewtab={false}
-          showSandpackErrorOverlay={true}
-          style={{ 
-            height: '100%',
-            width: '100%',
-            border: 'none',
-          }}
-        />
-      </div>
-    </>
+      <SandpackPreview
+        showNavigator={false}
+        showOpenInCodeSandbox={false}
+        showRefreshButton={false}
+        showOpenNewtab={false}
+        showSandpackErrorOverlay={true}
+        style={{ 
+          height: '100%',
+          width: '100%',
+          border: 'none',
+        }}
+      />
+    </div>
   );
 };
 
@@ -71,8 +69,8 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
   // Show message if no valid code files
   if (Object.keys(files).length === 0 || (Object.keys(files).length === 1 && files[mainFile]?.includes('Start chatting'))) {
     return (
-      <div className="flex flex-col h-full bg-background border border-border/50 rounded-lg overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-background/50">
+      <div className="absolute inset-0 flex flex-col bg-background">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-background/50 shrink-0">
           <span className="text-sm font-medium">Live Preview</span>
         </div>
         <div className="flex-1 flex items-center justify-center p-8 text-center">
@@ -88,9 +86,9 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
   }
 
   return (
-    <div className="w-full h-full flex flex-col bg-background">
+    <div className="absolute inset-0 flex flex-col bg-background">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 bg-background/50 shrink-0">
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 bg-background/50 shrink-0 z-20">
         <span className="text-xs font-medium">Live Preview</span>
         <div className="flex gap-1">
           <Button
@@ -112,8 +110,8 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
         </div>
       </div>
 
-      {/* Sandpack Preview */}
-      <div className="flex-1 h-0 relative">
+      {/* Sandpack Preview - Absolute positioning to force full height */}
+      <div className="absolute top-[33px] left-0 right-0 bottom-0">
         <SandpackProvider
           key={key}
           files={files}
