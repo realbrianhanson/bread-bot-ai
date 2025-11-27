@@ -1,4 +1,4 @@
-import { SandpackProvider, SandpackPreview, useSandpack } from '@codesandbox/sandpack-react';
+import { SandpackProvider, SandpackLayout, SandpackPreview, useSandpack } from '@codesandbox/sandpack-react';
 import { Maximize2, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
@@ -20,7 +20,7 @@ const PreviewContent = () => {
   }, []);
 
   return (
-    <div className="absolute inset-0">
+    <div className="h-full w-full">
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
           <div className="flex flex-col items-center gap-2">
@@ -29,18 +29,16 @@ const PreviewContent = () => {
           </div>
         </div>
       )}
-      <SandpackPreview
-        showNavigator={false}
-        showOpenInCodeSandbox={false}
-        showRefreshButton={false}
-        showOpenNewtab={false}
-        showSandpackErrorOverlay={true}
-        style={{ 
-          height: '100%',
-          width: '100%',
-          border: 'none',
-        }}
-      />
+      <SandpackLayout style={{ height: '100%', border: 'none' }}>
+        <SandpackPreview
+          showNavigator={false}
+          showOpenInCodeSandbox={false}
+          showRefreshButton={false}
+          showOpenNewtab={false}
+          showSandpackErrorOverlay={true}
+          style={{ height: '100%', width: '100%', border: 'none' }}
+        />
+      </SandpackLayout>
     </div>
   );
 };
@@ -110,12 +108,13 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
         </div>
       </div>
 
-      {/* Sandpack Preview - Absolute positioning to force full height */}
-      <div className="absolute top-[33px] left-0 right-0 bottom-0">
+      {/* Sandpack Preview - Full height container */}
+      <div className="flex-1 relative">
         <SandpackProvider
           key={key}
           files={files}
           template={template}
+          style={{ height: '100%' }}
           theme={{
             colors: {
               surface1: '#ffffff',
