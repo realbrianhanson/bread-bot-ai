@@ -203,14 +203,12 @@ const Dashboard = () => {
             <ResizableHandle withHandle />
 
             {/* Right Panel: Preview */}
-            <ResizablePanel defaultSize={65} minSize={40} className="h-full">
-              <div className="h-full w-full">
-                <CodePreview
-                  files={parsedCode.files}
-                  mainFile={parsedCode.mainFile}
-                  template={parsedCode.template}
-                />
-              </div>
+            <ResizablePanel defaultSize={65} minSize={40} className="relative">
+              <CodePreview
+                files={parsedCode.files}
+                mainFile={parsedCode.mainFile}
+                template={parsedCode.template}
+              />
             </ResizablePanel>
           </ResizablePanelGroup>
         ) : (
