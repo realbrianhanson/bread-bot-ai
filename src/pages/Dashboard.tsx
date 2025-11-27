@@ -100,8 +100,8 @@ const Dashboard = () => {
       </header>
 
       {/* Main Content */}
-      <div className="container mx-auto px-2 md:px-4 py-4 md:py-6">
-        <div className="flex gap-2 md:gap-4 h-[calc(100vh-100px)] md:h-[calc(100vh-120px)]">
+      <div className="container mx-auto px-2 md:px-4 py-2">
+        <div className="flex gap-2 md:gap-4 h-[calc(100vh-80px)]">
           {/* Conversation Sidebar */}
           <div 
             className={`transition-all duration-300 ${

@@ -96,7 +96,13 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
     }
     
     if (hasJs && files['/index.js']) {
-      const jsContent = files['/index.js'];
+      let jsContent = files['/index.js'];
+      
+      // Wrap in DOMContentLoaded if not already wrapped to ensure DOM is ready
+      if (!jsContent.includes('DOMContentLoaded') && !jsContent.includes('window.onload')) {
+        jsContent = `document.addEventListener('DOMContentLoaded', function() {\n${jsContent}\n});`;
+      }
+      
       // Add inline script tag before closing body if not already present
       if (!html.includes('<script>')) {
         html = html.replace('</body>', `  <script>\n${jsContent}\n  </script>\n</body>`);

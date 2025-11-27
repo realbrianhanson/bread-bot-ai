@@ -82,24 +82,24 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
   return (
     <div className="flex flex-col h-full bg-background border border-border/50 rounded-lg overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-background/50">
-        <span className="text-sm font-medium">Live Preview</span>
-        <div className="flex gap-2">
+      <div className="flex items-center justify-between px-3 py-1 border-b border-border/50 bg-background/50">
+        <span className="text-xs font-medium">Live Preview</span>
+        <div className="flex gap-1">
           <Button
             variant="ghost"
             size="icon"
             onClick={handleRefresh}
-            className="h-8 w-8"
+            className="h-6 w-6"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="h-3 w-3" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
             onClick={handleFullscreen}
-            className="h-8 w-8"
+            className="h-6 w-6"
           >
-            <Maximize2 className="h-4 w-4" />
+            <Maximize2 className="h-3 w-3" />
           </Button>
         </div>
       </div>
@@ -111,11 +111,20 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
           files={files}
           template={template}
           theme="light"
+          customSetup={template === 'react-ts' ? {
+            dependencies: {
+              'react': '^18.2.0',
+              'react-dom': '^18.2.0',
+              'lucide-react': 'latest',
+            }
+          } : undefined}
           options={{
             externalResources: [],
             bundlerURL: undefined,
             recompileMode: 'delayed',
             recompileDelay: 500,
+            autorun: true,
+            autoReload: true,
           }}
         >
           <PreviewContent />
