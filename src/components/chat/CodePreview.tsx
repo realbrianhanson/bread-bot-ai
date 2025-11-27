@@ -110,7 +110,37 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
           key={key}
           files={files}
           template={template}
-          theme="light"
+          theme={{
+            colors: {
+              surface1: '#ffffff',
+              surface2: '#f6f6f6',
+              surface3: '#e4e4e4',
+              clickable: '#999999',
+              base: '#323232',
+              disabled: '#C5C5C5',
+              hover: '#4D4D4D',
+              accent: '#0971f1',
+              error: '#ff453a',
+              errorSurface: '#ffeceb',
+            },
+            syntax: {
+              plain: '#24292e',
+              comment: '#6a737d',
+              keyword: '#d73a49',
+              tag: '#22863a',
+              punctuation: '#24292e',
+              definition: '#6f42c1',
+              property: '#005cc5',
+              static: '#032f62',
+              string: '#032f62',
+            },
+            font: {
+              body: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+              mono: '"Fira Mono", "DejaVu Sans Mono", Menlo, Consolas, "Liberation Mono", Monaco, "Lucida Console", monospace',
+              size: '13px',
+              lineHeight: '20px',
+            },
+          }}
           customSetup={template === 'react-ts' ? {
             dependencies: {
               'react': '^18.2.0',
@@ -120,11 +150,11 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
           } : undefined}
           options={{
             externalResources: [],
-            bundlerURL: undefined,
             recompileMode: 'delayed',
-            recompileDelay: 500,
+            recompileDelay: 300,
             autorun: true,
             autoReload: true,
+            initMode: 'lazy',
           }}
         >
           <PreviewContent />
