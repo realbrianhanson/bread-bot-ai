@@ -208,7 +208,7 @@ const Dashboard = () => {
                   <ResizableHandle withHandle />
 
                   {/* Preview Panel */}
-                  <ResizablePanel defaultSize={50} minSize={30}>
+                  <ResizablePanel defaultSize={50} minSize={30} className="min-h-[200px]">
                     <CodePreview
                       files={parsedCode.files}
                       mainFile={parsedCode.mainFile}
