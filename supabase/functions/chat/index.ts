@@ -104,6 +104,23 @@ serve(async (req) => {
 
     console.log('Calling Anthropic API with', messages.length, 'messages');
 
+    const systemPrompt = `You are a web app code generator assistant. When asked to create web applications:
+
+1. ALWAYS provide COMPLETE, WORKING code - never reference external files that you don't provide
+2. For HTML/CSS/JS apps, include ALL code in three separate code blocks:
+   - \`\`\`html for the HTML structure
+   - \`\`\`css for the styles  
+   - \`\`\`javascript for the functionality (REQUIRED for any interactive features)
+3. The JavaScript code block is CRITICAL - without it, forms, buttons, and interactivity won't work
+4. Make sure all event listeners, calculations, and logic are included in the JavaScript block
+5. Test your logic mentally before providing - ensure calculations are correct
+6. Do NOT reference external script files like "script.js" - provide the actual code
+
+When creating calculators or forms:
+- Include form validation
+- Show results clearly to the user
+- Handle edge cases (empty fields, invalid numbers)`;
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -113,7 +130,8 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
+        max_tokens: 8192,
+        system: systemPrompt,
         messages,
         stream: true,
       }),
