@@ -2,7 +2,10 @@ import { useEffect, useRef } from 'react';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import TypingIndicator from './TypingIndicator';
+import TaskStatus from './TaskStatus';
+import BrowserPreview from './BrowserPreview';
 import { Message } from '@/hooks/useChat';
+import { BrowserTask } from '@/hooks/useBrowserTask';
 
 interface ChatContainerProps {
   messages: Message[];
@@ -10,6 +13,10 @@ interface ChatContainerProps {
   isStreaming: boolean;
   onSendMessage: (content: string) => void;
   onStopStreaming: () => void;
+  currentTask?: BrowserTask | null;
+  isExecutingTask?: boolean;
+  onExecuteTask?: (task: string, projectId?: string) => void;
+  projectId?: string;
 }
 
 const ChatContainer = ({
@@ -18,6 +25,10 @@ const ChatContainer = ({
   isStreaming,
   onSendMessage,
   onStopStreaming,
+  currentTask,
+  isExecutingTask,
+  onExecuteTask,
+  projectId,
 }: ChatContainerProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -25,7 +36,19 @@ const ChatContainer = ({
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, currentTask]);
+
+  const handleSendMessage = (content: string) => {
+    // Check if it's a browser command
+    if (content.trim().startsWith('/browse ')) {
+      const task = content.replace('/browse ', '').trim();
+      if (task && onExecuteTask) {
+        onExecuteTask(task, projectId);
+      }
+    } else {
+      onSendMessage(content);
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-background/50 backdrop-blur-sm border border-border/50 rounded-lg overflow-hidden">
@@ -47,14 +70,30 @@ const ChatContainer = ({
           {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
             <TypingIndicator />
           )}
+          
+          {/* Browser Task Status */}
+          {currentTask && (
+            <div className="space-y-3">
+              <TaskStatus 
+                status={currentTask.status} 
+                message={currentTask.error_message}
+              />
+              {currentTask.status === 'completed' && (
+                <BrowserPreview 
+                  screenshots={currentTask.screenshots}
+                  actions={currentTask.actions}
+                />
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       <div className="border-t border-border/50 bg-background/30 backdrop-blur-sm p-4">
         <div className="max-w-4xl mx-auto">
           <ChatInput
-            onSend={onSendMessage}
-            disabled={isLoading}
+            onSend={handleSendMessage}
+            disabled={isLoading || isExecutingTask}
             isStreaming={isStreaming}
             onStop={onStopStreaming}
           />
