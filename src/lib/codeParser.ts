@@ -35,10 +35,10 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
         files['/index.html'] = code;
         hasHtml = true;
       } else if (language === 'css') {
-        files['/src/styles.css'] = code;
+        files['/styles.css'] = code;
         hasCss = true;
       } else if (language === 'javascript' || language === 'js') {
-        files['/src/index.js'] = code;
+        files['/index.js'] = code;
         hasJs = true;
       } else if (language === 'typescript' || language === 'tsx') {
         if (code.includes('export default') || code.includes('function App')) {
@@ -85,6 +85,27 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
         html = html.replace(/<body([^>]*)>/i, '<body$1>\n  <div id="app"></div>\n');
       }
     }
+    
+    // Inject inline CSS and JS for better compatibility
+    if (hasCss && files['/styles.css']) {
+      const cssContent = files['/styles.css'];
+      // Add inline style tag in head if not already present
+      if (!html.includes('<style>')) {
+        html = html.replace('</head>', `  <style>\n${cssContent}\n  </style>\n</head>`);
+      }
+    }
+    
+    if (hasJs && files['/index.js']) {
+      const jsContent = files['/index.js'];
+      // Add inline script tag before closing body if not already present
+      if (!html.includes('<script>')) {
+        html = html.replace('</body>', `  <script>\n${jsContent}\n  </script>\n</body>`);
+      }
+    }
+    
+    // Update external references to match our file paths
+    html = html.replace(/href=["']styles\.css["']/g, 'href="/styles.css"');
+    html = html.replace(/src=["']script\.js["']/g, 'src="/index.js"');
     
     files['/index.html'] = html;
   } else if (files['/App.tsx']) {

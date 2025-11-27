@@ -1,5 +1,5 @@
-import { SandpackProvider, SandpackPreview } from '@codesandbox/sandpack-react';
-import { Maximize2, RefreshCw } from 'lucide-react';
+import { SandpackProvider, SandpackPreview, useSandpack } from '@codesandbox/sandpack-react';
+import { Maximize2, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 
@@ -8,6 +8,36 @@ interface CodePreviewProps {
   mainFile: string;
   template?: 'react-ts' | 'vanilla' | 'static';
 }
+
+const PreviewContent = () => {
+  const { sandpack } = useSandpack();
+  const isLoading = sandpack.status === 'initial';
+
+  return (
+    <>
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Initializing preview...</p>
+          </div>
+        </div>
+      )}
+      <SandpackPreview 
+        showNavigator={false}
+        showOpenInCodeSandbox={false}
+        showRefreshButton={false}
+        showOpenNewtab={false}
+        showSandpackErrorOverlay={true}
+        style={{ 
+          height: '100%',
+          width: '100%',
+          border: 'none',
+        }}
+      />
+    </>
+  );
+};
 
 const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProps) => {
   const [key, setKey] = useState(0);
@@ -75,7 +105,7 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
       </div>
 
       {/* Sandpack Preview */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden relative">
         <SandpackProvider
           key={key}
           files={files}
@@ -84,20 +114,11 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
           options={{
             externalResources: [],
             bundlerURL: undefined,
+            recompileMode: 'delayed',
+            recompileDelay: 500,
           }}
         >
-          <SandpackPreview 
-            showNavigator={false}
-            showOpenInCodeSandbox={false}
-            showRefreshButton={false}
-            showOpenNewtab={false}
-            showSandpackErrorOverlay={false}
-            style={{ 
-              height: '100%',
-              width: '100%',
-              border: 'none',
-            }}
-          />
+          <PreviewContent />
         </SandpackProvider>
       </div>
     </div>
