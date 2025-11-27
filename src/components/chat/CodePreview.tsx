@@ -111,7 +111,7 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
       </div>
 
       {/* Sandpack Preview */}
-      <div className="flex-1 overflow-hidden relative">
+      <div className="flex-1 min-h-0 relative">
         <SandpackProvider
           key={key}
           files={files}
