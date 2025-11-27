@@ -144,7 +144,7 @@ const Dashboard = () => {
             <div className="h-full flex flex-col md:hidden">
               {(activeConversationId || messages.length > 0) ? (
                 <>
-                  <div className="flex-1 h-1/2">
+                  <div className="flex-1 min-h-0">
                     <ChatContainer
                       messages={messages}
                       isLoading={isLoading}
@@ -157,7 +157,7 @@ const Dashboard = () => {
                       projectId={activeConversationId || undefined}
                     />
                   </div>
-                  <div className="flex-1 h-1/2 border-t">
+                  <div className="flex-1 min-h-0 border-t">
                     <CodePreview
                       files={parsedCode.files}
                       mainFile={parsedCode.mainFile}
