@@ -173,23 +173,50 @@ serve(async (req) => {
   }
 
   try {
+    console.log('[BROWSER-TASK] Request received');
+    
+    // Check for Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('[BROWSER-TASK] No Authorization header found');
+      return new Response(JSON.stringify({ error: 'Unauthorized - No auth header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log('[BROWSER-TASK] Authorization header present');
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
         global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
+          headers: { Authorization: authHeader },
         },
       }
     );
 
+    console.log('[BROWSER-TASK] Attempting to get user');
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+    
+    if (userError) {
+      console.error('[BROWSER-TASK] Auth error:', userError);
+      return new Response(JSON.stringify({ error: 'Unauthorized', details: userError.message }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    
+    if (!user) {
+      console.error('[BROWSER-TASK] No user found');
+      return new Response(JSON.stringify({ error: 'Unauthorized - No user' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log('[BROWSER-TASK] User authenticated:', user.id);
 
     // Check user's tier and usage limits
     const { data: usageData } = await supabaseClient.rpc('get_user_tier_and_usage', {
