@@ -3,7 +3,7 @@ import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import TypingIndicator from './TypingIndicator';
 import TaskStatus from './TaskStatus';
-import BrowserPreview from './BrowserPreview';
+import LiveBrowserView from './LiveBrowserView';
 import { Message } from '@/hooks/useChat';
 import { BrowserTask } from '@/hooks/useBrowserTask';
 
@@ -78,12 +78,12 @@ const ChatContainer = ({
                 status={currentTask.status} 
                 message={currentTask.error_message}
               />
-              {currentTask.status === 'completed' && (
-                <BrowserPreview 
-                  screenshots={currentTask.screenshots}
-                  actions={currentTask.actions}
-                />
-              )}
+              <LiveBrowserView 
+                liveUrl={currentTask.liveUrl}
+                status={currentTask.status}
+                screenshots={currentTask.screenshots}
+                actions={currentTask.actions}
+              />
             </div>
           )}
         </div>
