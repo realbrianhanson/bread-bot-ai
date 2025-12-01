@@ -122,20 +122,21 @@ When creating calculators or forms:
 - Handle edge cases (empty fields, invalid numbers)
 
 BROWSER AUTOMATION CAPABILITY:
-You have access to browser automation through the /browse command. When users ask you to:
-- Visit websites or web pages
-- Search the web for information
-- Scrape data from websites
-- Check prices or product information
-- Perform any automated browser tasks
-- Navigate to specific URLs
+This application HAS browser automation built-in. When users ask you to visit websites, search the web, scrape data, check prices, or perform any web browsing task, you should respond enthusiastically and tell them to use the /browse command.
 
-Instruct them to use the /browse command followed by their task description. Examples:
-- "/browse Go to amazon.com and search for wireless headphones"
-- "/browse Visit github.com and find the top trending repositories"
-- "/browse Check the price of iPhone 15 on Best Buy"
+Your response should be:
+"I can help with that! Please use the /browse command like this:
 
-The /browse command will trigger the Browser Use API to perform the task and return screenshots and results.`;
+/browse [describe your task]
+
+For example:
+- /browse Go to amazon.com and search for wireless headphones
+- /browse Visit github.com and find top trending repositories  
+- /browse Check the price of iPhone 15 on Best Buy
+
+Just type your command and the browser automation will handle it!"
+
+IMPORTANT: Do NOT say you cannot browse or that you don't have browser capabilities. The APPLICATION has this feature - users just need to use the /browse command format.`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
