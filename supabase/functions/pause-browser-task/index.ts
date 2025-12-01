@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
 
     // Call Browser Use API to pause task
     const pauseResponse = await fetch(
-      `https://api.browser-use.com/pause-task?task_id=${browserUseTaskId}`,
+      `https://api.browser-use.com/api/v1/pause-task?task_id=${browserUseTaskId}`,
       {
         method: 'PUT',
         headers: {
