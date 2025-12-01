@@ -187,10 +187,10 @@ serve(async (req) => {
 
     console.log('[BROWSER-TASK] Authorization header present');
 
-    // Create Supabase client with service role key for authentication
-    const supabaseClient = createClient(
+    // Create Supabase client with anon key for user authentication
+    const authClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
         global: {
           headers: { Authorization: authHeader },
@@ -199,7 +199,7 @@ serve(async (req) => {
     );
 
     console.log('[BROWSER-TASK] Attempting to get user');
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    const { data: { user }, error: userError } = await authClient.auth.getUser();
     
     if (userError) {
       console.error('[BROWSER-TASK] Auth error:', userError);
@@ -218,6 +218,12 @@ serve(async (req) => {
     }
 
     console.log('[BROWSER-TASK] User authenticated:', user.id);
+
+    // Create service role client for database operations
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
 
     // Check user's tier and usage limits
     const { data: usageData } = await supabaseClient.rpc('get_user_tier_and_usage', {
