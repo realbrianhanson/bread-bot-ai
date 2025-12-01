@@ -24,6 +24,7 @@ interface ChatContainerProps {
   isResuming?: boolean;
   projectId?: string;
   selectedProfileId?: string | null;
+  hideTaskPreview?: boolean;
 }
 
 const ChatContainer = ({
@@ -43,6 +44,7 @@ const ChatContainer = ({
   isResuming = false,
   projectId,
   selectedProfileId,
+  hideTaskPreview = false,
 }: ChatContainerProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -90,8 +92,8 @@ const ChatContainer = ({
             <TypingIndicator />
           )}
           
-          {/* Browser Task Status */}
-          {currentTask && (
+          {/* Browser Task Status - only show if not hiding preview */}
+          {currentTask && !hideTaskPreview && (
             <div className="space-y-3">
               <TaskStatus 
                 status={currentTask.status} 
@@ -112,6 +114,14 @@ const ChatContainer = ({
                 isResuming={isResuming}
               />
             </div>
+          )}
+          
+          {/* Show just task status if preview is hidden */}
+          {currentTask && hideTaskPreview && (
+            <TaskStatus 
+              status={currentTask.status} 
+              message={currentTask.error_message}
+            />
           )}
         </div>
       </div>

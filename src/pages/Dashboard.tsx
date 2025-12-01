@@ -7,6 +7,7 @@ import ConversationList from "@/components/chat/ConversationList";
 import CodePreview from "@/components/chat/CodePreview";
 import TaskHistory from "@/components/chat/TaskHistory";
 import ProfileSelector from "@/components/chat/ProfileSelector";
+import LiveBrowserView from "@/components/chat/LiveBrowserView";
 import { useChat } from "@/hooks/useChat";
 import { useConversations } from "@/hooks/useConversations";
 import { useBrowserTask } from "@/hooks/useBrowserTask";
@@ -166,11 +167,28 @@ const Dashboard = () => {
               />
             </div>
             <div className="flex-1 min-h-0 border-t">
-              <CodePreview
-                files={parsedCode.files}
-                mainFile={parsedCode.mainFile}
-                template={parsedCode.template}
-              />
+              {currentTask && currentTask.liveUrl ? (
+                <LiveBrowserView 
+                  liveUrl={currentTask.liveUrl}
+                  status={currentTask.status}
+                  screenshots={currentTask.screenshots}
+                  actions={currentTask.actions}
+                  steps={currentTask.steps}
+                  taskId={currentTask.id}
+                  onStopTask={stopTask}
+                  onPauseTask={pauseTask}
+                  onResumeTask={resumeTask}
+                  isStopping={isStopping}
+                  isPausing={isPausing}
+                  isResuming={isResuming}
+                />
+              ) : (
+                <CodePreview
+                  files={parsedCode.files}
+                  mainFile={parsedCode.mainFile}
+                  template={parsedCode.template}
+                />
+              )}
             </div>
           </>
         ) : (
@@ -236,6 +254,7 @@ const Dashboard = () => {
                     isResuming={isResuming}
                     selectedProfileId={selectedProfileId}
                     projectId={activeConversationId || undefined}
+                    hideTaskPreview={true}
                   />
                 </div>
               </div>
@@ -244,13 +263,30 @@ const Dashboard = () => {
             {/* Resizable Handle */}
             <ResizableHandle withHandle />
 
-            {/* Right Panel: Preview */}
+            {/* Right Panel: Preview or Live Browser */}
             <ResizablePanel defaultSize={65} minSize={40} className="relative">
-              <CodePreview
-                files={parsedCode.files}
-                mainFile={parsedCode.mainFile}
-                template={parsedCode.template}
-              />
+              {currentTask && currentTask.liveUrl ? (
+                <LiveBrowserView 
+                  liveUrl={currentTask.liveUrl}
+                  status={currentTask.status}
+                  screenshots={currentTask.screenshots}
+                  actions={currentTask.actions}
+                  steps={currentTask.steps}
+                  taskId={currentTask.id}
+                  onStopTask={stopTask}
+                  onPauseTask={pauseTask}
+                  onResumeTask={resumeTask}
+                  isStopping={isStopping}
+                  isPausing={isPausing}
+                  isResuming={isResuming}
+                />
+              ) : (
+                <CodePreview
+                  files={parsedCode.files}
+                  mainFile={parsedCode.mainFile}
+                  template={parsedCode.template}
+                />
+              )}
             </ResizablePanel>
           </ResizablePanelGroup>
         ) : (
