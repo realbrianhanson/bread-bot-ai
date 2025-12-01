@@ -6,6 +6,9 @@ verify_jwt = true
 [functions.browser-task]
 verify_jwt = true
 
+[functions.stop-browser-task]
+verify_jwt = true
+
 [functions.check-subscription]
 verify_jwt = true
 

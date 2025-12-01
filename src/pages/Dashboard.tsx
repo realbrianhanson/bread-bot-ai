@@ -5,6 +5,7 @@ import { Settings, LogOut, MessageSquarePlus, ChevronLeft, ChevronRight } from "
 import ChatContainer from "@/components/chat/ChatContainer";
 import ConversationList from "@/components/chat/ConversationList";
 import CodePreview from "@/components/chat/CodePreview";
+import TaskHistory from "@/components/chat/TaskHistory";
 import { useChat } from "@/hooks/useChat";
 import { useConversations } from "@/hooks/useConversations";
 import { useBrowserTask } from "@/hooks/useBrowserTask";
@@ -27,7 +28,7 @@ const Dashboard = () => {
     deleteConversation,
     renameConversation,
   } = useConversations();
-  const { currentTask, isExecuting, executeTask } = useBrowserTask();
+  const { currentTask, isExecuting, executeTask, stopTask, isStopping } = useBrowserTask();
 
   const handleSignOut = async () => {
     await signOut();
@@ -38,6 +39,12 @@ const Dashboard = () => {
     const newConv = await createConversation();
     if (newConv) {
       setActiveConversationId(newConv.id);
+    }
+  };
+
+  const handleRerunTask = (taskDescription: string) => {
+    if (taskDescription) {
+      executeTask(taskDescription, activeConversationId || undefined);
     }
   };
 
@@ -81,6 +88,7 @@ const Dashboard = () => {
             <span className="text-2xl">🧄</span>
           </div>
           <div className="flex items-center gap-2">
+            <TaskHistory onRerunTask={handleRerunTask} />
             <Button
               variant="ghost"
               size="icon"
@@ -132,6 +140,8 @@ const Dashboard = () => {
                 currentTask={currentTask}
                 isExecutingTask={isExecuting}
                 onExecuteTask={executeTask}
+                onStopTask={stopTask}
+                isStopping={isStopping}
                 projectId={activeConversationId || undefined}
               />
             </div>
@@ -193,6 +203,8 @@ const Dashboard = () => {
                     currentTask={currentTask}
                     isExecutingTask={isExecuting}
                     onExecuteTask={executeTask}
+                    onStopTask={stopTask}
+                    isStopping={isStopping}
                     projectId={activeConversationId || undefined}
                   />
                 </div>

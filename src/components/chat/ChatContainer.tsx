@@ -16,6 +16,8 @@ interface ChatContainerProps {
   currentTask?: BrowserTask | null;
   isExecutingTask?: boolean;
   onExecuteTask?: (task: string, projectId?: string) => void;
+  onStopTask?: (taskId: string) => void;
+  isStopping?: boolean;
   projectId?: string;
 }
 
@@ -28,6 +30,8 @@ const ChatContainer = ({
   currentTask,
   isExecutingTask,
   onExecuteTask,
+  onStopTask,
+  isStopping = false,
   projectId,
 }: ChatContainerProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -83,6 +87,10 @@ const ChatContainer = ({
                 status={currentTask.status}
                 screenshots={currentTask.screenshots}
                 actions={currentTask.actions}
+                steps={currentTask.steps}
+                taskId={currentTask.id}
+                onStopTask={onStopTask}
+                isStopping={isStopping}
               />
             </div>
           )}

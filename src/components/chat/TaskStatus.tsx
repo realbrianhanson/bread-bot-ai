@@ -1,10 +1,10 @@
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, StopCircle } from 'lucide-react';
 
 interface TaskStatusProps {
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'stopped';
   message?: string;
 }
 
@@ -17,6 +17,8 @@ const TaskStatus = ({ status, message }: TaskStatusProps) => {
         return 'bg-destructive/10 text-destructive border-destructive/20';
       case 'running':
         return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+      case 'stopped':
+        return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
       default:
         return 'bg-muted/10 text-muted-foreground border-border/20';
     }
@@ -30,6 +32,8 @@ const TaskStatus = ({ status, message }: TaskStatusProps) => {
         return <XCircle className="h-4 w-4" />;
       case 'running':
         return <Loader2 className="h-4 w-4 animate-spin" />;
+      case 'stopped':
+        return <StopCircle className="h-4 w-4" />;
       default:
         return null;
     }

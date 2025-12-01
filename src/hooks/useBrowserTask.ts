@@ -4,11 +4,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
 
+export interface BrowserStep {
+  type: string;
+  timestamp: string;
+  description?: string;
+  target?: string;
+  status?: 'completed' | 'running' | 'pending';
+}
+
 export interface BrowserTask {
   id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'stopped';
   liveUrl?: string;
   actions?: any[];
+  steps?: BrowserStep[];
   screenshots?: string[];
   error_message?: string;
 }
@@ -16,6 +25,7 @@ export interface BrowserTask {
 export const useBrowserTask = () => {
   const [currentTask, setCurrentTask] = useState<BrowserTask | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [isStopping, setIsStopping] = useState(false);
   const { user } = useAuth();
   const { canRunBrowserTask, refreshSubscription } = useSubscription();
 
@@ -73,11 +83,12 @@ export const useBrowserTask = () => {
             status: data.status as BrowserTask['status'],
             liveUrl: outputData?.live_url,
             actions: outputData?.actions,
+            steps: outputData?.actions || [],
             screenshots: data.screenshots || undefined,
             error_message: data.error_message || undefined,
           });
 
-          if (data.status === 'completed' || data.status === 'failed') {
+          if (data.status === 'completed' || data.status === 'failed' || data.status === 'stopped') {
             clearInterval(pollInterval);
             setIsExecuting(false);
 
@@ -86,15 +97,21 @@ export const useBrowserTask = () => {
                 title: 'Task Completed',
                 description: 'Browser automation finished successfully',
               });
-            } else {
+            } else if (data.status === 'failed') {
               toast({
                 title: 'Task Failed',
                 description: data.error_message || 'Browser automation failed',
                 variant: 'destructive',
               });
+            } else if (data.status === 'stopped') {
+              toast({
+                title: 'Task Stopped',
+                description: 'Browser automation was stopped by user',
+                variant: 'default',
+              });
             }
           }
-        }, 2000);
+        }, 1000);
 
         return taskData.taskId;
       } catch (error: any) {
@@ -113,9 +130,52 @@ export const useBrowserTask = () => {
     [user, canRunBrowserTask, refreshSubscription]
   );
 
+  const stopTask = useCallback(
+    async (taskId: string) => {
+      if (!user) return;
+
+      setIsStopping(true);
+
+      try {
+        const response = await supabase.functions.invoke('stop-browser-task', {
+          body: { taskId },
+        });
+
+        if (response.error) {
+          throw new Error(response.error.message);
+        }
+
+        toast({
+          title: 'Task Stopped',
+          description: 'Browser automation stopped successfully',
+        });
+
+        // Update current task status
+        if (currentTask?.id === taskId) {
+          setCurrentTask({
+            ...currentTask,
+            status: 'stopped',
+          });
+        }
+      } catch (error: any) {
+        console.error('Error stopping task:', error);
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to stop task',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsStopping(false);
+      }
+    },
+    [user, currentTask]
+  );
+
   return {
     currentTask,
     isExecuting,
+    isStopping,
     executeTask,
+    stopTask,
   };
 };

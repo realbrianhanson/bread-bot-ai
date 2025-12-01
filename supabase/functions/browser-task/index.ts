@@ -37,18 +37,24 @@ async function pollTaskStatus(
       console.log('Task status:', taskData.status);
 
       // Update database with current status and steps
+      const currentOutputData = taskData.output_data || {};
       await supabaseClient
         .from('tasks')
         .update({
           status: taskData.status === 'finished' ? 'completed' : 
                   taskData.status === 'failed' ? 'failed' : 'running',
           output_data: {
+            ...currentOutputData,
+            browser_use_task_id: currentOutputData.browser_use_task_id,
+            live_url: currentOutputData.live_url,
             output: taskData.output,
             steps: taskData.steps || [],
             actions: taskData.steps?.map((step: any) => ({
               type: step.action,
               timestamp: step.timestamp,
               description: step.description,
+              target: step.target || null,
+              status: step.status || 'completed',
             })) || [],
           },
           error_message: taskData.error || null,
@@ -72,12 +78,12 @@ async function pollTaskStatus(
         break;
       }
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       attempts++;
     } catch (error) {
       console.error('Error polling task:', error);
       attempts++;
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
 
