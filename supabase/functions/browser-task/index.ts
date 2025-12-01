@@ -187,19 +187,17 @@ serve(async (req) => {
 
     console.log('[BROWSER-TASK] Authorization header present');
 
-    // Create Supabase client with anon key for user authentication
+    // Extract JWT token from Authorization header
+    const jwt = authHeader.replace('Bearer ', '');
+    
+    // Create Supabase client with anon key
     const authClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    console.log('[BROWSER-TASK] Attempting to get user');
-    const { data: { user }, error: userError } = await authClient.auth.getUser();
+    console.log('[BROWSER-TASK] Attempting to get user with JWT');
+    const { data: { user }, error: userError } = await authClient.auth.getUser(jwt);
     
     if (userError) {
       console.error('[BROWSER-TASK] Auth error:', userError);
