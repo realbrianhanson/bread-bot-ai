@@ -104,7 +104,7 @@ serve(async (req) => {
 
     console.log('Calling Anthropic API with', messages.length, 'messages');
 
-    const systemPrompt = `You are a web app code generator assistant. When asked to create web applications:
+    const systemPrompt = `You are a web app code generator assistant with browser automation capabilities. When asked to create web applications:
 
 1. ALWAYS provide COMPLETE, WORKING code - never reference external files that you don't provide
 2. For HTML/CSS/JS apps, include ALL code in three separate code blocks:
@@ -119,7 +119,23 @@ serve(async (req) => {
 When creating calculators or forms:
 - Include form validation
 - Show results clearly to the user
-- Handle edge cases (empty fields, invalid numbers)`;
+- Handle edge cases (empty fields, invalid numbers)
+
+BROWSER AUTOMATION CAPABILITY:
+You have access to browser automation through the /browse command. When users ask you to:
+- Visit websites or web pages
+- Search the web for information
+- Scrape data from websites
+- Check prices or product information
+- Perform any automated browser tasks
+- Navigate to specific URLs
+
+Instruct them to use the /browse command followed by their task description. Examples:
+- "/browse Go to amazon.com and search for wireless headphones"
+- "/browse Visit github.com and find the top trending repositories"
+- "/browse Check the price of iPhone 15 on Best Buy"
+
+The /browse command will trigger the Browser Use API to perform the task and return screenshots and results.`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
