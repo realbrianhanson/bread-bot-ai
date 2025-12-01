@@ -347,6 +347,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({ 
           task,
+          live_url: true,
           ...(browserUseProfileId ? { profile_id: browserUseProfileId } : {})
         }),
       });
