@@ -35,6 +35,12 @@ async function pollTaskStatus(
 
       const taskData = await response.json();
       console.log('Task status:', taskData.status);
+      
+      // Extract live URL from task data (might be in different places)
+      const liveUrl = taskData.live_url || taskData.liveUrl || taskData.live_session_url;
+      if (liveUrl) {
+        console.log('Found live URL in polling:', liveUrl);
+      }
 
       // Update database with current status and steps
       const currentOutputData = taskData.output_data || {};
@@ -46,7 +52,7 @@ async function pollTaskStatus(
           output_data: {
             ...currentOutputData,
             browser_use_task_id: currentOutputData.browser_use_task_id,
-            live_url: currentOutputData.live_url,
+            live_url: liveUrl || currentOutputData.live_url,
             output: taskData.output,
             steps: taskData.steps || [],
             actions: taskData.steps?.map((step: any) => ({
@@ -376,10 +382,11 @@ serve(async (req) => {
 
       const browserUseData = await browserUseResponse.json();
       const browserUseTaskId = browserUseData.id;
-      const liveUrl = browserUseData.live_url;
+      const liveUrl = browserUseData.live_url || browserUseData.liveUrl;
 
       console.log('Browser Use task created:', browserUseTaskId);
       console.log('Live URL:', liveUrl);
+      console.log('Full Browser Use response:', JSON.stringify(browserUseData));
 
       // Update task with Browser Use task ID, live URL and set to running
       await supabaseClient
