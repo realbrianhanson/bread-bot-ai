@@ -11,7 +11,8 @@ interface StepTimelineProps {
   isRunning: boolean;
 }
 
-const getStepIcon = (type: string) => {
+const getStepIcon = (type?: string) => {
+  if (!type) return Eye;
   const lowerType = type.toLowerCase();
   if (lowerType.includes('click') || lowerType.includes('mouse')) {
     return Mouse;
