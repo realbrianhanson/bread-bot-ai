@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
 
     // Call Browser Use API to resume task
     const resumeResponse = await fetch(
-      `https://api.browser-use.com/resume-task?task_id=${browserUseTaskId}`,
+      `https://api.browser-use.com/api/v1/resume-task?task_id=${browserUseTaskId}`,
       {
         method: 'PUT',
         headers: {
