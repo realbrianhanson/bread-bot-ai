@@ -38,7 +38,7 @@ const ChatInput = ({
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Type a message... (Shift + Enter for new line)"
+        placeholder="Type a message or /browse to automate... (Shift + Enter for new line)"
         disabled={disabled}
         className="min-h-[60px] max-h-[200px] resize-none bg-background/50 backdrop-blur-sm border-border/50"
         rows={2}

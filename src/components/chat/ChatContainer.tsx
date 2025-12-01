@@ -53,15 +53,20 @@ const ChatContainer = ({
   }, [messages, currentTask]);
 
   const handleSendMessage = (content: string) => {
-    // Check if it's a browser command
-    if (content.trim().startsWith('/browse ')) {
-      const task = content.replace('/browse ', '').trim();
+    const trimmedContent = content.trim();
+    
+    // Check if it's a browser command (with or without space after /browse)
+    if (trimmedContent.startsWith('/browse')) {
+      const task = trimmedContent.replace(/^\/browse\s*/, '').trim();
       if (task && onExecuteTask) {
+        console.log('[ChatContainer] Executing browser task:', task);
         onExecuteTask(task, projectId, selectedProfileId || undefined);
+        return; // Don't send to chat AI
       }
-    } else {
-      onSendMessage(content);
     }
+    
+    // Regular message - send to chat AI
+    onSendMessage(content);
   };
 
   return (
