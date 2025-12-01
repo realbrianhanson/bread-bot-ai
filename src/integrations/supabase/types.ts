@@ -44,6 +44,39 @@ export type Database = {
         }
         Relationships: []
       }
+      browser_profiles: {
+        Row: {
+          browser_use_profile_id: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          last_used_at: string | null
+          name: string
+          sites: string[] | null
+          user_id: string
+        }
+        Insert: {
+          browser_use_profile_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          last_used_at?: string | null
+          name: string
+          sites?: string[] | null
+          user_id: string
+        }
+        Update: {
+          browser_use_profile_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          last_used_at?: string | null
+          name?: string
+          sites?: string[] | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
