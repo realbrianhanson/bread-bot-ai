@@ -344,16 +344,21 @@ serve(async (req) => {
 
       const browserUseData = await browserUseResponse.json();
       const browserUseTaskId = browserUseData.id;
+      const liveUrl = browserUseData.live_url;
 
       console.log('Browser Use task created:', browserUseTaskId);
+      console.log('Live URL:', liveUrl);
 
-      // Update task with Browser Use task ID and set to running
+      // Update task with Browser Use task ID, live URL and set to running
       await supabaseClient
         .from('tasks')
         .update({
           status: 'running',
           started_at: new Date().toISOString(),
-          output_data: { browser_use_task_id: browserUseTaskId },
+          output_data: { 
+            browser_use_task_id: browserUseTaskId,
+            live_url: liveUrl 
+          },
         })
         .eq('id', taskRecord.id);
 
@@ -373,6 +378,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         taskId: taskRecord.id,
         browserUseTaskId,
+        liveUrl,
         status: 'running',
         message: 'Browser automation task started',
       }), {

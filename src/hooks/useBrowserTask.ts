@@ -7,6 +7,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 export interface BrowserTask {
   id: string;
   status: 'pending' | 'running' | 'completed' | 'failed';
+  liveUrl?: string;
   actions?: any[];
   screenshots?: string[];
   error_message?: string;
@@ -43,6 +44,7 @@ export const useBrowserTask = () => {
         setCurrentTask({
           id: taskData.taskId,
           status: taskData.status,
+          liveUrl: taskData.liveUrl,
           actions: taskData.actions,
         });
 
@@ -69,6 +71,7 @@ export const useBrowserTask = () => {
           setCurrentTask({
             id: data.id,
             status: data.status as BrowserTask['status'],
+            liveUrl: outputData?.live_url,
             actions: outputData?.actions,
             screenshots: data.screenshots || undefined,
             error_message: data.error_message || undefined,
