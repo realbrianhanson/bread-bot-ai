@@ -1,6 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -187,17 +187,19 @@ serve(async (req) => {
 
     console.log('[BROWSER-TASK] Authorization header present');
 
-    // Extract JWT token from Authorization header
-    const jwt = authHeader.replace('Bearer ', '');
-    
-    // Create Supabase client with anon key
+    // Create Supabase client with anon key and auth header
     const authClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      }
     );
 
-    console.log('[BROWSER-TASK] Attempting to get user with JWT');
-    const { data: { user }, error: userError } = await authClient.auth.getUser(jwt);
+    console.log('[BROWSER-TASK] Attempting to get user');
+    const { data: { user }, error: userError } = await authClient.auth.getUser();
     
     if (userError) {
       console.error('[BROWSER-TASK] Auth error:', userError);
