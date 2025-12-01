@@ -6,6 +6,7 @@ import ChatContainer from "@/components/chat/ChatContainer";
 import ConversationList from "@/components/chat/ConversationList";
 import CodePreview from "@/components/chat/CodePreview";
 import TaskHistory from "@/components/chat/TaskHistory";
+import ProfileSelector from "@/components/chat/ProfileSelector";
 import { useChat } from "@/hooks/useChat";
 import { useConversations } from "@/hooks/useConversations";
 import { useBrowserTask } from "@/hooks/useBrowserTask";
@@ -28,7 +29,18 @@ const Dashboard = () => {
     deleteConversation,
     renameConversation,
   } = useConversations();
-  const { currentTask, isExecuting, executeTask, stopTask, isStopping } = useBrowserTask();
+  const { 
+    currentTask, 
+    isExecuting, 
+    executeTask, 
+    stopTask, 
+    pauseTask, 
+    resumeTask, 
+    isStopping,
+    isPausing,
+    isResuming 
+  } = useBrowserTask();
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
 
   const handleSignOut = async () => {
     await signOut();
@@ -44,7 +56,7 @@ const Dashboard = () => {
 
   const handleRerunTask = (taskDescription: string) => {
     if (taskDescription) {
-      executeTask(taskDescription, activeConversationId || undefined);
+      executeTask(taskDescription, activeConversationId || undefined, selectedProfileId || undefined);
     }
   };
 
@@ -130,6 +142,9 @@ const Dashboard = () => {
         
         {(activeConversationId || messages.length > 0) ? (
           <>
+            <div className="px-4 py-2">
+              <ProfileSelector onProfileSelect={setSelectedProfileId} />
+            </div>
             <div className="flex-1 min-h-0">
               <ChatContainer
                 messages={messages}
@@ -141,7 +156,12 @@ const Dashboard = () => {
                 isExecutingTask={isExecuting}
                 onExecuteTask={executeTask}
                 onStopTask={stopTask}
+                onPauseTask={pauseTask}
+                onResumeTask={resumeTask}
                 isStopping={isStopping}
+                isPausing={isPausing}
+                isResuming={isResuming}
+                selectedProfileId={selectedProfileId}
                 projectId={activeConversationId || undefined}
               />
             </div>
@@ -191,6 +211,11 @@ const Dashboard = () => {
                     onRenameConversation={renameConversation}
                   />
                 </div>
+
+                {/* Profile Selector */}
+                <div className="p-3 border-b border-border">
+                  <ProfileSelector onProfileSelect={setSelectedProfileId} />
+                </div>
                 
                 {/* Chat Container */}
                 <div className="flex-1 min-h-0">
@@ -204,7 +229,12 @@ const Dashboard = () => {
                     isExecutingTask={isExecuting}
                     onExecuteTask={executeTask}
                     onStopTask={stopTask}
+                    onPauseTask={pauseTask}
+                    onResumeTask={resumeTask}
                     isStopping={isStopping}
+                    isPausing={isPausing}
+                    isResuming={isResuming}
+                    selectedProfileId={selectedProfileId}
                     projectId={activeConversationId || undefined}
                   />
                 </div>

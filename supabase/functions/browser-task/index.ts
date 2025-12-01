@@ -289,8 +289,30 @@ serve(async (req) => {
       });
     }
 
-    const { task, projectId } = await req.json();
+    const { task, projectId, profileId } = await req.json();
     const apiKey = browserUseApiKey;
+
+    // Get browser profile if profileId is provided
+    let browserUseProfileId = null;
+    if (profileId) {
+      const { data: profile, error: profileError } = await supabaseClient
+        .from('browser_profiles')
+        .select('browser_use_profile_id')
+        .eq('id', profileId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (profile?.browser_use_profile_id) {
+        browserUseProfileId = profile.browser_use_profile_id;
+        console.log('Using browser profile:', browserUseProfileId);
+
+        // Update last_used_at
+        await supabaseClient
+          .from('browser_profiles')
+          .update({ last_used_at: new Date().toISOString() })
+          .eq('id', profileId);
+      }
+    }
 
     console.log('Creating browser automation task:', task);
 
@@ -323,7 +345,10 @@ serve(async (req) => {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ task }),
+        body: JSON.stringify({ 
+          task,
+          ...(browserUseProfileId ? { profile_id: browserUseProfileId } : {})
+        }),
       });
 
       if (!browserUseResponse.ok) {

@@ -9,6 +9,15 @@ verify_jwt = true
 [functions.stop-browser-task]
 verify_jwt = true
 
+[functions.pause-browser-task]
+verify_jwt = true
+
+[functions.resume-browser-task]
+verify_jwt = true
+
+[functions.manage-profile]
+verify_jwt = true
+
 [functions.check-subscription]
 verify_jwt = true
 

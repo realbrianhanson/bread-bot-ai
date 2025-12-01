@@ -15,10 +15,15 @@ interface ChatContainerProps {
   onStopStreaming: () => void;
   currentTask?: BrowserTask | null;
   isExecutingTask?: boolean;
-  onExecuteTask?: (task: string, projectId?: string) => void;
+  onExecuteTask?: (task: string, projectId?: string, profileId?: string) => void;
   onStopTask?: (taskId: string) => void;
+  onPauseTask?: (taskId: string) => void;
+  onResumeTask?: (taskId: string) => void;
   isStopping?: boolean;
+  isPausing?: boolean;
+  isResuming?: boolean;
   projectId?: string;
+  selectedProfileId?: string | null;
 }
 
 const ChatContainer = ({
@@ -31,8 +36,13 @@ const ChatContainer = ({
   isExecutingTask,
   onExecuteTask,
   onStopTask,
+  onPauseTask,
+  onResumeTask,
   isStopping = false,
+  isPausing = false,
+  isResuming = false,
   projectId,
+  selectedProfileId,
 }: ChatContainerProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -47,7 +57,7 @@ const ChatContainer = ({
     if (content.trim().startsWith('/browse ')) {
       const task = content.replace('/browse ', '').trim();
       if (task && onExecuteTask) {
-        onExecuteTask(task, projectId);
+        onExecuteTask(task, projectId, selectedProfileId || undefined);
       }
     } else {
       onSendMessage(content);
@@ -90,7 +100,11 @@ const ChatContainer = ({
                 steps={currentTask.steps}
                 taskId={currentTask.id}
                 onStopTask={onStopTask}
+                onPauseTask={onPauseTask}
+                onResumeTask={onResumeTask}
                 isStopping={isStopping}
+                isPausing={isPausing}
+                isResuming={isResuming}
               />
             </div>
           )}
