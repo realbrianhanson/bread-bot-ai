@@ -42,16 +42,23 @@ async function pollTaskStatus(
         console.log('Found live URL in polling:', liveUrl);
       }
 
+      // Fetch current task to preserve browser_use_task_id
+      const { data: currentTask } = await supabaseClient
+        .from('tasks')
+        .select('output_data')
+        .eq('id', supabaseTaskId)
+        .single();
+
+      const currentOutputData = currentTask?.output_data || {};
+
       // Update database with current status and steps
-      const currentOutputData = taskData.output_data || {};
       await supabaseClient
         .from('tasks')
         .update({
           status: taskData.status === 'finished' ? 'completed' : 
                   taskData.status === 'failed' ? 'failed' : 'running',
           output_data: {
-            ...currentOutputData,
-            browser_use_task_id: currentOutputData.browser_use_task_id,
+            browser_use_task_id: currentOutputData.browser_use_task_id || browserUseTaskId,
             live_url: liveUrl || currentOutputData.live_url,
             output: taskData.output,
             steps: taskData.steps || [],
