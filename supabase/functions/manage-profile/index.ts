@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
       console.log('Creating new browser profile:', name);
 
       // Create profile in Browser Use API
-      const createResponse = await fetch('https://api.browser-use.com/create-profile', {
+      const createResponse = await fetch('https://api.browser-use.com/api/v1/create-profile', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${browserUseApiKey}`,
@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
       // Delete from Browser Use API
       if (profile.browser_use_profile_id) {
         const deleteResponse = await fetch(
-          `https://api.browser-use.com/delete-profile?profile_id=${profile.browser_use_profile_id}`,
+          `https://api.browser-use.com/api/v1/delete-profile?profile_id=${profile.browser_use_profile_id}`,
           {
             method: 'DELETE',
             headers: {
