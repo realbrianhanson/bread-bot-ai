@@ -9,6 +9,37 @@ const corsHeaders = {
 
 const BROWSER_USE_API_URL = 'https://api.browser-use.com/api/v1';
 
+// Login detection helper
+function detectLoginPage(url?: string, description?: string): { isLogin: boolean; site?: string } {
+  const LOGIN_URL_PATTERNS = [
+    '/login', '/signin', '/sign-in', '/auth', '/authenticate',
+    'accounts.google.com', 'login.microsoftonline.com', 'accounts.github.com'
+  ];
+  const LOGIN_KEYWORDS = [
+    'login', 'sign in', 'signin', 'credentials', 'password', 
+    'authenticate', 'two-factor', '2fa', 'captcha'
+  ];
+
+  const lowerUrl = (url || '').toLowerCase();
+  const lowerDescription = (description || '').toLowerCase();
+  
+  const urlMatch = LOGIN_URL_PATTERNS.some(p => lowerUrl.includes(p));
+  const descMatch = LOGIN_KEYWORDS.some(k => lowerDescription.includes(k));
+  
+  if (urlMatch || descMatch) {
+    let site = 'the website';
+    if (url) {
+      try {
+        const urlObj = new URL(url);
+        site = urlObj.hostname.replace('www.', '');
+      } catch { }
+    }
+    return { isLogin: true, site };
+  }
+  
+  return { isLogin: false };
+}
+
 async function pollTaskStatus(
   browserUseTaskId: string,
   apiKey: string,
@@ -18,6 +49,7 @@ async function pollTaskStatus(
 ) {
   const maxAttempts = 60; // Poll for up to 2 minutes
   let attempts = 0;
+  let hasAutoPaused = false;
 
   while (attempts < maxAttempts) {
     try {
@@ -42,22 +74,82 @@ async function pollTaskStatus(
         console.log('Found live URL in polling:', liveUrl);
       }
 
-      // Fetch current task to preserve browser_use_task_id
+      // Fetch current task to preserve browser_use_task_id and check status
       const { data: currentTask } = await supabaseClient
         .from('tasks')
-        .select('output_data')
+        .select('output_data, status')
         .eq('id', supabaseTaskId)
         .single();
 
       const currentOutputData = currentTask?.output_data || {};
+
+      // Check for login page detection (only if running and not already auto-paused)
+      if (taskData.status === 'running' && !hasAutoPaused && currentTask?.status !== 'paused') {
+        const latestStep = taskData.steps?.[taskData.steps.length - 1];
+        const stepUrl = latestStep?.url || liveUrl;
+        const stepDescription = latestStep?.description;
+        
+        const loginDetection = detectLoginPage(stepUrl, stepDescription);
+        
+        if (loginDetection.isLogin) {
+          console.log('🔐 Login page detected, auto-pausing task...');
+          hasAutoPaused = true;
+          
+          // Call pause API
+          try {
+            const pauseResponse = await fetch(`${BROWSER_USE_API_URL}/task/${browserUseTaskId}/pause`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${apiKey}` },
+            });
+            
+            if (pauseResponse.ok) {
+              console.log('Task auto-paused successfully for login');
+              
+              // Update task to paused with login info
+              await supabaseClient
+                .from('tasks')
+                .update({
+                  status: 'paused',
+                  output_data: {
+                    ...currentOutputData,
+                    browser_use_task_id: browserUseTaskId,
+                    live_url: liveUrl || currentOutputData.live_url,
+                    requires_login: true,
+                    login_url: stepUrl,
+                    login_site: loginDetection.site,
+                    output: taskData.output,
+                    steps: taskData.steps || [],
+                    actions: taskData.steps?.map((step: any) => ({
+                      type: step.action,
+                      timestamp: step.timestamp,
+                      description: step.description,
+                      target: step.target || null,
+                      status: step.status || 'completed',
+                    })) || [],
+                  },
+                })
+                .eq('id', supabaseTaskId);
+              
+              // Continue polling to detect when user resumes
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              attempts++;
+              continue;
+            }
+          } catch (pauseError) {
+            console.error('Failed to auto-pause for login:', pauseError);
+          }
+        }
+      }
 
       // Update database with current status and steps
       await supabaseClient
         .from('tasks')
         .update({
           status: taskData.status === 'finished' ? 'completed' : 
-                  taskData.status === 'failed' ? 'failed' : 'running',
+                  taskData.status === 'failed' ? 'failed' :
+                  taskData.status === 'paused' ? 'paused' : 'running',
           output_data: {
+            ...currentOutputData,
             browser_use_task_id: currentOutputData.browser_use_task_id || browserUseTaskId,
             live_url: liveUrl || currentOutputData.live_url,
             output: taskData.output,

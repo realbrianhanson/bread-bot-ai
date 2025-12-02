@@ -279,6 +279,9 @@ const Dashboard = () => {
                   isStopping={isStopping}
                   isPausing={isPausing}
                   isResuming={isResuming}
+                  requiresLogin={currentTask.requiresLogin}
+                  loginUrl={currentTask.loginUrl}
+                  loginSite={currentTask.loginSite}
                 />
               ) : (
                 <CodePreview
