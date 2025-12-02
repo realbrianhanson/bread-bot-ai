@@ -10,7 +10,7 @@ const corsHeaders = {
 const BROWSER_USE_API_URL = 'https://api.browser-use.com/api/v1';
 
 // Login detection helper
-function detectLoginPage(url?: string, description?: string): { isLogin: boolean; site?: string } {
+function detectLoginPage(url?: string, description?: string): { isLoginPage: boolean; loginSite?: string } {
   const LOGIN_URL_PATTERNS = [
     '/login', '/signin', '/sign-in', '/auth', '/authenticate',
     'accounts.google.com', 'login.microsoftonline.com', 'accounts.github.com'
@@ -27,17 +27,17 @@ function detectLoginPage(url?: string, description?: string): { isLogin: boolean
   const descMatch = LOGIN_KEYWORDS.some(k => lowerDescription.includes(k));
   
   if (urlMatch || descMatch) {
-    let site = 'the website';
+    let loginSite = 'the website';
     if (url) {
       try {
         const urlObj = new URL(url);
-        site = urlObj.hostname.replace('www.', '');
+        loginSite = urlObj.hostname.replace('www.', '');
       } catch { }
     }
-    return { isLogin: true, site };
+    return { isLoginPage: true, loginSite };
   }
   
-  return { isLogin: false };
+  return { isLoginPage: false };
 }
 
 async function pollTaskStatus(
@@ -91,7 +91,7 @@ async function pollTaskStatus(
         
         const loginDetection = detectLoginPage(stepUrl, stepDescription);
         
-        if (loginDetection.isLogin) {
+        if (loginDetection.isLoginPage) {
           console.log('🔐 Login page detected, auto-pausing task...');
           hasAutoPaused = true;
           
@@ -116,7 +116,7 @@ async function pollTaskStatus(
                     live_url: liveUrl || currentOutputData.live_url,
                     requires_login: true,
                     login_url: stepUrl,
-                    login_site: loginDetection.site,
+                    login_site: loginDetection.loginSite,
                     output: taskData.output,
                     steps: taskData.steps || [],
                     actions: taskData.steps?.map((step: any) => ({
