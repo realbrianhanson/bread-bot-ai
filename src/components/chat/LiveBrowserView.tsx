@@ -18,6 +18,9 @@ interface LiveBrowserViewProps {
   isStopping?: boolean;
   isPausing?: boolean;
   isResuming?: boolean;
+  requiresLogin?: boolean;
+  loginUrl?: string;
+  loginSite?: string;
 }
 
 const LiveBrowserView = ({ 
@@ -32,16 +35,24 @@ const LiveBrowserView = ({
   onResumeTask,
   isStopping = false,
   isPausing = false,
-  isResuming = false
+  isResuming = false,
+  requiresLogin = false,
+  loginUrl,
+  loginSite
 }: LiveBrowserViewProps) => {
-  // Show paused state
+  // Show paused state with login required
   if (status === 'paused' && liveUrl) {
+    const isLoginRequired = requiresLogin;
+    const displaySite = loginSite || 'this website';
+    
     return (
       <div className="space-y-3">
         <Card className="p-4 bg-muted/30 backdrop-blur-sm border-border/50">
           <div className="flex items-center gap-2 mb-3">
             <Monitor className="h-4 w-4 text-orange-500" />
-            <h3 className="font-semibold text-sm">Live Browser Session - Paused</h3>
+            <h3 className="font-semibold text-sm">
+              {isLoginRequired ? 'Login Required' : 'Live Browser Session - Paused'}
+            </h3>
             <div className="flex items-center gap-1 ml-auto text-xs text-orange-500">
               <Pause className="h-3 w-3" />
               <span>Paused</span>
@@ -90,13 +101,30 @@ const LiveBrowserView = ({
             )}
           </div>
 
-          <div className="mb-3 p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
-            <p className="text-sm text-orange-500 font-medium">
-              🔐 You now have control of the browser
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Log in or complete any manual actions needed, then click "Resume Automation" to continue.
-            </p>
+          <div className={`mb-3 p-3 rounded-lg border ${
+            isLoginRequired 
+              ? 'bg-blue-500/10 border-blue-500/30' 
+              : 'bg-orange-500/10 border-orange-500/20'
+          }`}>
+            {isLoginRequired ? (
+              <>
+                <p className="text-sm font-medium text-blue-500">
+                  🔐 Login page detected at {displaySite}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  The automation has automatically paused. Please enter your credentials below, then click "Resume Automation" to continue.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-orange-500 font-medium">
+                  🔐 You now have control of the browser
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Log in or complete any manual actions needed, then click "Resume Automation" to continue.
+                </p>
+              </>
+            )}
           </div>
           
           <div className="relative bg-black rounded-lg overflow-hidden border border-border/50">

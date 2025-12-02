@@ -20,6 +20,9 @@ export interface BrowserTask {
   steps?: BrowserStep[];
   screenshots?: string[];
   error_message?: string;
+  requiresLogin?: boolean;
+  loginUrl?: string;
+  loginSite?: string;
 }
 
 export const useBrowserTask = () => {
@@ -88,6 +91,9 @@ export const useBrowserTask = () => {
             steps: outputData?.actions || [],
             screenshots: data.screenshots || undefined,
             error_message: data.error_message || undefined,
+            requiresLogin: outputData?.requires_login || false,
+            loginUrl: outputData?.login_url,
+            loginSite: outputData?.login_site,
           });
 
           if (data.status === 'completed' || data.status === 'failed' || data.status === 'stopped') {
@@ -190,9 +196,14 @@ export const useBrowserTask = () => {
           throw new Error(response.error.message);
         }
 
+        // Check if this was an auto-pause for login
+        const isAutoLogin = currentTask?.requiresLogin;
+        
         toast({
-          title: 'Task Paused',
-          description: 'You can now take over the browser. Click Resume when ready.',
+          title: isAutoLogin ? 'Login Required' : 'Task Paused',
+          description: isAutoLogin 
+            ? `Please log in to ${currentTask?.loginSite || 'the website'} and click Resume when ready.`
+            : 'You can now take over the browser. Click Resume when ready.',
         });
 
         // Update current task status
