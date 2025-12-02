@@ -103,7 +103,8 @@ const LiveBrowserView = ({
             <iframe 
               src={liveUrl}
               className="w-full h-[500px]"
-              allow="clipboard-write"
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"
+              allow="clipboard-write; clipboard-read"
               title="Live Browser Automation"
             />
           </div>
@@ -174,7 +175,8 @@ const LiveBrowserView = ({
             <iframe 
               src={liveUrl}
               className="w-full h-[500px]"
-              allow="clipboard-write"
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"
+              allow="clipboard-write; clipboard-read"
               title="Live Browser Automation"
             />
           </div>
