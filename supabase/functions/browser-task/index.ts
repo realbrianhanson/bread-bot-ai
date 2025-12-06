@@ -13,11 +13,14 @@ const BROWSER_USE_API_URL = 'https://api.browser-use.com/api/v1';
 function detectLoginPage(url?: string, description?: string): { isLoginPage: boolean; loginSite?: string } {
   const LOGIN_URL_PATTERNS = [
     '/login', '/signin', '/sign-in', '/auth', '/authenticate',
+    '/ap/signin', '/gp/sign-in', // Amazon-specific login paths
     'accounts.google.com', 'login.microsoftonline.com', 'accounts.github.com'
   ];
   const LOGIN_KEYWORDS = [
     'login', 'sign in', 'signin', 'credentials', 'password', 
-    'authenticate', 'two-factor', '2fa', 'captcha'
+    'authenticate', 'two-factor', '2fa', 'captcha',
+    'sign in to add', 'sign in to continue', 'sign in to your account',
+    'please sign in', 'please log in', 'login required'
   ];
 
   const lowerUrl = (url || '').toLowerCase();
@@ -47,7 +50,7 @@ async function pollTaskStatus(
   supabaseClient: any,
   userId: string
 ) {
-  const maxAttempts = 60; // Poll for up to 2 minutes
+  const maxAttempts = 300; // Poll for up to 10 minutes (300 * 2 seconds)
   let attempts = 0;
   let hasAutoPaused = false;
 
