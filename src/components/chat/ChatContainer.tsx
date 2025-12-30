@@ -5,7 +5,7 @@ import TypingIndicator from './TypingIndicator';
 import TaskStatus from './TaskStatus';
 import LiveBrowserView from './LiveBrowserView';
 import { Message } from '@/hooks/useChat';
-import { BrowserTask } from '@/hooks/useBrowserTask';
+import { BrowserTask, TaskStatus as TaskStatusType } from '@/hooks/useBrowserTask';
 
 interface ChatContainerProps {
   messages: Message[];
@@ -98,6 +98,8 @@ const ChatContainer = ({
               <TaskStatus 
                 status={currentTask.status} 
                 message={currentTask.error_message}
+                currentPhase={currentTask.currentPhase}
+                duration={currentTask.duration}
               />
               <LiveBrowserView 
                 liveUrl={currentTask.liveUrl}
@@ -112,6 +114,12 @@ const ChatContainer = ({
                 isStopping={isStopping}
                 isPausing={isPausing}
                 isResuming={isResuming}
+                interventionReason={currentTask.interventionReason}
+                interventionMessage={currentTask.interventionMessage}
+                currentPhase={currentTask.currentPhase}
+                deliverables={currentTask.deliverables}
+                extractedData={currentTask.extractedData}
+                taskSummary={currentTask.taskSummary}
               />
             </div>
           )}
@@ -121,6 +129,8 @@ const ChatContainer = ({
             <TaskStatus 
               status={currentTask.status} 
               message={currentTask.error_message}
+              currentPhase={currentTask.currentPhase}
+              duration={currentTask.duration}
             />
           )}
         </div>

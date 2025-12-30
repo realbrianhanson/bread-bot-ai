@@ -4,17 +4,49 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
 
+export type StepPhase = 'analyzing' | 'executing' | 'observing' | 'completed' | 'waiting';
+
 export interface BrowserStep {
   type: string;
   timestamp: string;
   description?: string;
   target?: string;
   status?: 'completed' | 'running' | 'pending';
+  phase?: StepPhase;
+}
+
+export type TaskStatus = 
+  | 'pending' 
+  | 'analyzing' 
+  | 'gathering_info' 
+  | 'running' 
+  | 'awaiting_input' 
+  | 'paused' 
+  | 'completed' 
+  | 'failed' 
+  | 'stopped' 
+  | 'standby';
+
+export type InterventionReason = 
+  | 'login_required' 
+  | 'captcha_detected' 
+  | 'confirmation_needed' 
+  | 'error_recovery' 
+  | 'user_requested' 
+  | 'unknown';
+
+export interface TaskDeliverable {
+  type: 'screenshot' | 'data' | 'file' | 'text';
+  name: string;
+  url?: string;
+  content?: string;
+  mimeType?: string;
+  timestamp: string;
 }
 
 export interface BrowserTask {
   id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'stopped' | 'paused';
+  status: TaskStatus;
   liveUrl?: string;
   actions?: any[];
   steps?: BrowserStep[];
@@ -23,6 +55,16 @@ export interface BrowserTask {
   requiresLogin?: boolean;
   loginUrl?: string;
   loginSite?: string;
+  // Enhanced properties
+  interventionReason?: InterventionReason;
+  interventionMessage?: string;
+  currentPhase?: StepPhase;
+  deliverables?: TaskDeliverable[];
+  extractedData?: Record<string, any>;
+  taskSummary?: string;
+  startedAt?: string;
+  completedAt?: string;
+  duration?: number;
 }
 
 export const useBrowserTask = () => {
@@ -34,6 +76,130 @@ export const useBrowserTask = () => {
   const { user } = useAuth();
   const { canRunBrowserTask, refreshSubscription } = useSubscription();
 
+  // Determine intervention reason from task data
+  const getInterventionReason = (outputData: any): { reason: InterventionReason; message: string } => {
+    if (outputData?.requires_login) {
+      return {
+        reason: 'login_required',
+        message: `Please log in to ${outputData.login_site || 'the website'} to continue.`
+      };
+    }
+    if (outputData?.captcha_detected) {
+      return {
+        reason: 'captcha_detected',
+        message: 'A CAPTCHA was detected. Please solve it to continue.'
+      };
+    }
+    if (outputData?.confirmation_needed) {
+      return {
+        reason: 'confirmation_needed',
+        message: outputData.confirmation_message || 'Please confirm the action to continue.'
+      };
+    }
+    if (outputData?.error_recovery) {
+      return {
+        reason: 'error_recovery',
+        message: 'An error occurred. Please help resolve the issue.'
+      };
+    }
+    return {
+      reason: 'user_requested',
+      message: 'You now have control of the browser.'
+    };
+  };
+
+  // Parse deliverables from task output
+  const parseDeliverables = (data: any, screenshots?: string[]): TaskDeliverable[] => {
+    const deliverables: TaskDeliverable[] = [];
+
+    // Add screenshots as deliverables
+    if (screenshots?.length) {
+      screenshots.forEach((url, index) => {
+        deliverables.push({
+          type: 'screenshot',
+          name: `Screenshot ${index + 1}`,
+          url,
+          mimeType: 'image/png',
+          timestamp: new Date().toISOString()
+        });
+      });
+    }
+
+    // Add extracted data as deliverables
+    if (data?.extracted_data) {
+      deliverables.push({
+        type: 'data',
+        name: 'Extracted Data',
+        content: JSON.stringify(data.extracted_data, null, 2),
+        mimeType: 'application/json',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Add output text as deliverable
+    if (data?.output && typeof data.output === 'string') {
+      deliverables.push({
+        type: 'text',
+        name: 'Task Output',
+        content: data.output,
+        mimeType: 'text/plain',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    return deliverables;
+  };
+
+  // Determine current phase from steps
+  const getCurrentPhase = (steps: any[], status: string): StepPhase => {
+    if (status === 'completed') return 'completed';
+    if (status === 'paused' || status === 'awaiting_input') return 'waiting';
+    
+    const lastStep = steps?.[steps.length - 1];
+    if (!lastStep) return 'analyzing';
+    
+    const action = lastStep.action?.toLowerCase() || lastStep.type?.toLowerCase() || '';
+    
+    if (action.includes('analyz') || action.includes('think') || action.includes('plan')) {
+      return 'analyzing';
+    }
+    if (action.includes('click') || action.includes('type') || action.includes('navigate')) {
+      return 'executing';
+    }
+    if (action.includes('extract') || action.includes('read') || action.includes('observe')) {
+      return 'observing';
+    }
+    
+    return 'executing';
+  };
+
+  // Map database status to enhanced status
+  const mapToEnhancedStatus = (dbStatus: string, outputData: any): TaskStatus => {
+    if (dbStatus === 'pending') {
+      // Check if we're in an initial analysis phase
+      if (outputData?.steps?.length === 0 || !outputData?.steps) {
+        return 'analyzing';
+      }
+      return 'pending';
+    }
+    if (dbStatus === 'running') {
+      // Check if gathering info
+      const lastStep = outputData?.steps?.[outputData.steps.length - 1];
+      if (lastStep?.action?.toLowerCase().includes('gather') || 
+          lastStep?.action?.toLowerCase().includes('extract')) {
+        return 'gathering_info';
+      }
+      return 'running';
+    }
+    if (dbStatus === 'paused') {
+      if (outputData?.requires_login || outputData?.captcha_detected || outputData?.confirmation_needed) {
+        return 'awaiting_input';
+      }
+      return 'paused';
+    }
+    return dbStatus as TaskStatus;
+  };
+
   const executeTask = useCallback(
     async (task: string, projectId?: string, profileId?: string) => {
       if (!user) return;
@@ -44,7 +210,12 @@ export const useBrowserTask = () => {
       }
 
       setIsExecuting(true);
-      setCurrentTask({ id: '', status: 'pending' });
+      setCurrentTask({ 
+        id: '', 
+        status: 'analyzing',
+        currentPhase: 'analyzing',
+        startedAt: new Date().toISOString()
+      });
 
       try {
         const response = await supabase.functions.invoke('browser-task', {
@@ -58,9 +229,11 @@ export const useBrowserTask = () => {
         const taskData = response.data;
         setCurrentTask({
           id: taskData.taskId,
-          status: taskData.status,
+          status: 'running',
           liveUrl: taskData.liveUrl,
           actions: taskData.actions,
+          currentPhase: 'executing',
+          startedAt: new Date().toISOString()
         });
 
         toast({
@@ -83,17 +256,44 @@ export const useBrowserTask = () => {
           }
 
           const outputData = data.output_data as any;
+          const steps = outputData?.actions || [];
+          const enhancedStatus = mapToEnhancedStatus(data.status, outputData);
+          const currentPhase = getCurrentPhase(steps, data.status);
+          const intervention = getInterventionReason(outputData);
+          const deliverables = parseDeliverables(outputData, data.screenshots || undefined);
+
+          // Calculate duration
+          const startTime = data.started_at ? new Date(data.started_at).getTime() : Date.now();
+          const endTime = data.completed_at ? new Date(data.completed_at).getTime() : Date.now();
+          const duration = Math.round((endTime - startTime) / 1000);
+
           setCurrentTask({
             id: data.id,
-            status: data.status as BrowserTask['status'],
+            status: enhancedStatus,
             liveUrl: outputData?.live_url,
             actions: outputData?.actions,
-            steps: outputData?.actions || [],
+            steps: steps.map((step: any, index: number) => ({
+              ...step,
+              phase: index === steps.length - 1 ? currentPhase : 'completed'
+            })),
             screenshots: data.screenshots || undefined,
             error_message: data.error_message || undefined,
             requiresLogin: outputData?.requires_login || false,
             loginUrl: outputData?.login_url,
             loginSite: outputData?.login_site,
+            interventionReason: (enhancedStatus === 'paused' || enhancedStatus === 'awaiting_input') 
+              ? intervention.reason 
+              : undefined,
+            interventionMessage: (enhancedStatus === 'paused' || enhancedStatus === 'awaiting_input')
+              ? intervention.message
+              : undefined,
+            currentPhase,
+            deliverables,
+            extractedData: outputData?.extracted_data,
+            taskSummary: outputData?.output,
+            startedAt: data.started_at,
+            completedAt: data.completed_at,
+            duration
           });
 
           if (data.status === 'completed' || data.status === 'failed' || data.status === 'stopped') {
@@ -117,8 +317,6 @@ export const useBrowserTask = () => {
                 description: 'Browser automation was stopped by user',
                 variant: 'default',
               });
-            } else if (data.status === 'paused') {
-              // Don't clear interval when paused, keep polling
             }
           }
         }, 1000);
@@ -211,6 +409,8 @@ export const useBrowserTask = () => {
           setCurrentTask({
             ...currentTask,
             status: 'paused',
+            interventionReason: 'user_requested',
+            interventionMessage: 'You now have control of the browser.',
           });
         }
       } catch (error: any) {
@@ -252,6 +452,8 @@ export const useBrowserTask = () => {
           setCurrentTask({
             ...currentTask,
             status: 'running',
+            interventionReason: undefined,
+            interventionMessage: undefined,
           });
         }
       } catch (error: any) {
