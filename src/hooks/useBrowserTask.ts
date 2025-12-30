@@ -17,6 +17,7 @@ export interface BrowserStep {
 
 export type TaskStatus = 
   | 'pending' 
+  | 'planning'
   | 'analyzing' 
   | 'gathering_info' 
   | 'running' 
@@ -35,6 +36,8 @@ export type InterventionReason =
   | 'user_requested' 
   | 'unknown';
 
+export type InterventionType = 'notify' | 'ask';
+
 export interface TaskDeliverable {
   type: 'screenshot' | 'data' | 'file' | 'text';
   name: string;
@@ -42,6 +45,30 @@ export interface TaskDeliverable {
   content?: string;
   mimeType?: string;
   timestamp: string;
+}
+
+export interface PlannedStep {
+  id: number;
+  description: string;
+  status: 'pending' | 'current' | 'completed' | 'skipped';
+}
+
+export interface TodoItem {
+  id: string;
+  text: string;
+  completed: boolean;
+  inProgress?: boolean;
+}
+
+export interface SiteKnowledge {
+  domain: string;
+  loginMethod?: 'form' | 'oauth' | 'sso' | 'magic-link';
+  loginUrl?: string;
+  requiresLogin?: boolean;
+  notes?: string[];
+  quirks?: string[];
+  lastUsed?: string;
+  successRate?: number;
 }
 
 export interface BrowserTask {
@@ -58,6 +85,7 @@ export interface BrowserTask {
   // Enhanced properties
   interventionReason?: InterventionReason;
   interventionMessage?: string;
+  interventionType?: InterventionType;
   currentPhase?: StepPhase;
   deliverables?: TaskDeliverable[];
   extractedData?: Record<string, any>;
@@ -65,6 +93,12 @@ export interface BrowserTask {
   startedAt?: string;
   completedAt?: string;
   duration?: number;
+  // New planning and todo properties
+  plannedSteps?: PlannedStep[];
+  currentPlanStepId?: number;
+  todoItems?: TodoItem[];
+  isPlanning?: boolean;
+  siteKnowledge?: SiteKnowledge[];
 }
 
 export const useBrowserTask = () => {
@@ -173,9 +207,92 @@ export const useBrowserTask = () => {
     return 'executing';
   };
 
+  // Parse planned steps from task output
+  const parsePlannedSteps = (outputData: any, executedSteps: any[]): PlannedStep[] => {
+    // If the API provides a plan, use it
+    if (outputData?.plan?.steps) {
+      return outputData.plan.steps.map((step: any, index: number) => {
+        const stepNum = index + 1;
+        const isCompleted = executedSteps.some(
+          (es: any) => es.plan_step_id === stepNum || es.step_number === stepNum
+        );
+        const isCurrent = !isCompleted && executedSteps.length === index;
+        
+        return {
+          id: stepNum,
+          description: step.description || step.action || `Step ${stepNum}`,
+          status: isCompleted ? 'completed' : isCurrent ? 'current' : 'pending'
+        };
+      });
+    }
+    
+    // Otherwise, generate from executed steps
+    if (executedSteps.length > 0) {
+      return executedSteps.map((step: any, index: number) => ({
+        id: index + 1,
+        description: step.description || step.action || step.type || `Step ${index + 1}`,
+        status: step.status === 'completed' ? 'completed' : 
+                index === executedSteps.length - 1 ? 'current' : 'completed'
+      }));
+    }
+    
+    return [];
+  };
+
+  // Parse todo items from task output
+  const parseTodoItems = (outputData: any, executedSteps: any[]): TodoItem[] => {
+    // If the API provides a todo list, use it
+    if (outputData?.todo?.items) {
+      return outputData.todo.items.map((item: any, index: number) => ({
+        id: item.id || `todo-${index}`,
+        text: item.text || item.description || item.action,
+        completed: item.completed || false,
+        inProgress: item.inProgress || item.in_progress || false
+      }));
+    }
+    
+    // Otherwise, generate from executed steps
+    if (executedSteps.length > 0) {
+      return executedSteps.map((step: any, index: number) => ({
+        id: `step-${index}`,
+        text: step.description || step.action || step.type || `Action ${index + 1}`,
+        completed: step.status === 'completed',
+        inProgress: index === executedSteps.length - 1 && step.status !== 'completed'
+      }));
+    }
+    
+    return [];
+  };
+
+  // Extract site knowledge from task
+  const extractSiteKnowledge = (outputData: any, currentUrl?: string): SiteKnowledge | null => {
+    if (!currentUrl) return null;
+    
+    try {
+      const url = new URL(currentUrl);
+      const domain = url.hostname.replace('www.', '');
+      
+      return {
+        domain,
+        loginMethod: outputData?.login_method || undefined,
+        loginUrl: outputData?.login_url || undefined,
+        requiresLogin: outputData?.requires_login || false,
+        notes: outputData?.site_notes || [],
+        quirks: outputData?.site_quirks || [],
+        lastUsed: new Date().toISOString()
+      };
+    } catch {
+      return null;
+    }
+  };
+
   // Map database status to enhanced status
   const mapToEnhancedStatus = (dbStatus: string, outputData: any): TaskStatus => {
     if (dbStatus === 'pending') {
+      // Check if planning
+      if (outputData?.is_planning) {
+        return 'planning';
+      }
       // Check if we're in an initial analysis phase
       if (outputData?.steps?.length === 0 || !outputData?.steps) {
         return 'analyzing';
@@ -261,6 +378,14 @@ export const useBrowserTask = () => {
           const currentPhase = getCurrentPhase(steps, data.status);
           const intervention = getInterventionReason(outputData);
           const deliverables = parseDeliverables(outputData, data.screenshots || undefined);
+          
+          // Parse planning and todo data
+          const plannedSteps = parsePlannedSteps(outputData, steps);
+          const todoItems = parseTodoItems(outputData, steps);
+          const currentPlanStepId = plannedSteps.find(s => s.status === 'current')?.id;
+          
+          // Extract site knowledge
+          const siteKnowledge = extractSiteKnowledge(outputData, outputData?.live_url);
 
           // Calculate duration
           const startTime = data.started_at ? new Date(data.started_at).getTime() : Date.now();
@@ -287,13 +412,22 @@ export const useBrowserTask = () => {
             interventionMessage: (enhancedStatus === 'paused' || enhancedStatus === 'awaiting_input')
               ? intervention.message
               : undefined,
+            interventionType: (enhancedStatus === 'paused' || enhancedStatus === 'awaiting_input')
+              ? 'ask'
+              : undefined,
             currentPhase,
             deliverables,
             extractedData: outputData?.extracted_data,
             taskSummary: outputData?.output,
             startedAt: data.started_at,
             completedAt: data.completed_at,
-            duration
+            duration,
+            // New planning and todo data
+            plannedSteps,
+            currentPlanStepId,
+            todoItems,
+            isPlanning: outputData?.is_planning || false,
+            siteKnowledge: siteKnowledge ? [siteKnowledge] : undefined
           });
 
           if (data.status === 'completed' || data.status === 'failed' || data.status === 'stopped') {

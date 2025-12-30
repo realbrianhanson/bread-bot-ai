@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { 
   LogIn, 
   ShieldCheck, 
@@ -8,9 +9,16 @@ import {
   Hand,
   Play,
   Square,
-  Loader2
+  Loader2,
+  Info,
+  Bell,
+  X
 } from 'lucide-react';
 import { InterventionReason } from '@/hooks/useBrowserTask';
+import { useState, useEffect } from 'react';
+
+// Intervention type: notify (info only, can dismiss) vs ask (requires action)
+export type InterventionType = 'notify' | 'ask';
 
 interface InterventionPromptProps {
   reason: InterventionReason;
@@ -21,9 +29,16 @@ interface InterventionPromptProps {
   onStop?: (taskId: string) => void;
   isResuming?: boolean;
   isStopping?: boolean;
+  // Tiered intervention props
+  interventionType?: InterventionType;
+  onDismiss?: () => void;
+  autoHideAfter?: number; // milliseconds to auto-hide notify type
 }
 
-const getInterventionConfig = (reason: InterventionReason) => {
+const getInterventionConfig = (reason: InterventionReason, type: InterventionType = 'ask') => {
+  // For notify type, use softer colors
+  const isNotify = type === 'notify';
+  
   switch (reason) {
     case 'login_required':
       return {
@@ -31,7 +46,8 @@ const getInterventionConfig = (reason: InterventionReason) => {
         title: 'Login Required',
         color: 'bg-blue-500/10 border-blue-500/30 text-blue-500',
         iconColor: 'text-blue-500',
-        defaultMessage: 'Please log in to continue with the automation.'
+        defaultMessage: 'Please log in to continue with the automation.',
+        interventionLevel: 'ask' as const
       };
     case 'captcha_detected':
       return {
@@ -39,7 +55,8 @@ const getInterventionConfig = (reason: InterventionReason) => {
         title: 'CAPTCHA Detected',
         color: 'bg-yellow-500/10 border-yellow-500/30 text-yellow-500',
         iconColor: 'text-yellow-500',
-        defaultMessage: 'A CAPTCHA verification is required. Please solve it to continue.'
+        defaultMessage: 'A CAPTCHA verification is required. Please solve it to continue.',
+        interventionLevel: 'ask' as const
       };
     case 'confirmation_needed':
       return {
@@ -47,7 +64,8 @@ const getInterventionConfig = (reason: InterventionReason) => {
         title: 'Confirmation Needed',
         color: 'bg-orange-500/10 border-orange-500/30 text-orange-500',
         iconColor: 'text-orange-500',
-        defaultMessage: 'The automation needs your confirmation before proceeding.'
+        defaultMessage: 'The automation needs your confirmation before proceeding.',
+        interventionLevel: 'ask' as const
       };
     case 'error_recovery':
       return {
@@ -55,16 +73,22 @@ const getInterventionConfig = (reason: InterventionReason) => {
         title: 'Help Needed',
         color: 'bg-red-500/10 border-red-500/30 text-red-500',
         iconColor: 'text-red-500',
-        defaultMessage: 'An issue occurred. Please help resolve it to continue.'
+        defaultMessage: 'An issue occurred. Please help resolve it to continue.',
+        interventionLevel: 'ask' as const
       };
     case 'user_requested':
     default:
       return {
-        icon: Hand,
-        title: 'Manual Control',
-        color: 'bg-purple-500/10 border-purple-500/30 text-purple-500',
-        iconColor: 'text-purple-500',
-        defaultMessage: 'You now have control of the browser session.'
+        icon: isNotify ? Info : Hand,
+        title: isNotify ? 'Status Update' : 'Manual Control',
+        color: isNotify 
+          ? 'bg-muted/50 border-border/50 text-muted-foreground' 
+          : 'bg-purple-500/10 border-purple-500/30 text-purple-500',
+        iconColor: isNotify ? 'text-muted-foreground' : 'text-purple-500',
+        defaultMessage: isNotify 
+          ? 'Task update: automation is proceeding as planned.'
+          : 'You now have control of the browser session.',
+        interventionLevel: type
       };
   }
 };
@@ -77,12 +101,66 @@ const InterventionPrompt = ({
   onResume,
   onStop,
   isResuming = false,
-  isStopping = false
+  isStopping = false,
+  interventionType = 'ask',
+  onDismiss,
+  autoHideAfter
 }: InterventionPromptProps) => {
-  const config = getInterventionConfig(reason);
+  const [isVisible, setIsVisible] = useState(true);
+  const config = getInterventionConfig(reason, interventionType);
   const Icon = config.icon;
   const displayMessage = message || config.defaultMessage;
+  const isNotify = interventionType === 'notify';
 
+  // Auto-hide for notify type
+  useEffect(() => {
+    if (isNotify && autoHideAfter && autoHideAfter > 0) {
+      const timer = setTimeout(() => {
+        setIsVisible(false);
+        onDismiss?.();
+      }, autoHideAfter);
+      return () => clearTimeout(timer);
+    }
+  }, [isNotify, autoHideAfter, onDismiss]);
+
+  if (!isVisible) return null;
+
+  // Notify type - simple info card with dismiss
+  if (isNotify) {
+    return (
+      <Card className={`p-3 border ${config.color}`}>
+        <div className="flex items-start gap-3">
+          <Bell className={`h-4 w-4 mt-0.5 ${config.iconColor}`} />
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Notification
+              </span>
+              <Badge variant="outline" className="text-[10px]">
+                Info Only
+              </Badge>
+            </div>
+            <p className="text-sm text-foreground mt-1">{displayMessage}</p>
+          </div>
+          {onDismiss && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={() => {
+                setIsVisible(false);
+                onDismiss();
+              }}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
+  // Ask type - full intervention prompt
   return (
     <Card className={`p-4 border-2 ${config.color}`}>
       <div className="flex items-start gap-3">
@@ -91,7 +169,12 @@ const InterventionPrompt = ({
         </div>
         
         <div className="flex-1">
-          <h3 className="font-semibold text-sm mb-1">{config.title}</h3>
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="font-semibold text-sm">{config.title}</h3>
+            <Badge variant="outline" className="text-[10px] border-current">
+              Action Required
+            </Badge>
+          </div>
           <p className="text-sm text-muted-foreground">
             {displayMessage}
           </p>

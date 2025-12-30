@@ -290,10 +290,16 @@ const Dashboard = () => {
                   loginSite={currentTask.loginSite}
                   interventionReason={currentTask.interventionReason}
                   interventionMessage={currentTask.interventionMessage}
+                  interventionType={currentTask.interventionType}
                   currentPhase={currentTask.currentPhase}
                   deliverables={currentTask.deliverables}
                   extractedData={currentTask.extractedData}
                   taskSummary={currentTask.taskSummary}
+                  plannedSteps={currentTask.plannedSteps}
+                  currentPlanStepId={currentTask.currentPlanStepId}
+                  todoItems={currentTask.todoItems}
+                  isPlanning={currentTask.isPlanning}
+                  siteKnowledge={currentTask.siteKnowledge}
                 />
               ) : (
                 <CodePreview
