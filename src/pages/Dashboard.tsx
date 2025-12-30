@@ -181,6 +181,12 @@ const Dashboard = () => {
                   isStopping={isStopping}
                   isPausing={isPausing}
                   isResuming={isResuming}
+                  interventionReason={currentTask.interventionReason}
+                  interventionMessage={currentTask.interventionMessage}
+                  currentPhase={currentTask.currentPhase}
+                  deliverables={currentTask.deliverables}
+                  extractedData={currentTask.extractedData}
+                  taskSummary={currentTask.taskSummary}
                 />
               ) : (
                 <CodePreview
@@ -282,6 +288,12 @@ const Dashboard = () => {
                   requiresLogin={currentTask.requiresLogin}
                   loginUrl={currentTask.loginUrl}
                   loginSite={currentTask.loginSite}
+                  interventionReason={currentTask.interventionReason}
+                  interventionMessage={currentTask.interventionMessage}
+                  currentPhase={currentTask.currentPhase}
+                  deliverables={currentTask.deliverables}
+                  extractedData={currentTask.extractedData}
+                  taskSummary={currentTask.taskSummary}
                 />
               ) : (
                 <CodePreview

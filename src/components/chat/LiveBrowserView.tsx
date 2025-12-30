@@ -1,13 +1,15 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Monitor, Loader2, Square, Pause, Play } from 'lucide-react';
+import { Monitor, Loader2, Square, Pause, Play, Brain, Search } from 'lucide-react';
 import BrowserPreview from './BrowserPreview';
 import StepTimeline from './StepTimeline';
-import { BrowserStep } from '@/hooks/useBrowserTask';
+import TaskDeliverables from './TaskDeliverables';
+import InterventionPrompt from './InterventionPrompt';
+import { BrowserStep, TaskStatus, InterventionReason, TaskDeliverable, StepPhase } from '@/hooks/useBrowserTask';
 
 interface LiveBrowserViewProps {
   liveUrl?: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'stopped' | 'paused';
+  status: TaskStatus;
   screenshots?: string[];
   actions?: Array<{ type: string; timestamp: string; [key: string]: any }>;
   steps?: BrowserStep[];
@@ -21,6 +23,12 @@ interface LiveBrowserViewProps {
   requiresLogin?: boolean;
   loginUrl?: string;
   loginSite?: string;
+  interventionReason?: InterventionReason;
+  interventionMessage?: string;
+  currentPhase?: StepPhase;
+  deliverables?: TaskDeliverable[];
+  extractedData?: Record<string, any>;
+  taskSummary?: string;
 }
 
 const LiveBrowserView = ({ 
@@ -38,93 +46,74 @@ const LiveBrowserView = ({
   isResuming = false,
   requiresLogin = false,
   loginUrl,
-  loginSite
+  loginSite,
+  interventionReason,
+  interventionMessage,
+  currentPhase,
+  deliverables = [],
+  extractedData,
+  taskSummary
 }: LiveBrowserViewProps) => {
-  // Show paused state with login required
-  if (status === 'paused' && liveUrl) {
-    const isLoginRequired = requiresLogin;
-    const displaySite = loginSite || 'this website';
+
+  // Show analyzing state
+  if (status === 'analyzing') {
+    return (
+      <Card className="p-4 bg-purple-500/10 backdrop-blur-sm border-purple-500/30">
+        <div className="flex items-center gap-3">
+          <Brain className="h-5 w-5 animate-pulse text-purple-500" />
+          <div>
+            <h3 className="font-semibold text-sm">Analyzing Task</h3>
+            <p className="text-xs text-muted-foreground">Understanding your request and planning actions...</p>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  // Show gathering info state
+  if (status === 'gathering_info') {
+    return (
+      <Card className="p-4 bg-cyan-500/10 backdrop-blur-sm border-cyan-500/30">
+        <div className="flex items-center gap-3">
+          <Search className="h-5 w-5 animate-pulse text-cyan-500" />
+          <div>
+            <h3 className="font-semibold text-sm">Gathering Information</h3>
+            <p className="text-xs text-muted-foreground">Collecting data from the page...</p>
+          </div>
+        </div>
+        {steps.length > 0 && <StepTimeline steps={steps} isRunning={true} currentPhase={currentPhase} />}
+      </Card>
+    );
+  }
+
+  // Show paused/awaiting_input state with intervention prompt
+  if ((status === 'paused' || status === 'awaiting_input') && liveUrl) {
+    const reason = interventionReason || (requiresLogin ? 'login_required' : 'user_requested');
+    const message = interventionMessage || (requiresLogin 
+      ? `Please log in to ${loginSite || 'the website'} to continue.`
+      : 'You now have control of the browser.');
     
     return (
       <div className="space-y-3">
+        <InterventionPrompt
+          reason={reason}
+          message={message}
+          loginSite={loginSite}
+          taskId={taskId}
+          onResume={onResumeTask}
+          onStop={onStopTask}
+          isResuming={isResuming}
+          isStopping={isStopping}
+        />
+
         <Card className="p-4 bg-muted/30 backdrop-blur-sm border-border/50">
           <div className="flex items-center gap-2 mb-3">
             <Monitor className="h-4 w-4 text-orange-500" />
-            <h3 className="font-semibold text-sm">
-              {isLoginRequired ? 'Login Required' : 'Live Browser Session - Paused'}
-            </h3>
+            <h3 className="font-semibold text-sm">Live Browser Session</h3>
             <div className="flex items-center gap-1 ml-auto text-xs text-orange-500">
               <Pause className="h-3 w-3" />
               <span>Paused</span>
             </div>
-            {taskId && onResumeTask && (
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => onResumeTask(taskId)}
-                disabled={isResuming}
-                className="h-7 text-xs"
-              >
-                {isResuming ? (
-                  <>
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    Resuming...
-                  </>
-                ) : (
-                  <>
-                    <Play className="h-3 w-3 mr-1 fill-current" />
-                    Resume Automation
-                  </>
-                )}
-              </Button>
-            )}
-            {taskId && onStopTask && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => onStopTask(taskId)}
-                disabled={isStopping}
-                className="h-7 text-xs"
-              >
-                {isStopping ? (
-                  <>
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    Stopping...
-                  </>
-                ) : (
-                  <>
-                    <Square className="h-3 w-3 mr-1 fill-current" />
-                    Stop
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-
-          <div className={`mb-3 p-3 rounded-lg border ${
-            isLoginRequired 
-              ? 'bg-blue-500/10 border-blue-500/30' 
-              : 'bg-orange-500/10 border-orange-500/20'
-          }`}>
-            {isLoginRequired ? (
-              <>
-                <p className="text-sm font-medium text-blue-500">
-                  🔐 Login page detected at {displaySite}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  The automation has automatically paused. Please enter your credentials below, then click "Resume Automation" to continue.
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-orange-500 font-medium">
-                  🔐 You now have control of the browser
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Log in or complete any manual actions needed, then click "Resume Automation" to continue.
-                </p>
-              </>
-            )}
           </div>
           
           <div className="relative bg-black rounded-lg overflow-hidden border border-border/50">
@@ -138,7 +127,7 @@ const LiveBrowserView = ({
           </div>
         </Card>
 
-        <StepTimeline steps={steps} isRunning={false} />
+        <StepTimeline steps={steps} isRunning={false} currentPhase={currentPhase} />
       </div>
     );
   }
@@ -210,7 +199,7 @@ const LiveBrowserView = ({
           </div>
         </Card>
 
-        <StepTimeline steps={steps} isRunning={true} />
+        <StepTimeline steps={steps} isRunning={true} currentPhase={currentPhase} />
       </div>
     );
   }
@@ -227,12 +216,31 @@ const LiveBrowserView = ({
     );
   }
 
-  // Fall back to screenshots after completion, failure, stop, or pause without live URL
-  if (status === 'completed' || status === 'failed' || status === 'stopped' || (status === 'paused' && !liveUrl)) {
+  // Show completed state with deliverables
+  if (status === 'completed') {
+    return (
+      <div className="space-y-3">
+        {/* Task Deliverables */}
+        {(deliverables.length > 0 || taskSummary || extractedData) && (
+          <TaskDeliverables 
+            deliverables={deliverables}
+            taskSummary={taskSummary}
+            extractedData={extractedData}
+          />
+        )}
+        
+        <BrowserPreview screenshots={screenshots} actions={actions} />
+        {steps.length > 0 && <StepTimeline steps={steps} isRunning={false} currentPhase="completed" />}
+      </div>
+    );
+  }
+
+  // Fall back to screenshots after failure, stop, or pause without live URL
+  if (status === 'failed' || status === 'stopped' || ((status === 'paused' || status === 'awaiting_input') && !liveUrl)) {
     return (
       <div className="space-y-3">
         <BrowserPreview screenshots={screenshots} actions={actions} />
-        {steps.length > 0 && <StepTimeline steps={steps} isRunning={false} />}
+        {steps.length > 0 && <StepTimeline steps={steps} isRunning={false} currentPhase={currentPhase} />}
       </div>
     );
   }
