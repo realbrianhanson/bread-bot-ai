@@ -5,7 +5,20 @@ import BrowserPreview from './BrowserPreview';
 import StepTimeline from './StepTimeline';
 import TaskDeliverables from './TaskDeliverables';
 import InterventionPrompt from './InterventionPrompt';
-import { BrowserStep, TaskStatus, InterventionReason, TaskDeliverable, StepPhase } from '@/hooks/useBrowserTask';
+import TaskPlanningPreview from './TaskPlanningPreview';
+import TodoChecklist from './TodoChecklist';
+import SiteKnowledgePanel from './SiteKnowledgePanel';
+import { 
+  BrowserStep, 
+  TaskStatus, 
+  InterventionReason, 
+  InterventionType,
+  TaskDeliverable, 
+  StepPhase,
+  PlannedStep,
+  TodoItem,
+  SiteKnowledge
+} from '@/hooks/useBrowserTask';
 
 interface LiveBrowserViewProps {
   liveUrl?: string;
@@ -25,10 +38,17 @@ interface LiveBrowserViewProps {
   loginSite?: string;
   interventionReason?: InterventionReason;
   interventionMessage?: string;
+  interventionType?: InterventionType;
   currentPhase?: StepPhase;
   deliverables?: TaskDeliverable[];
   extractedData?: Record<string, any>;
   taskSummary?: string;
+  // New planning and todo props
+  plannedSteps?: PlannedStep[];
+  currentPlanStepId?: number;
+  todoItems?: TodoItem[];
+  isPlanning?: boolean;
+  siteKnowledge?: SiteKnowledge[];
 }
 
 const LiveBrowserView = ({ 
@@ -49,11 +69,26 @@ const LiveBrowserView = ({
   loginSite,
   interventionReason,
   interventionMessage,
+  interventionType = 'ask',
   currentPhase,
   deliverables = [],
   extractedData,
-  taskSummary
+  taskSummary,
+  plannedSteps = [],
+  currentPlanStepId,
+  todoItems = [],
+  isPlanning = false,
+  siteKnowledge = []
 }: LiveBrowserViewProps) => {
+
+  // Show planning state
+  if (status === 'planning' || isPlanning) {
+    return (
+      <div className="space-y-3">
+        <TaskPlanningPreview steps={plannedSteps} currentStepId={currentPlanStepId} isPlanning={true} />
+      </div>
+    );
+  }
 
   // Show analyzing state
   if (status === 'analyzing') {
