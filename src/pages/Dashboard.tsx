@@ -300,6 +300,11 @@ const Dashboard = () => {
                   todoItems={currentTask.todoItems}
                   isPlanning={currentTask.isPlanning}
                   siteKnowledge={currentTask.siteKnowledge}
+                  nextSteps={currentTask.nextSteps}
+                  challenges={currentTask.challenges}
+                  processReport={currentTask.processReport}
+                  taskDescription={currentTask.taskDescription}
+                  onSelectNextStep={(step) => step.prompt && executeTask(step.prompt, activeConversationId || undefined, selectedProfileId || undefined)}
                 />
               ) : (
                 <CodePreview
