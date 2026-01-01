@@ -71,6 +71,48 @@ export interface SiteKnowledge {
   successRate?: number;
 }
 
+// New types for the four new features
+export interface NextStep {
+  id: string;
+  title: string;
+  description: string;
+  action: 'rerun' | 'modify' | 'export' | 'share' | 'new';
+  prompt?: string;
+}
+
+export type ChallengeType = 'auth' | 'complexity' | 'time' | 'access' | 'unknown';
+export type ChallengeSeverity = 'low' | 'medium' | 'high';
+
+export interface Challenge {
+  id: string;
+  type: ChallengeType;
+  title: string;
+  description: string;
+  severity: ChallengeSeverity;
+  mitigation?: string;
+}
+
+export interface ProcessStep {
+  id: string;
+  timestamp: string;
+  action: string;
+  details?: string;
+  status: 'completed' | 'failed' | 'skipped';
+  duration?: number;
+}
+
+export interface ProcessReport {
+  taskId: string;
+  taskDescription: string;
+  startedAt: string;
+  completedAt?: string;
+  status: 'completed' | 'failed' | 'stopped';
+  totalDuration: number;
+  steps: ProcessStep[];
+  summary?: string;
+  errors?: string[];
+}
+
 export interface BrowserTask {
   id: string;
   status: TaskStatus;
@@ -93,12 +135,17 @@ export interface BrowserTask {
   startedAt?: string;
   completedAt?: string;
   duration?: number;
-  // New planning and todo properties
+  // Planning and todo properties
   plannedSteps?: PlannedStep[];
   currentPlanStepId?: number;
   todoItems?: TodoItem[];
   isPlanning?: boolean;
   siteKnowledge?: SiteKnowledge[];
+  // New properties for the four new features
+  nextSteps?: NextStep[];
+  challenges?: Challenge[];
+  processReport?: ProcessReport;
+  taskDescription?: string;
 }
 
 export const useBrowserTask = () => {
@@ -286,6 +333,134 @@ export const useBrowserTask = () => {
     }
   };
 
+  // Parse challenges from task output
+  const parseChallenges = (outputData: any): Challenge[] => {
+    if (outputData?.challenges) {
+      return outputData.challenges.map((c: any, index: number) => ({
+        id: c.id || `challenge-${index}`,
+        type: c.type || 'unknown',
+        title: c.title || 'Potential Issue',
+        description: c.description || '',
+        severity: c.severity || 'medium',
+        mitigation: c.mitigation
+      }));
+    }
+    
+    // Auto-detect common challenges
+    const challenges: Challenge[] = [];
+    
+    if (outputData?.requires_login) {
+      challenges.push({
+        id: 'auth-required',
+        type: 'auth',
+        title: 'Authentication Required',
+        description: `This task requires logging in to ${outputData?.login_site || 'the website'}`,
+        severity: 'medium',
+        mitigation: 'The task will pause for you to complete login'
+      });
+    }
+    
+    if (outputData?.captcha_detected) {
+      challenges.push({
+        id: 'captcha',
+        type: 'access',
+        title: 'CAPTCHA Detected',
+        description: 'A CAPTCHA challenge may appear during execution',
+        severity: 'medium',
+        mitigation: 'You will be prompted to solve it if needed'
+      });
+    }
+    
+    return challenges;
+  };
+
+  // Generate next steps suggestions after task completion
+  const generateNextSteps = (outputData: any, taskStatus: string, taskDescription?: string): NextStep[] => {
+    if (taskStatus !== 'completed' && taskStatus !== 'failed') return [];
+    
+    const steps: NextStep[] = [];
+    
+    if (taskStatus === 'completed') {
+      steps.push({
+        id: 'rerun',
+        title: 'Run Again',
+        description: 'Execute the same task again',
+        action: 'rerun',
+        prompt: taskDescription
+      });
+      
+      if (outputData?.extracted_data) {
+        steps.push({
+          id: 'export-data',
+          title: 'Export Data',
+          description: 'Download the extracted data as JSON',
+          action: 'export'
+        });
+      }
+      
+      steps.push({
+        id: 'modify',
+        title: 'Modify & Retry',
+        description: 'Adjust the task and run a variation',
+        action: 'modify',
+        prompt: taskDescription
+      });
+    }
+    
+    if (taskStatus === 'failed') {
+      steps.push({
+        id: 'retry',
+        title: 'Retry Task',
+        description: 'Try running the task again',
+        action: 'rerun',
+        prompt: taskDescription
+      });
+      
+      steps.push({
+        id: 'simplify',
+        title: 'Simplify Task',
+        description: 'Break down the task into smaller steps',
+        action: 'new'
+      });
+    }
+    
+    return steps;
+  };
+
+  // Build process report from task data
+  const buildProcessReport = (
+    data: any, 
+    outputData: any, 
+    steps: any[], 
+    taskDescription?: string
+  ): ProcessReport | undefined => {
+    if (!data.completed_at && data.status !== 'failed' && data.status !== 'stopped') {
+      return undefined;
+    }
+    
+    const startTime = data.started_at ? new Date(data.started_at).getTime() : Date.now();
+    const endTime = data.completed_at ? new Date(data.completed_at).getTime() : Date.now();
+    
+    return {
+      taskId: data.id,
+      taskDescription: taskDescription || outputData?.task || 'Browser automation task',
+      startedAt: data.started_at || new Date().toISOString(),
+      completedAt: data.completed_at,
+      status: data.status as 'completed' | 'failed' | 'stopped',
+      totalDuration: Math.round((endTime - startTime) / 1000),
+      steps: steps.map((step: any, index: number) => ({
+        id: `step-${index}`,
+        timestamp: step.timestamp || new Date().toISOString(),
+        action: step.action || step.type || step.description || `Step ${index + 1}`,
+        details: step.details || step.target,
+        status: step.status === 'failed' ? 'failed' : 'completed',
+        duration: step.duration
+      })),
+      summary: outputData?.output,
+      errors: data.error_message ? [data.error_message] : undefined
+    };
+  };
+
   // Map database status to enhanced status
   const mapToEnhancedStatus = (dbStatus: string, outputData: any): TaskStatus => {
     if (dbStatus === 'pending') {
@@ -386,6 +561,13 @@ export const useBrowserTask = () => {
           
           // Extract site knowledge
           const siteKnowledge = extractSiteKnowledge(outputData, outputData?.live_url);
+          
+          // Parse new features data
+          const inputData = data.input_data as any;
+          const taskDescription = inputData?.task || outputData?.task;
+          const challenges = parseChallenges(outputData);
+          const nextSteps = generateNextSteps(outputData, data.status, taskDescription);
+          const processReport = buildProcessReport(data, outputData, steps, taskDescription);
 
           // Calculate duration
           const startTime = data.started_at ? new Date(data.started_at).getTime() : Date.now();
@@ -422,12 +604,17 @@ export const useBrowserTask = () => {
             startedAt: data.started_at,
             completedAt: data.completed_at,
             duration,
-            // New planning and todo data
+            // Planning and todo data
             plannedSteps,
             currentPlanStepId,
             todoItems,
             isPlanning: outputData?.is_planning || false,
-            siteKnowledge: siteKnowledge ? [siteKnowledge] : undefined
+            siteKnowledge: siteKnowledge ? [siteKnowledge] : undefined,
+            // New features data
+            taskDescription,
+            challenges,
+            nextSteps,
+            processReport
           });
 
           if (data.status === 'completed' || data.status === 'failed' || data.status === 'stopped') {

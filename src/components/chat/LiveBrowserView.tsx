@@ -8,6 +8,10 @@ import InterventionPrompt from './InterventionPrompt';
 import TaskPlanningPreview from './TaskPlanningPreview';
 import TodoChecklist from './TodoChecklist';
 import SiteKnowledgePanel from './SiteKnowledgePanel';
+import NextStepsSuggestions, { NextStep } from './NextStepsSuggestions';
+import ChallengeIdentification, { Challenge } from './ChallengeIdentification';
+import ProcessDocumentation, { ProcessReport } from './ProcessDocumentation';
+import TaskFeedback from './TaskFeedback';
 import { 
   BrowserStep, 
   TaskStatus, 
@@ -43,12 +47,19 @@ interface LiveBrowserViewProps {
   deliverables?: TaskDeliverable[];
   extractedData?: Record<string, any>;
   taskSummary?: string;
-  // New planning and todo props
+  // Planning and todo props
   plannedSteps?: PlannedStep[];
   currentPlanStepId?: number;
   todoItems?: TodoItem[];
   isPlanning?: boolean;
   siteKnowledge?: SiteKnowledge[];
+  // New feature props
+  nextSteps?: NextStep[];
+  challenges?: Challenge[];
+  processReport?: ProcessReport;
+  taskDescription?: string;
+  onSelectNextStep?: (step: NextStep) => void;
+  onSubmitFeedback?: (feedback: { taskId: string; rating: 'positive' | 'negative' | null; stars?: number | null; comment?: string }) => void;
 }
 
 const LiveBrowserView = ({ 
@@ -78,7 +89,13 @@ const LiveBrowserView = ({
   currentPlanStepId,
   todoItems = [],
   isPlanning = false,
-  siteKnowledge = []
+  siteKnowledge = [],
+  nextSteps = [],
+  challenges = [],
+  processReport,
+  taskDescription,
+  onSelectNextStep,
+  onSubmitFeedback
 }: LiveBrowserViewProps) => {
 
   // Show planning state
@@ -251,7 +268,7 @@ const LiveBrowserView = ({
     );
   }
 
-  // Show completed state with deliverables
+  // Show completed state with deliverables, next steps, report, and feedback
   if (status === 'completed') {
     return (
       <div className="space-y-3">
@@ -261,6 +278,28 @@ const LiveBrowserView = ({
             deliverables={deliverables}
             taskSummary={taskSummary}
             extractedData={extractedData}
+          />
+        )}
+        
+        {/* Process Report */}
+        {processReport && (
+          <ProcessDocumentation report={processReport} />
+        )}
+        
+        {/* Next Steps Suggestions */}
+        {nextSteps.length > 0 && onSelectNextStep && (
+          <NextStepsSuggestions 
+            suggestions={nextSteps}
+            onSelectSuggestion={onSelectNextStep}
+            taskSummary={taskSummary}
+          />
+        )}
+        
+        {/* Task Feedback */}
+        {taskId && (
+          <TaskFeedback 
+            taskId={taskId}
+            onSubmitFeedback={onSubmitFeedback}
           />
         )}
         
@@ -274,6 +313,32 @@ const LiveBrowserView = ({
   if (status === 'failed' || status === 'stopped' || ((status === 'paused' || status === 'awaiting_input') && !liveUrl)) {
     return (
       <div className="space-y-3">
+        {/* Show challenges if any for failed tasks */}
+        {status === 'failed' && challenges.length > 0 && (
+          <ChallengeIdentification challenges={challenges} />
+        )}
+        
+        {/* Process Report for failed/stopped */}
+        {processReport && (
+          <ProcessDocumentation report={processReport} />
+        )}
+        
+        {/* Next Steps for failed tasks */}
+        {nextSteps.length > 0 && onSelectNextStep && (
+          <NextStepsSuggestions 
+            suggestions={nextSteps}
+            onSelectSuggestion={onSelectNextStep}
+          />
+        )}
+        
+        {/* Task Feedback */}
+        {taskId && (
+          <TaskFeedback 
+            taskId={taskId}
+            onSubmitFeedback={onSubmitFeedback}
+          />
+        )}
+        
         <BrowserPreview screenshots={screenshots} actions={actions} />
         {steps.length > 0 && <StepTimeline steps={steps} isRunning={false} currentPhase={currentPhase} />}
       </div>
