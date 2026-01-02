@@ -25,14 +25,14 @@ export const useChat = (projectId?: string) => {
     if (!user) return;
 
     const loadMessages = async () => {
-      const query = supabase
+      let query = supabase
         .from('messages')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: true });
 
       if (projectId) {
-        query.eq('project_id', projectId);
+        query = query.eq('project_id', projectId);
       }
 
       const { data, error } = await query;
