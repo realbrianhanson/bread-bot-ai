@@ -6,8 +6,10 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { useToast } from '@/hooks/use-toast';
+
+const MermaidDiagram = lazy(() => import('./MermaidDiagram'));
 
 interface ChatMessageProps {
   message: Message;
@@ -58,6 +60,15 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
                   const codeString = String(children).replace(/\n$/, '');
                   const codeId = `${message.id}-${codeString.substring(0, 20)}`;
                   const isInline = !className;
+                  
+                  // Render Mermaid diagrams
+                  if (!isInline && match && match[1] === 'mermaid') {
+                    return (
+                      <Suspense fallback={<div className="animate-pulse bg-muted h-32 rounded-lg" />}>
+                        <MermaidDiagram chart={codeString} />
+                      </Suspense>
+                    );
+                  }
                   
                   return !isInline && match ? (
                     <div className="relative group my-2">

@@ -46,6 +46,16 @@ All colors MUST be HSL.
     /* Gradient colors */
     --gradient-from: 262 83% 58%;
     --gradient-to: 220 100% 65%;
+    --gradient-accent: 280 70% 50%;
+    
+    /* Enhanced shadows */
+    --shadow-elegant: 0 10px 40px -10px hsl(262 83% 58% / 0.3);
+    --shadow-glow: 0 0 60px hsl(262 83% 58% / 0.4);
+    --shadow-card: 0 4px 20px -4px hsl(240 10% 10% / 0.1);
+    
+    /* Animation timing */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -94,6 +104,16 @@ All colors MUST be HSL.
     /* Gradient colors for dark mode */
     --gradient-from: 262 83% 58%;
     --gradient-to: 220 100% 65%;
+    --gradient-accent: 280 70% 50%;
+    
+    /* Enhanced shadows for dark mode */
+    --shadow-elegant: 0 10px 40px -10px hsl(262 83% 58% / 0.5);
+    --shadow-glow: 0 0 80px hsl(262 83% 58% / 0.6);
+    --shadow-card: 0 4px 20px -4px hsl(0 0% 0% / 0.3);
+    
+    /* Animation timing */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
     --sidebar-background: 240 10% 8%;
     --sidebar-foreground: 240 5% 90%;
