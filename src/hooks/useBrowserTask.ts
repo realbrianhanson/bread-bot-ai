@@ -38,6 +38,8 @@ export type InterventionReason =
 
 export type InterventionType = 'notify' | 'ask';
 
+export type TakeoverType = 'browser' | 'input' | 'none';
+
 export interface TaskDeliverable {
   type: 'screenshot' | 'data' | 'file' | 'text';
   name: string;
@@ -45,6 +47,43 @@ export interface TaskDeliverable {
   content?: string;
   mimeType?: string;
   timestamp: string;
+}
+
+// Shell session types
+export interface ShellSession {
+  id: string;
+  name: string;
+  status: 'idle' | 'running' | 'waiting' | 'completed' | 'error';
+  workingDir: string;
+  output: string[];
+  lastCommand?: string;
+  startedAt?: string;
+}
+
+// Deployment types
+export type DeploymentType = 'static' | 'nextjs' | 'port';
+
+export interface Deployment {
+  id: string;
+  type: DeploymentType;
+  status: 'pending' | 'deploying' | 'live' | 'error';
+  url?: string;
+  port?: number;
+  localDir?: string;
+  createdAt: string;
+  expiresAt?: string;
+}
+
+// Notify message types
+export type NotifyLevel = 'info' | 'success' | 'warning' | 'progress';
+
+export interface NotifyMessageData {
+  id: string;
+  level: NotifyLevel;
+  message: string;
+  timestamp: string;
+  attachments?: string[];
+  autoHideAfter?: number;
 }
 
 export interface PlannedStep {
@@ -146,6 +185,13 @@ export interface BrowserTask {
   challenges?: Challenge[];
   processReport?: ProcessReport;
   taskDescription?: string;
+  // New properties for notify/ask, takeover, shell, deployment
+  suggestedTakeover?: TakeoverType;
+  takeoverMessage?: string;
+  shellSessions?: ShellSession[];
+  activeShellSessionId?: string;
+  deployments?: Deployment[];
+  notifications?: NotifyMessageData[];
 }
 
 export const useBrowserTask = () => {
