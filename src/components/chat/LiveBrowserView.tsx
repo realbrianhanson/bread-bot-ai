@@ -12,6 +12,10 @@ import NextStepsSuggestions, { NextStep } from './NextStepsSuggestions';
 import ChallengeIdentification, { Challenge } from './ChallengeIdentification';
 import ProcessDocumentation, { ProcessReport } from './ProcessDocumentation';
 import TaskFeedback from './TaskFeedback';
+import UserTakeoverPrompt, { TakeoverType } from './UserTakeoverPrompt';
+import ShellSessionPanel, { ShellSession } from './ShellSessionPanel';
+import DeploymentPanel, { Deployment, DeploymentType } from './DeploymentPanel';
+import NotifyMessage, { NotifyLevel } from './NotifyMessage';
 import { 
   BrowserStep, 
   TaskStatus, 
@@ -21,7 +25,8 @@ import {
   StepPhase,
   PlannedStep,
   TodoItem,
-  SiteKnowledge
+  SiteKnowledge,
+  NotifyMessageData
 } from '@/hooks/useBrowserTask';
 
 interface LiveBrowserViewProps {
@@ -60,6 +65,21 @@ interface LiveBrowserViewProps {
   taskDescription?: string;
   onSelectNextStep?: (step: NextStep) => void;
   onSubmitFeedback?: (feedback: { taskId: string; rating: 'positive' | 'negative' | null; stars?: number | null; comment?: string }) => void;
+  // Additional new feature props
+  suggestedTakeover?: TakeoverType;
+  takeoverMessage?: string;
+  shellSessions?: ShellSession[];
+  activeShellSessionId?: string;
+  deployments?: Deployment[];
+  notifications?: NotifyMessageData[];
+  onAcceptTakeover?: (taskId: string) => void;
+  onDeclineTakeover?: () => void;
+  onSelectShellSession?: (sessionId: string) => void;
+  onKillShellProcess?: (sessionId: string) => void;
+  onWriteShellInput?: (sessionId: string, input: string) => void;
+  onDeploy?: (type: DeploymentType, localDir?: string) => void;
+  onExposePort?: (port: number) => void;
+  onDismissNotification?: (id: string) => void;
 }
 
 const LiveBrowserView = ({ 
@@ -95,7 +115,22 @@ const LiveBrowserView = ({
   processReport,
   taskDescription,
   onSelectNextStep,
-  onSubmitFeedback
+  onSubmitFeedback,
+  // Additional new feature props
+  suggestedTakeover,
+  takeoverMessage,
+  shellSessions = [],
+  activeShellSessionId,
+  deployments = [],
+  notifications = [],
+  onAcceptTakeover,
+  onDeclineTakeover,
+  onSelectShellSession,
+  onKillShellProcess,
+  onWriteShellInput,
+  onDeploy,
+  onExposePort,
+  onDismissNotification
 }: LiveBrowserViewProps) => {
 
   // Show planning state
@@ -188,6 +223,30 @@ const LiveBrowserView = ({
   if (status === 'running' && liveUrl) {
     return (
       <div className="space-y-3">
+        {/* Notifications (non-blocking) */}
+        {notifications.length > 0 && (
+          <div className="space-y-2">
+            {notifications.map((notification) => (
+              <NotifyMessage
+                key={notification.id}
+                {...notification}
+                onDismiss={onDismissNotification}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* User Takeover Suggestion */}
+        {suggestedTakeover && suggestedTakeover !== 'none' && taskId && (
+          <UserTakeoverPrompt
+            suggestedAction={suggestedTakeover}
+            message={takeoverMessage}
+            taskId={taskId}
+            onAcceptTakeover={onAcceptTakeover}
+            onDecline={onDeclineTakeover}
+          />
+        )}
+
         <Card className="p-4 bg-muted/30 backdrop-blur-sm border-border/50">
           <div className="flex items-center gap-2 mb-3">
             <Monitor className="h-4 w-4 animate-pulse text-green-500" />
@@ -251,6 +310,26 @@ const LiveBrowserView = ({
           </div>
         </Card>
 
+        {/* Shell Sessions Panel */}
+        {shellSessions.length > 0 && (
+          <ShellSessionPanel
+            sessions={shellSessions}
+            activeSessionId={activeShellSessionId}
+            onSelectSession={onSelectShellSession}
+            onKillProcess={onKillShellProcess}
+            onWriteInput={onWriteShellInput}
+          />
+        )}
+
+        {/* Deployment Panel */}
+        {(deployments.length > 0 || onDeploy || onExposePort) && (
+          <DeploymentPanel
+            deployments={deployments}
+            onDeploy={onDeploy}
+            onExposePort={onExposePort}
+          />
+        )}
+
         <StepTimeline steps={steps} isRunning={true} currentPhase={currentPhase} />
       </div>
     );
@@ -300,6 +379,15 @@ const LiveBrowserView = ({
           <TaskFeedback 
             taskId={taskId}
             onSubmitFeedback={onSubmitFeedback}
+          />
+        )}
+        
+        {/* Deployment Panel for completed tasks */}
+        {(deployments.length > 0 || onDeploy || onExposePort) && (
+          <DeploymentPanel
+            deployments={deployments}
+            onDeploy={onDeploy}
+            onExposePort={onExposePort}
           />
         )}
         

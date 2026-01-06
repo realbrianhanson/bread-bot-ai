@@ -272,7 +272,7 @@ const Dashboard = () => {
             {/* Right Panel: Preview or Live Browser */}
             <ResizablePanel defaultSize={65} minSize={40} className="relative">
               {currentTask && currentTask.liveUrl ? (
-                <LiveBrowserView 
+              <LiveBrowserView 
                   liveUrl={currentTask.liveUrl}
                   status={currentTask.status}
                   screenshots={currentTask.screenshots}
@@ -305,6 +305,15 @@ const Dashboard = () => {
                   processReport={currentTask.processReport}
                   taskDescription={currentTask.taskDescription}
                   onSelectNextStep={(step) => step.prompt && executeTask(step.prompt, activeConversationId || undefined, selectedProfileId || undefined)}
+                  // New feature props
+                  suggestedTakeover={currentTask.suggestedTakeover}
+                  takeoverMessage={currentTask.takeoverMessage}
+                  shellSessions={currentTask.shellSessions}
+                  activeShellSessionId={currentTask.activeShellSessionId}
+                  deployments={currentTask.deployments}
+                  notifications={currentTask.notifications}
+                  onAcceptTakeover={pauseTask}
+                  onDeclineTakeover={() => {}} // Continue automatically
                 />
               ) : (
                 <CodePreview
