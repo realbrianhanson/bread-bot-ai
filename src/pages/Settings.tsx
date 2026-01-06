@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Save, Eye, EyeOff, Crown, RefreshCw, Settings2, BarChart3, Shield, FileUp, Book } from 'lucide-react';
+import { ArrowLeft, Save, Eye, EyeOff, Crown, RefreshCw, Settings2, BarChart3, Shield, FileUp, Book, Globe } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
@@ -16,7 +16,7 @@ import { AnalyticsDashboard } from '@/components/settings/AnalyticsDashboard';
 import { SecurityScanner } from '@/components/settings/SecurityScanner';
 import { DocumentationSearch } from '@/components/settings/DocumentationSearch';
 import { DocumentParser } from '@/components/settings/DocumentParser';
-
+import { WebScraper } from '@/components/settings/WebScraper';
 export default function Settings() {
   const { user, signOut } = useAuth();
   const { 
@@ -147,7 +147,7 @@ export default function Settings() {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="account" className="space-y-6">
-          <TabsList className="glass-strong border-white/20 grid w-full max-w-2xl grid-cols-5">
+          <TabsList className="glass-strong border-white/20 grid w-full max-w-3xl grid-cols-6">
             <TabsTrigger value="account" className="flex items-center gap-2">
               <Settings2 className="h-4 w-4" />
               <span className="hidden sm:inline">Account</span>
@@ -159,6 +159,10 @@ export default function Settings() {
             <TabsTrigger value="security" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               <span className="hidden sm:inline">Security</span>
+            </TabsTrigger>
+            <TabsTrigger value="scraper" className="flex items-center gap-2">
+              <Globe className="h-4 w-4" />
+              <span className="hidden sm:inline">Scraper</span>
             </TabsTrigger>
             <TabsTrigger value="documents" className="flex items-center gap-2">
               <FileUp className="h-4 w-4" />
@@ -336,6 +340,11 @@ export default function Settings() {
           {/* Security Tab */}
           <TabsContent value="security" className="max-w-2xl">
             <SecurityScanner />
+          </TabsContent>
+
+          {/* Scraper Tab */}
+          <TabsContent value="scraper" className="max-w-2xl">
+            <WebScraper />
           </TabsContent>
 
           {/* Documents Tab */}
