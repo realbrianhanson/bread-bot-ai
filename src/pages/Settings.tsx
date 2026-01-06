@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Save, Eye, EyeOff, Crown, RefreshCw, Settings2, BarChart3, Shield, FileUp, Book, Globe } from 'lucide-react';
+import { ArrowLeft, Save, Eye, EyeOff, Crown, RefreshCw, Settings2, BarChart3, Shield, FileUp, Book, Globe, Bot } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
@@ -17,6 +17,8 @@ import { SecurityScanner } from '@/components/settings/SecurityScanner';
 import { DocumentationSearch } from '@/components/settings/DocumentationSearch';
 import { DocumentParser } from '@/components/settings/DocumentParser';
 import { WebScraper } from '@/components/settings/WebScraper';
+import WorkflowAgentPanel from '@/components/agents/WorkflowAgentPanel';
+
 export default function Settings() {
   const { user, signOut } = useAuth();
   const { 
@@ -147,10 +149,14 @@ export default function Settings() {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="account" className="space-y-6">
-          <TabsList className="glass-strong border-white/20 grid w-full max-w-3xl grid-cols-6">
+          <TabsList className="glass-strong border-white/20 grid w-full max-w-4xl grid-cols-7">
             <TabsTrigger value="account" className="flex items-center gap-2">
               <Settings2 className="h-4 w-4" />
               <span className="hidden sm:inline">Account</span>
+            </TabsTrigger>
+            <TabsTrigger value="agents" className="flex items-center gap-2">
+              <Bot className="h-4 w-4" />
+              <span className="hidden sm:inline">Agents</span>
             </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
@@ -332,6 +338,11 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
+          {/* Agents Tab */}
+          <TabsContent value="agents" className="max-w-5xl">
+            <WorkflowAgentPanel />
+          </TabsContent>
+
           {/* Analytics Tab */}
           <TabsContent value="analytics" className="max-w-4xl">
             <AnalyticsDashboard />
@@ -341,8 +352,6 @@ export default function Settings() {
           <TabsContent value="security" className="max-w-2xl">
             <SecurityScanner />
           </TabsContent>
-
-          {/* Scraper Tab */}
           <TabsContent value="scraper" className="max-w-2xl">
             <WebScraper />
           </TabsContent>
