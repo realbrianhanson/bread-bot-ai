@@ -28,6 +28,15 @@ serve(async (req) => {
     if (!authHeader) throw new Error("No authorization header provided");
     logStep("Authorization header found");
 
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      {
+        global: { headers: { Authorization: authHeader } },
+        auth: { persistSession: false, autoRefreshToken: false },
+      }
+    );
+
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -37,14 +46,27 @@ serve(async (req) => {
     const token = authHeader.replace(/^Bearer\s+/i, "").trim();
     if (!token) throw new Error("No bearer token provided");
 
-    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
-    const userId = claimsData?.claims?.sub;
-    const userEmail = claimsData?.claims?.email;
+    const tokenParts = token.split(".");
+    if (tokenParts.length < 2) throw new Error("Authentication error: Invalid token format");
 
-    if (claimsError || !userId || typeof userEmail !== "string") {
-      throw new Error(`Authentication error: ${claimsError?.message || "Invalid auth claims"}`);
+    const base64Payload = tokenParts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const paddedPayload = base64Payload.padEnd(Math.ceil(base64Payload.length / 4) * 4, "=");
+    const claims = JSON.parse(atob(paddedPayload));
+
+    const userId = claims?.sub;
+    if (typeof userId !== "string") throw new Error("Authentication error: Invalid auth claims");
+
+    const { data: profile, error: profileError } = await userClient
+      .from("profiles")
+      .select("id, email")
+      .eq("id", userId)
+      .single();
+
+    if (profileError || !profile?.email) {
+      throw new Error("Authentication error: Auth session missing!");
     }
 
+    const userEmail = profile.email;
     logStep("User authenticated", { userId, email: userEmail });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
