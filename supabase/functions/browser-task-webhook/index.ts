@@ -72,6 +72,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  try {
     // Verify shared secret
     const url = new URL(req.url);
     const secret = url.searchParams.get('secret');
