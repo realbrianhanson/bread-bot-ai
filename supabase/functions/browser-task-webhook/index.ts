@@ -161,6 +161,34 @@ serve(async (req) => {
       }
     }
 
+    // Dispatch user webhooks on completion or failure
+    if (status === 'finished' || status === 'failed') {
+      const webhookEvent = status === 'finished' ? 'task.completed' : 'task.failed';
+      try {
+        const dispatchUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/dispatch-webhook`;
+        await fetch(dispatchUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+          },
+          body: JSON.stringify({
+            userId: task.user_id,
+            event: webhookEvent,
+            taskData: {
+              taskId: task.id,
+              browserUseTaskId: task_id,
+              status: mappedStatus,
+              description: output || taskError || 'Task event',
+            },
+          }),
+        });
+        console.log('[WEBHOOK] Dispatched user webhooks for event:', webhookEvent);
+      } catch (dispatchErr) {
+        console.error('[WEBHOOK] Failed to dispatch user webhooks:', dispatchErr);
+      }
+    }
+
     console.log('[WEBHOOK] Task updated:', task.id, '→', mappedStatus);
 
     return new Response(JSON.stringify({ ok: true }), {
