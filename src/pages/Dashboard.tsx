@@ -2,6 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Settings, LogOut, MessageSquarePlus, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -116,7 +117,7 @@ const Dashboard = () => {
   );
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-background overflow-hidden dark">
+    <div className="h-screen w-screen flex flex-col bg-background overflow-hidden">
       {/* Header */}
       <header className="shrink-0 h-12 border-b border-border/50 bg-card/80 backdrop-blur-sm z-10 flex items-center justify-between px-4">
         <div className="flex items-center gap-2.5">
@@ -133,6 +134,7 @@ const Dashboard = () => {
           <PlanBadge size="sm" className="hidden sm:inline-flex" />
         </div>
         <div className="flex items-center gap-1.5">
+          <ThemeToggle />
           <TaskHistory onRerunTask={handleRerunTask} />
           <Button variant="ghost" size="icon" onClick={() => navigate("/settings")} className="h-8 w-8 text-muted-foreground hover:text-foreground">
             <Settings className="h-4 w-4" />

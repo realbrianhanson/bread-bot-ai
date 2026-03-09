@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Globe, Code, FileStack, ArrowRight, Sparkles, Shield, Zap } from "lucide-react";
+import { AuroraBackground } from "@/components/ui/aurora-background";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const Index = () => {
   const { user } = useAuth();
@@ -40,15 +42,10 @@ const Index = () => {
   ];
 
   return (
-    <main className="min-h-screen bg-background relative overflow-hidden dark">
+    <main className="min-h-screen bg-background relative overflow-hidden">
       {/* Background effects */}
-      <div className="absolute inset-0 mesh-gradient" />
+      <AuroraBackground />
       <div className="absolute inset-0 dot-grid opacity-30" />
-
-      {/* Floating orbs */}
-      <div className="absolute top-20 left-[15%] w-72 h-72 bg-primary/10 rounded-full blur-[100px] animate-float" />
-      <div className="absolute top-40 right-[10%] w-96 h-96 bg-brand-rose/8 rounded-full blur-[120px] animate-float" style={{ animationDelay: '2s' }} />
-      <div className="absolute bottom-20 left-[40%] w-80 h-80 bg-brand-emerald/6 rounded-full blur-[100px] animate-float" style={{ animationDelay: '4s' }} />
 
       {/* Nav */}
       <nav className="relative z-10 flex items-center justify-between px-6 md:px-12 py-5">
@@ -56,9 +53,12 @@ const Index = () => {
           <span className="text-2xl">🧄</span>
           <span className="text-lg font-bold tracking-tight text-foreground">GarlicBread.ai</span>
         </div>
-        <Button variant="outline" onClick={() => navigate("/auth")} className="border-border/60 hover:bg-primary/10 hover:border-primary/40 transition-all">
-          Sign In
-        </Button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Button variant="outline" onClick={() => navigate("/auth")} className="border-border/60 hover:bg-primary/10 hover:border-primary/40 transition-all">
+            Sign In
+          </Button>
+        </div>
       </nav>
 
       {/* Hero */}
