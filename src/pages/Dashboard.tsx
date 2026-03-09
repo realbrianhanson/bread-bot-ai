@@ -34,6 +34,7 @@ import { ScheduledTasksPanel } from "@/components/scheduled/ScheduledTasksPanel"
 import { WorkflowBuilder } from "@/components/workflow/WorkflowBuilder";
 import { TaskPlanViewer } from "@/components/workflow/TaskPlanViewer";
 import { useTaskPlanner } from "@/hooks/useTaskPlanner";
+import { WebhookManager } from "@/components/webhooks/WebhookManager";
 
 const Dashboard = () => {
   const { signOut, user } = useAuth();
