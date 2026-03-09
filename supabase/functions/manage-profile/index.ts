@@ -2,7 +2,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  // Expanded allowed headers to include additional client and runtime info
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 Deno.serve(async (req) => {
@@ -16,17 +17,22 @@ Deno.serve(async (req) => {
       throw new Error('No authorization header');
     }
 
+    // Extract token from Bearer scheme
+    const token = authHeader.replace('Bearer ', '');
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Use the extracted token for authentication
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) {
       throw new Error('Unauthorized');
     }
 
+    // Proceed with request handling
     const { action, profileId, name, description, sites } = await req.json();
 
     const browserUseApiKey = Deno.env.get('BROWSER_USE_API_KEY');
@@ -37,7 +43,6 @@ Deno.serve(async (req) => {
     if (action === 'create') {
       console.log('Creating new browser profile:', name);
 
-      // Create profile in Browser Use API
       const createResponse = await fetch('https://api.browser-use.com/api/v1/browser-profiles', {
         method: 'POST',
         headers: {
@@ -55,7 +60,6 @@ Deno.serve(async (req) => {
 
       const browserUseProfile = await createResponse.json();
 
-      // Store profile in database
       const { data: profile, error: insertError } = await supabase
         .from('browser_profiles')
         .insert({
@@ -112,7 +116,6 @@ Deno.serve(async (req) => {
 
       console.log('Deleting browser profile:', profileId);
 
-      // Get profile to get Browser Use profile ID
       const { data: profile, error: getError } = await supabase
         .from('browser_profiles')
         .select('*')
@@ -124,7 +127,6 @@ Deno.serve(async (req) => {
         throw new Error('Profile not found');
       }
 
-      // Delete from Browser Use API
       if (profile.browser_use_profile_id) {
         const deleteResponse = await fetch(
           `https://api.browser-use.com/api/v1/browser-profiles/${profile.browser_use_profile_id}`,
@@ -141,7 +143,6 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Delete from database
       const { error: deleteError } = await supabase
         .from('browser_profiles')
         .delete()
