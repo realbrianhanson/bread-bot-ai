@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 const BROWSER_USE_API_URL = 'https://api.browser-use.com/api/v1';
@@ -25,17 +25,15 @@ serve(async (req) => {
       });
     }
 
+    const token = authHeader.replace('Bearer ', '');
+
     const authClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
+      { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user }, error: userError } = await authClient.auth.getUser();
+    const { data: { user }, error: userError } = await authClient.auth.getUser(token);
     
     if (userError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -58,7 +56,6 @@ serve(async (req) => {
       });
     }
 
-    // Get task to verify ownership and get Browser Use task ID
     const { data: task, error: taskError } = await supabaseClient
       .from('tasks')
       .select('*')
@@ -83,7 +80,6 @@ serve(async (req) => {
       });
     }
 
-    // Determine which API key was used for this task
     const { data: usageData } = await supabaseClient.rpc('get_user_tier_and_usage', {
       p_user_id: user.id
     });
@@ -104,7 +100,6 @@ serve(async (req) => {
       browserUseApiKey = Deno.env.get('BROWSER_USE_API_KEY') ?? '';
     }
 
-    // Call Browser Use API to stop the task
     const stopResponse = await fetch(`${BROWSER_USE_API_URL}/task/${browserUseTaskId}/stop`, {
       method: 'PUT',
       headers: {
@@ -124,7 +119,6 @@ serve(async (req) => {
       });
     }
 
-    // Update task status to stopped
     await supabaseClient
       .from('tasks')
       .update({

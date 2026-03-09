@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 serve(async (req) => {
@@ -13,7 +13,6 @@ serve(async (req) => {
   }
 
   try {
-    // Validate authorization header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'No authorization header provided' }), {
@@ -22,16 +21,15 @@ serve(async (req) => {
       });
     }
 
+    const token = authHeader.replace('Bearer ', '');
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Extract JWT from authorization header
-    const jwt = authHeader.replace('Bearer ', '');
-
-    // Get user using the JWT token
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(jwt);
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError || !user) {
       console.error('Auth error:', userError);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -55,7 +53,6 @@ serve(async (req) => {
       });
     }
 
-    // Check if user has exceeded their limit
     if (usage.chat_messages_used >= usage.chat_messages_limit) {
       return new Response(JSON.stringify({ 
         error: `You've reached your monthly limit of ${usage.chat_messages_limit} messages. Please upgrade your plan to continue.`,
@@ -70,7 +67,6 @@ serve(async (req) => {
     let anthropicApiKey: string;
     
     if (usage.can_use_own_keys) {
-      // Lifetime tier: try to use user's own key
       const { data: apiKeyData } = await supabaseClient
         .from('api_keys')
         .select('encrypted_key')
@@ -83,12 +79,10 @@ serve(async (req) => {
         anthropicApiKey = apiKeyData.encrypted_key;
         console.log('Using user\'s own Anthropic API key');
       } else {
-        // Fall back to shared key if user hasn't provided their own
         anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
         console.log('Using shared Anthropic API key (user has BYOK but no key configured)');
       }
     } else {
-      // All other tiers: use shared API key
       anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
       console.log('Using shared Anthropic API key');
     }
