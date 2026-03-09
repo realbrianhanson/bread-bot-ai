@@ -202,6 +202,7 @@ export const useBrowserTask = () => {
   const [isResuming, setIsResuming] = useState(false);
   const { user } = useAuth();
   const { canRunBrowserTask, refreshSubscription } = useSubscription();
+  const currentTaskIdRef = useRef<string | null>(null);
 
   // Determine intervention reason from task data
   const getInterventionReason = (outputData: any): { reason: InterventionReason; message: string } => {
@@ -239,7 +240,6 @@ export const useBrowserTask = () => {
   const parseDeliverables = (data: any, screenshots?: string[]): TaskDeliverable[] => {
     const deliverables: TaskDeliverable[] = [];
 
-    // Add screenshots as deliverables
     if (screenshots?.length) {
       screenshots.forEach((url, index) => {
         deliverables.push({
@@ -252,7 +252,6 @@ export const useBrowserTask = () => {
       });
     }
 
-    // Add extracted data as deliverables
     if (data?.extracted_data) {
       deliverables.push({
         type: 'data',
@@ -263,7 +262,6 @@ export const useBrowserTask = () => {
       });
     }
 
-    // Add output text as deliverable
     if (data?.output && typeof data.output === 'string') {
       deliverables.push({
         type: 'text',
@@ -302,7 +300,6 @@ export const useBrowserTask = () => {
 
   // Parse planned steps from task output
   const parsePlannedSteps = (outputData: any, executedSteps: any[]): PlannedStep[] => {
-    // If the API provides a plan, use it
     if (outputData?.plan?.steps) {
       return outputData.plan.steps.map((step: any, index: number) => {
         const stepNum = index + 1;
@@ -319,7 +316,6 @@ export const useBrowserTask = () => {
       });
     }
     
-    // Otherwise, generate from executed steps
     if (executedSteps.length > 0) {
       return executedSteps.map((step: any, index: number) => ({
         id: index + 1,
@@ -334,7 +330,6 @@ export const useBrowserTask = () => {
 
   // Parse todo items from task output
   const parseTodoItems = (outputData: any, executedSteps: any[]): TodoItem[] => {
-    // If the API provides a todo list, use it
     if (outputData?.todo?.items) {
       return outputData.todo.items.map((item: any, index: number) => ({
         id: item.id || `todo-${index}`,
@@ -344,7 +339,6 @@ export const useBrowserTask = () => {
       }));
     }
     
-    // Otherwise, generate from executed steps
     if (executedSteps.length > 0) {
       return executedSteps.map((step: any, index: number) => ({
         id: `step-${index}`,
@@ -392,7 +386,6 @@ export const useBrowserTask = () => {
       }));
     }
     
-    // Auto-detect common challenges
     const challenges: Challenge[] = [];
     
     if (outputData?.requires_login) {
@@ -510,18 +503,11 @@ export const useBrowserTask = () => {
   // Map database status to enhanced status
   const mapToEnhancedStatus = (dbStatus: string, outputData: any): TaskStatus => {
     if (dbStatus === 'pending') {
-      // Check if planning
-      if (outputData?.is_planning) {
-        return 'planning';
-      }
-      // Check if we're in an initial analysis phase
-      if (outputData?.steps?.length === 0 || !outputData?.steps) {
-        return 'analyzing';
-      }
+      if (outputData?.is_planning) return 'planning';
+      if (outputData?.steps?.length === 0 || !outputData?.steps) return 'analyzing';
       return 'pending';
     }
     if (dbStatus === 'running') {
-      // Check if gathering info
       const lastStep = outputData?.steps?.[outputData.steps.length - 1];
       if (lastStep?.action?.toLowerCase().includes('gather') || 
           lastStep?.action?.toLowerCase().includes('extract')) {
@@ -538,14 +524,113 @@ export const useBrowserTask = () => {
     return dbStatus as TaskStatus;
   };
 
+  // Shared helper to build BrowserTask from a DB row
+  const buildBrowserTaskFromRow = (data: any): BrowserTask => {
+    const outputData = data.output_data as any;
+    const steps = outputData?.actions || [];
+    const enhancedStatus = mapToEnhancedStatus(data.status, outputData);
+    const currentPhase = getCurrentPhase(steps, data.status);
+    const intervention = getInterventionReason(outputData);
+    const deliverables = parseDeliverables(outputData, data.screenshots || undefined);
+    const plannedSteps = parsePlannedSteps(outputData, steps);
+    const todoItems = parseTodoItems(outputData, steps);
+    const currentPlanStepId = plannedSteps.find(s => s.status === 'current')?.id;
+    const siteKnowledge = extractSiteKnowledge(outputData, outputData?.live_url);
+    const inputData = data.input_data as any;
+    const taskDescription = inputData?.task || outputData?.task;
+    const challenges = parseChallenges(outputData);
+    const nextSteps = generateNextSteps(outputData, data.status, taskDescription);
+    const processReport = buildProcessReport(data, outputData, steps, taskDescription);
+    const startTime = data.started_at ? new Date(data.started_at).getTime() : Date.now();
+    const endTime = data.completed_at ? new Date(data.completed_at).getTime() : Date.now();
+    const duration = Math.round((endTime - startTime) / 1000);
+
+    return {
+      id: data.id,
+      status: enhancedStatus,
+      liveUrl: outputData?.live_url,
+      actions: outputData?.actions,
+      steps: steps.map((step: any, index: number) => ({
+        ...step,
+        phase: index === steps.length - 1 ? currentPhase : 'completed'
+      })),
+      screenshots: data.screenshots || undefined,
+      error_message: data.error_message || undefined,
+      requiresLogin: outputData?.requires_login || false,
+      loginUrl: outputData?.login_url,
+      loginSite: outputData?.login_site,
+      interventionReason: (enhancedStatus === 'paused' || enhancedStatus === 'awaiting_input') 
+        ? intervention.reason : undefined,
+      interventionMessage: (enhancedStatus === 'paused' || enhancedStatus === 'awaiting_input')
+        ? intervention.message : undefined,
+      interventionType: (enhancedStatus === 'paused' || enhancedStatus === 'awaiting_input')
+        ? 'ask' : undefined,
+      currentPhase,
+      deliverables,
+      extractedData: outputData?.extracted_data,
+      taskSummary: outputData?.output,
+      startedAt: data.started_at,
+      completedAt: data.completed_at,
+      duration,
+      plannedSteps,
+      currentPlanStepId,
+      todoItems,
+      isPlanning: outputData?.is_planning || false,
+      siteKnowledge: siteKnowledge ? [siteKnowledge] : undefined,
+      taskDescription,
+      challenges,
+      nextSteps,
+      processReport
+    };
+  };
+
+  // Realtime subscription for task updates
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`tasks-realtime-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'tasks',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const data = payload.new as any;
+          if (!currentTaskIdRef.current || data.id !== currentTaskIdRef.current) return;
+
+          const task = buildBrowserTaskFromRow(data);
+          setCurrentTask(task);
+
+          // Handle terminal states
+          if (data.status === 'completed' || data.status === 'failed' || data.status === 'stopped') {
+            setIsExecuting(false);
+
+            if (data.status === 'completed') {
+              toast({ title: 'Task Completed', description: 'Browser automation finished successfully' });
+            } else if (data.status === 'failed') {
+              toast({ title: 'Task Failed', description: data.error_message || 'Browser automation failed', variant: 'destructive' });
+            } else if (data.status === 'stopped') {
+              toast({ title: 'Task Stopped', description: 'Browser automation was stopped by user' });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const executeTask = useCallback(
     async (task: string, projectId?: string, profileId?: string) => {
       if (!user) return;
 
-      // Check if user can run browser task
-      if (!canRunBrowserTask()) {
-        return;
-      }
+      if (!canRunBrowserTask()) return;
 
       setIsExecuting(true);
       setCurrentTask({ 
@@ -554,6 +639,7 @@ export const useBrowserTask = () => {
         currentPhase: 'analyzing',
         startedAt: new Date().toISOString()
       });
+      currentTaskIdRef.current = null;
 
       try {
         const response = await supabase.functions.invoke('browser-task', {
@@ -565,6 +651,8 @@ export const useBrowserTask = () => {
         }
 
         const taskData = response.data;
+        currentTaskIdRef.current = taskData.taskId;
+
         setCurrentTask({
           id: taskData.taskId,
           status: 'running',
@@ -579,115 +667,6 @@ export const useBrowserTask = () => {
           description: 'Browser automation is running',
         });
 
-        // Poll for task completion
-        const pollInterval = setInterval(async () => {
-          const { data, error } = await supabase
-            .from('tasks')
-            .select('*')
-            .eq('id', taskData.taskId)
-            .single();
-
-          if (error || !data) {
-            clearInterval(pollInterval);
-            setIsExecuting(false);
-            return;
-          }
-
-          const outputData = data.output_data as any;
-          const steps = outputData?.actions || [];
-          const enhancedStatus = mapToEnhancedStatus(data.status, outputData);
-          const currentPhase = getCurrentPhase(steps, data.status);
-          const intervention = getInterventionReason(outputData);
-          const deliverables = parseDeliverables(outputData, data.screenshots || undefined);
-          
-          // Parse planning and todo data
-          const plannedSteps = parsePlannedSteps(outputData, steps);
-          const todoItems = parseTodoItems(outputData, steps);
-          const currentPlanStepId = plannedSteps.find(s => s.status === 'current')?.id;
-          
-          // Extract site knowledge
-          const siteKnowledge = extractSiteKnowledge(outputData, outputData?.live_url);
-          
-          // Parse new features data
-          const inputData = data.input_data as any;
-          const taskDescription = inputData?.task || outputData?.task;
-          const challenges = parseChallenges(outputData);
-          const nextSteps = generateNextSteps(outputData, data.status, taskDescription);
-          const processReport = buildProcessReport(data, outputData, steps, taskDescription);
-
-          // Calculate duration
-          const startTime = data.started_at ? new Date(data.started_at).getTime() : Date.now();
-          const endTime = data.completed_at ? new Date(data.completed_at).getTime() : Date.now();
-          const duration = Math.round((endTime - startTime) / 1000);
-
-          setCurrentTask({
-            id: data.id,
-            status: enhancedStatus,
-            liveUrl: outputData?.live_url,
-            actions: outputData?.actions,
-            steps: steps.map((step: any, index: number) => ({
-              ...step,
-              phase: index === steps.length - 1 ? currentPhase : 'completed'
-            })),
-            screenshots: data.screenshots || undefined,
-            error_message: data.error_message || undefined,
-            requiresLogin: outputData?.requires_login || false,
-            loginUrl: outputData?.login_url,
-            loginSite: outputData?.login_site,
-            interventionReason: (enhancedStatus === 'paused' || enhancedStatus === 'awaiting_input') 
-              ? intervention.reason 
-              : undefined,
-            interventionMessage: (enhancedStatus === 'paused' || enhancedStatus === 'awaiting_input')
-              ? intervention.message
-              : undefined,
-            interventionType: (enhancedStatus === 'paused' || enhancedStatus === 'awaiting_input')
-              ? 'ask'
-              : undefined,
-            currentPhase,
-            deliverables,
-            extractedData: outputData?.extracted_data,
-            taskSummary: outputData?.output,
-            startedAt: data.started_at,
-            completedAt: data.completed_at,
-            duration,
-            // Planning and todo data
-            plannedSteps,
-            currentPlanStepId,
-            todoItems,
-            isPlanning: outputData?.is_planning || false,
-            siteKnowledge: siteKnowledge ? [siteKnowledge] : undefined,
-            // New features data
-            taskDescription,
-            challenges,
-            nextSteps,
-            processReport
-          });
-
-          if (data.status === 'completed' || data.status === 'failed' || data.status === 'stopped') {
-            clearInterval(pollInterval);
-            setIsExecuting(false);
-
-            if (data.status === 'completed') {
-              toast({
-                title: 'Task Completed',
-                description: 'Browser automation finished successfully',
-              });
-            } else if (data.status === 'failed') {
-              toast({
-                title: 'Task Failed',
-                description: data.error_message || 'Browser automation failed',
-                variant: 'destructive',
-              });
-            } else if (data.status === 'stopped') {
-              toast({
-                title: 'Task Stopped',
-                description: 'Browser automation was stopped by user',
-                variant: 'default',
-              });
-            }
-          }
-        }, 1000);
-
         return taskData.taskId;
       } catch (error: any) {
         console.error('Error executing browser task:', error);
@@ -698,7 +677,7 @@ export const useBrowserTask = () => {
         });
         setIsExecuting(false);
         setCurrentTask(null);
-        // Refresh subscription to update usage
+        currentTaskIdRef.current = null;
         refreshSubscription();
       }
     },
