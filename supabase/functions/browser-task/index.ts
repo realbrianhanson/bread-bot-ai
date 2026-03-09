@@ -9,278 +9,6 @@ const corsHeaders = {
 
 const BROWSER_USE_API_URL = 'https://api.browser-use.com/api/v1';
 
-// Login detection helper
-function detectLoginPage(url?: string, description?: string): { isLoginPage: boolean; loginSite?: string } {
-  const LOGIN_URL_PATTERNS = [
-    '/login', '/signin', '/sign-in', '/auth', '/authenticate',
-    '/ap/signin', '/gp/sign-in', // Amazon-specific login paths
-    'accounts.google.com', 'login.microsoftonline.com', 'accounts.github.com'
-  ];
-  const LOGIN_KEYWORDS = [
-    'login', 'sign in', 'signin', 'credentials', 'password', 
-    'authenticate', 'two-factor', '2fa', 'captcha',
-    'sign in to add', 'sign in to continue', 'sign in to your account',
-    'please sign in', 'please log in', 'login required'
-  ];
-
-  const lowerUrl = (url || '').toLowerCase();
-  const lowerDescription = (description || '').toLowerCase();
-  
-  const urlMatch = LOGIN_URL_PATTERNS.some(p => lowerUrl.includes(p));
-  const descMatch = LOGIN_KEYWORDS.some(k => lowerDescription.includes(k));
-  
-  if (urlMatch || descMatch) {
-    let loginSite = 'the website';
-    if (url) {
-      try {
-        const urlObj = new URL(url);
-        loginSite = urlObj.hostname.replace('www.', '');
-      } catch { }
-    }
-    return { isLoginPage: true, loginSite };
-  }
-  
-  return { isLoginPage: false };
-}
-
-async function pollTaskStatus(
-  browserUseTaskId: string,
-  apiKey: string,
-  supabaseTaskId: string,
-  supabaseClient: any,
-  userId: string
-) {
-  const maxAttempts = 300; // Poll for up to 10 minutes (300 * 2 seconds)
-  let attempts = 0;
-  let hasAutoPaused = false;
-
-  while (attempts < maxAttempts) {
-    try {
-      // Get task details from Browser Use
-      const response = await fetch(`${BROWSER_USE_API_URL}/task/${browserUseTaskId}`, {
-        headers: { Authorization: `Bearer ${apiKey}` },
-      });
-
-      if (!response.ok) {
-        console.error('Failed to fetch task status:', await response.text());
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        attempts++;
-        continue;
-      }
-
-      const taskData = await response.json();
-      console.log('Task status:', taskData.status);
-      
-      // Extract live URL from task data (might be in different places)
-      const liveUrl = taskData.live_url || taskData.liveUrl || taskData.live_session_url;
-      if (liveUrl) {
-        console.log('Found live URL in polling:', liveUrl);
-      }
-
-      // Fetch current task to preserve browser_use_task_id and check status
-      const { data: currentTask } = await supabaseClient
-        .from('tasks')
-        .select('output_data, status')
-        .eq('id', supabaseTaskId)
-        .single();
-
-      const currentOutputData = currentTask?.output_data || {};
-
-      // Check for login page detection (only if running and not already auto-paused)
-      if (taskData.status === 'running' && !hasAutoPaused && currentTask?.status !== 'paused') {
-        const latestStep = taskData.steps?.[taskData.steps.length - 1];
-        const stepUrl = latestStep?.url || liveUrl;
-        const stepDescription = latestStep?.description;
-        
-        const loginDetection = detectLoginPage(stepUrl, stepDescription);
-        
-        if (loginDetection.isLoginPage) {
-          console.log('🔐 Login page detected, auto-pausing task...');
-          hasAutoPaused = true;
-          
-          // Call pause API
-          try {
-            const pauseResponse = await fetch(`${BROWSER_USE_API_URL}/task/${browserUseTaskId}/pause`, {
-              method: 'POST',
-              headers: { Authorization: `Bearer ${apiKey}` },
-            });
-            
-            if (pauseResponse.ok) {
-              console.log('Task auto-paused successfully for login');
-              
-              // Update task to paused with login info
-              await supabaseClient
-                .from('tasks')
-                .update({
-                  status: 'paused',
-                  output_data: {
-                    ...currentOutputData,
-                    browser_use_task_id: browserUseTaskId,
-                    live_url: liveUrl || currentOutputData.live_url,
-                    requires_login: true,
-                    login_url: stepUrl,
-                    login_site: loginDetection.loginSite,
-                    output: taskData.output,
-                    steps: taskData.steps || [],
-                    actions: taskData.steps?.map((step: any) => ({
-                      type: step.action,
-                      timestamp: step.timestamp,
-                      description: step.description,
-                      target: step.target || null,
-                      status: step.status || 'completed',
-                    })) || [],
-                  },
-                })
-                .eq('id', supabaseTaskId);
-              
-              // Continue polling to detect when user resumes
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              attempts++;
-              continue;
-            }
-          } catch (pauseError) {
-            console.error('Failed to auto-pause for login:', pauseError);
-          }
-        }
-      }
-
-      // Update database with current status and steps
-      await supabaseClient
-        .from('tasks')
-        .update({
-          status: taskData.status === 'finished' ? 'completed' : 
-                  taskData.status === 'failed' ? 'failed' :
-                  taskData.status === 'paused' ? 'paused' : 'running',
-          output_data: {
-            ...currentOutputData,
-            browser_use_task_id: currentOutputData.browser_use_task_id || browserUseTaskId,
-            live_url: liveUrl || currentOutputData.live_url,
-            output: taskData.output,
-            steps: taskData.steps || [],
-            actions: taskData.steps?.map((step: any) => ({
-              type: step.action,
-              timestamp: step.timestamp,
-              description: step.description,
-              target: step.target || null,
-              status: step.status || 'completed',
-            })) || [],
-          },
-          error_message: taskData.error || null,
-        })
-        .eq('id', supabaseTaskId);
-
-      // If task is finished, fetch screenshots
-      if (taskData.status === 'finished' || taskData.status === 'failed' || taskData.status === 'stopped') {
-        if (taskData.status === 'finished') {
-          await fetchAndStoreScreenshots(browserUseTaskId, apiKey, supabaseTaskId, supabaseClient, userId);
-        }
-
-        await supabaseClient
-          .from('tasks')
-          .update({
-            completed_at: new Date().toISOString(),
-          })
-          .eq('id', supabaseTaskId);
-
-        console.log('Task completed:', supabaseTaskId);
-        break;
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      attempts++;
-    } catch (error) {
-      console.error('Error polling task:', error);
-      attempts++;
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-  }
-
-  if (attempts >= maxAttempts) {
-    console.error('Task polling timeout');
-    await supabaseClient
-      .from('tasks')
-      .update({
-        status: 'failed',
-        error_message: 'Task polling timeout',
-        completed_at: new Date().toISOString(),
-      })
-      .eq('id', supabaseTaskId);
-  }
-}
-
-async function fetchAndStoreScreenshots(
-  browserUseTaskId: string,
-  apiKey: string,
-  supabaseTaskId: string,
-  supabaseClient: any,
-  userId: string
-) {
-  try {
-    // Fetch screenshots from Browser Use
-    const response = await fetch(`${BROWSER_USE_API_URL}/task/${browserUseTaskId}/screenshots`, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
-
-    if (!response.ok) {
-      console.error('Failed to fetch screenshots:', await response.text());
-      return;
-    }
-
-    const { screenshots } = await response.json();
-    console.log('Found screenshots:', screenshots?.length || 0);
-
-    if (!screenshots || screenshots.length === 0) {
-      return;
-    }
-
-    const screenshotUrls: string[] = [];
-
-    // Download and store each screenshot
-    for (let i = 0; i < screenshots.length; i++) {
-      const screenshotUrl = screenshots[i];
-      try {
-        const imgResponse = await fetch(screenshotUrl);
-        if (!imgResponse.ok) continue;
-
-        const imageBlob = await imgResponse.blob();
-        const fileName = `${supabaseTaskId}/screenshot-${i}.png`;
-
-        // Upload to Supabase Storage
-        const { data: uploadData, error: uploadError } = await supabaseClient.storage
-          .from('browser-screenshots')
-          .upload(fileName, imageBlob, {
-            contentType: 'image/png',
-            upsert: true,
-          });
-
-        if (uploadError) {
-          console.error('Failed to upload screenshot:', uploadError);
-          continue;
-        }
-
-        // Get public URL
-        const { data: { publicUrl } } = supabaseClient.storage
-          .from('browser-screenshots')
-          .getPublicUrl(fileName);
-
-        screenshotUrls.push(publicUrl);
-      } catch (error) {
-        console.error('Error processing screenshot:', error);
-      }
-    }
-
-    // Update task with screenshot URLs
-    if (screenshotUrls.length > 0) {
-      await supabaseClient
-        .from('tasks')
-        .update({ screenshots: screenshotUrls })
-        .eq('id', supabaseTaskId);
-    }
-  } catch (error) {
-    console.error('Error fetching screenshots:', error);
-  }
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -288,44 +16,25 @@ serve(async (req) => {
 
   try {
     console.log('[BROWSER-TASK] Request received');
-    
-    // Check for Authorization header
+
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      console.error('[BROWSER-TASK] No Authorization header found');
       return new Response(JSON.stringify({ error: 'Unauthorized - No auth header' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log('[BROWSER-TASK] Authorization header present');
-
-    // Create Supabase client with anon key and auth header
     const authClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
+      { global: { headers: { Authorization: authHeader } } }
     );
 
-    console.log('[BROWSER-TASK] Attempting to get user');
     const { data: { user }, error: userError } = await authClient.auth.getUser();
-    
-    if (userError) {
-      console.error('[BROWSER-TASK] Auth error:', userError);
-      return new Response(JSON.stringify({ error: 'Unauthorized', details: userError.message }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    
-    if (!user) {
-      console.error('[BROWSER-TASK] No user found');
-      return new Response(JSON.stringify({ error: 'Unauthorized - No user' }), {
+
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized', details: userError?.message }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -333,7 +42,6 @@ serve(async (req) => {
 
     console.log('[BROWSER-TASK] User authenticated:', user.id);
 
-    // Create service role client for database operations
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -352,22 +60,20 @@ serve(async (req) => {
       });
     }
 
-    // Check if user has exceeded their limit
     if (usage.browser_tasks_used >= usage.browser_tasks_limit) {
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         error: `You've reached your monthly limit of ${usage.browser_tasks_limit} browser tasks. Please upgrade your plan to continue.`,
-        limit_exceeded: true 
+        limit_exceeded: true
       }), {
         status: 429,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Determine which API key to use
+    // Determine API key
     let browserUseApiKey: string;
-    
+
     if (usage.can_use_own_keys) {
-      // Lifetime tier: try to use user's own key
       const { data: apiKeyData } = await supabaseClient
         .from('api_keys')
         .select('encrypted_key')
@@ -376,18 +82,9 @@ serve(async (req) => {
         .eq('is_active', true)
         .maybeSingle();
 
-      if (apiKeyData?.encrypted_key) {
-        browserUseApiKey = apiKeyData.encrypted_key;
-        console.log('Using user\'s own Browser Use API key');
-      } else {
-        // Fall back to shared key if user hasn't provided their own
-        browserUseApiKey = Deno.env.get('BROWSER_USE_API_KEY') ?? '';
-        console.log('Using shared Browser Use API key (user has BYOK but no key configured)');
-      }
+      browserUseApiKey = apiKeyData?.encrypted_key || Deno.env.get('BROWSER_USE_API_KEY') ?? '';
     } else {
-      // All other tiers: use shared API key
       browserUseApiKey = Deno.env.get('BROWSER_USE_API_KEY') ?? '';
-      console.log('Using shared Browser Use API key');
     }
 
     if (!browserUseApiKey) {
@@ -398,12 +95,11 @@ serve(async (req) => {
     }
 
     const { task, projectId, profileId } = await req.json();
-    const apiKey = browserUseApiKey;
 
-    // Get browser profile if profileId is provided
+    // Get browser profile if provided
     let browserUseProfileId = null;
     if (profileId) {
-      const { data: profile, error: profileError } = await supabaseClient
+      const { data: profile } = await supabaseClient
         .from('browser_profiles')
         .select('browser_use_profile_id')
         .eq('id', profileId)
@@ -412,9 +108,6 @@ serve(async (req) => {
 
       if (profile?.browser_use_profile_id) {
         browserUseProfileId = profile.browser_use_profile_id;
-        console.log('Using browser profile:', browserUseProfileId);
-
-        // Update last_used_at
         await supabaseClient
           .from('browser_profiles')
           .update({ last_used_at: new Date().toISOString() })
@@ -422,9 +115,7 @@ serve(async (req) => {
       }
     }
 
-    console.log('Creating browser automation task:', task);
-
-    // Create task record in database
+    // Create task record
     const { data: taskRecord, error: taskError } = await supabaseClient
       .from('tasks')
       .insert({
@@ -438,32 +129,32 @@ serve(async (req) => {
       .single();
 
     if (taskError || !taskRecord) {
-      console.error('Failed to create task record:', taskError);
       return new Response(JSON.stringify({ error: 'Failed to create task record' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Call Browser Use Cloud API
+    // Call Browser Use Cloud API with webhook
     try {
+      const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/browser-task-webhook`;
+
       const browserUseResponse = await fetch(`${BROWSER_USE_API_URL}/run-task`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          'Authorization': `Bearer ${browserUseApiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           task,
           live_url: true,
+          webhook_url: webhookUrl,
           ...(browserUseProfileId ? { profile_id: browserUseProfileId } : {})
         }),
       });
 
       if (!browserUseResponse.ok) {
         const errorText = await browserUseResponse.text();
-        console.error('Browser Use API error:', errorText);
-        
         await supabaseClient
           .from('tasks')
           .update({
@@ -473,10 +164,7 @@ serve(async (req) => {
           })
           .eq('id', taskRecord.id);
 
-        return new Response(JSON.stringify({ 
-          error: 'Failed to create Browser Use task',
-          details: errorText 
-        }), {
+        return new Response(JSON.stringify({ error: 'Failed to create Browser Use task', details: errorText }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -486,19 +174,17 @@ serve(async (req) => {
       const browserUseTaskId = browserUseData.id;
       const liveUrl = browserUseData.live_url || browserUseData.liveUrl;
 
-      console.log('Browser Use task created:', browserUseTaskId);
-      console.log('Live URL:', liveUrl);
-      console.log('Full Browser Use response:', JSON.stringify(browserUseData));
+      console.log('[BROWSER-TASK] Task created:', browserUseTaskId, 'Live URL:', liveUrl);
 
-      // Update task with Browser Use task ID, live URL and set to running
+      // Update task record
       await supabaseClient
         .from('tasks')
         .update({
           status: 'running',
           started_at: new Date().toISOString(),
-          output_data: { 
+          output_data: {
             browser_use_task_id: browserUseTaskId,
-            live_url: liveUrl 
+            live_url: liveUrl
           },
         })
         .eq('id', taskRecord.id);
@@ -513,9 +199,6 @@ serve(async (req) => {
           task_id: taskRecord.id
         });
 
-      // Start background polling (don't await)
-      pollTaskStatus(browserUseTaskId, apiKey, taskRecord.id, supabaseClient, user.id);
-
       return new Response(JSON.stringify({
         taskId: taskRecord.id,
         browserUseTaskId,
@@ -526,8 +209,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     } catch (error) {
-      console.error('Error calling Browser Use API:', error);
-      
       await supabaseClient
         .from('tasks')
         .update({
@@ -537,7 +218,7 @@ serve(async (req) => {
         })
         .eq('id', taskRecord.id);
 
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         error: 'Failed to start browser automation',
         details: error instanceof Error ? error.message : 'Unknown error'
       }), {
@@ -546,7 +227,6 @@ serve(async (req) => {
       });
     }
   } catch (error) {
-    console.error('Error in browser-task function:', error);
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
