@@ -174,6 +174,7 @@ const Dashboard = () => {
           <TaskTemplatesPanel onSelectTemplate={handleQuickStart} />
           <WorkflowBuilder onExecuteWorkflow={handleExecuteWorkflow} />
           <ScheduledTasksPanel />
+          <WebhookManager />
           <ThemeToggle />
           <TaskHistory onRerunTask={handleRerunTask} />
           <Button variant="ghost" size="icon" onClick={() => navigate("/settings")} className="h-8 w-8 text-muted-foreground hover:text-foreground">
