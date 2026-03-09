@@ -41,7 +41,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     
     try {
-      // Ensure we have a valid session before making the request
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       if (!currentSession?.access_token) {
         console.log('No valid session, skipping subscription check');
@@ -50,7 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { data, error } = await supabase.functions.invoke('check-subscription');
       if (error) {
-        console.error('Error checking subscription:', error);
+        console.error('Error checking subscription, falling back to free tier defaults:', error);
+        // Gracefully degrade to free tier defaults instead of breaking
         return;
       }
       
@@ -65,7 +65,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setBrowserTasksLimit(data.browser_tasks_limit || 10);
       }
     } catch (error) {
-      console.error('Error refreshing subscription:', error);
+      console.error('Error refreshing subscription, using free tier defaults:', error);
+      // Silently fall back — the UI will show free tier defaults
     }
   };
 
