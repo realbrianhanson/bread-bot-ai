@@ -2,93 +2,149 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Globe, Code, FileStack, ArrowRight } from "lucide-react";
-import heroBg from "@/assets/hero-bg.jpg";
+import { Globe, Code, FileStack, ArrowRight, Sparkles, Shield, Zap } from "lucide-react";
 
 const Index = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) {
-      navigate("/dashboard");
-    }
+    if (user) navigate("/dashboard");
   }, [user, navigate]);
 
   const features = [
     {
       icon: Globe,
-      title: "Web Automation",
-      description: "Automate browser tasks and extract data from any website",
+      title: "Browser Automation",
+      description: "AI agents that navigate, click, fill forms, and extract data from any website — hands-free.",
+      accent: "from-primary/20 to-primary/5",
     },
     {
       icon: Code,
       title: "Code Generation",
-      description: "Generate React apps, scripts, and components instantly",
+      description: "Describe what you want. Get production-ready React apps, scripts, and components in seconds.",
+      accent: "from-brand-warm/20 to-brand-warm/5",
     },
     {
       icon: FileStack,
-      title: "File Processing",
-      description: "Upload, transform, and generate files automatically",
+      title: "Data Extraction",
+      description: "Scrape structured data at scale. Export CSVs, fill databases, build datasets automatically.",
+      accent: "from-brand-emerald/20 to-brand-emerald/5",
     },
   ];
 
+  const stats = [
+    { value: "10K+", label: "Tasks Completed" },
+    { value: "99.9%", label: "Uptime" },
+    { value: "<2s", label: "Avg Response" },
+  ];
+
   return (
-    <main className="min-h-screen relative overflow-hidden">
-      {/* Hero Background */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${heroBg})` }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-background/60 to-background" />
-      </div>
+    <main className="min-h-screen bg-background relative overflow-hidden dark">
+      {/* Background effects */}
+      <div className="absolute inset-0 mesh-gradient" />
+      <div className="absolute inset-0 dot-grid opacity-30" />
 
-      {/* Content */}
-      <section className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 py-20">
-        <header className="text-center max-w-4xl mx-auto">
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 animate-fade-in">
-            <span className="text-4xl md:text-5xl block mb-2">🧄</span>
-            <span className="bg-gradient-to-r from-primary via-primary to-[hsl(var(--gradient-to))] bg-clip-text text-transparent">
-              GarlicBread.ai
-            </span>
-          </h1>
-          
-          <p className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: '0.1s' }}>
-            Create AI-powered browser automations, generate code, and build applications with ease
-          </p>
+      {/* Floating orbs */}
+      <div className="absolute top-20 left-[15%] w-72 h-72 bg-primary/10 rounded-full blur-[100px] animate-float" />
+      <div className="absolute top-40 right-[10%] w-96 h-96 bg-brand-rose/8 rounded-full blur-[120px] animate-float" style={{ animationDelay: '2s' }} />
+      <div className="absolute bottom-20 left-[40%] w-80 h-80 bg-brand-emerald/6 rounded-full blur-[100px] animate-float" style={{ animationDelay: '4s' }} />
 
-          <div className="flex gap-4 justify-center animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            <Button
-              size="lg"
-              onClick={() => navigate("/auth")}
-              className="text-lg px-8 py-6 shadow-elegant hover:shadow-glow transition-all duration-300 group"
-            >
-              Get Started
-              <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </Button>
-          </div>
-        </header>
+      {/* Nav */}
+      <nav className="relative z-10 flex items-center justify-between px-6 md:px-12 py-5">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">🧄</span>
+          <span className="text-lg font-bold tracking-tight text-foreground">GarlicBread.ai</span>
+        </div>
+        <Button variant="outline" onClick={() => navigate("/auth")} className="border-border/60 hover:bg-primary/10 hover:border-primary/40 transition-all">
+          Sign In
+        </Button>
+      </nav>
 
-        {/* Features Grid */}
-        <nav className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl w-full px-4">
+      {/* Hero */}
+      <section className="relative z-10 flex flex-col items-center text-center px-6 pt-16 md:pt-28 pb-20">
+        {/* Badge */}
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-8 animate-fade-in">
+          <Sparkles className="w-3.5 h-3.5" />
+          Now with real-time browser streaming
+        </div>
+
+        <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-tight leading-[1.05] max-w-5xl mb-6 animate-fade-in" style={{ animationDelay: '0.1s' }}>
+          <span className="text-foreground">Automate the web</span>
+          <br />
+          <span className="gradient-text">with AI agents</span>
+        </h1>
+
+        <p className="text-lg md:text-xl text-muted-foreground max-w-2xl leading-relaxed mb-10 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          Describe what you need. Our AI agents browse, scrape, fill forms, generate code, and deploy — all in real time.
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-4 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+          <Button
+            size="lg"
+            onClick={() => navigate("/auth")}
+            className="text-base px-8 h-12 shadow-glow hover:shadow-glow-lg transition-all duration-500 group"
+          >
+            Start Automating
+            <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={() => navigate("/auth")}
+            className="text-base px-8 h-12 border-border/60 hover:bg-primary/5 hover:border-primary/30"
+          >
+            View Demo
+          </Button>
+        </div>
+
+        {/* Stats */}
+        <div className="flex items-center gap-8 md:gap-12 mt-16 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+          {stats.map((stat, i) => (
+            <div key={i} className="text-center">
+              <p className="text-2xl md:text-3xl font-bold text-foreground">{stat.value}</p>
+              <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="relative z-10 px-6 md:px-12 pb-32 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {features.map((feature, index) => (
             <article
               key={feature.title}
-              className="group glass-strong rounded-2xl p-8 border border-border/30 hover:border-primary/50 transition-all duration-300 hover:shadow-elegant animate-slide-up cursor-default"
-              style={{ animationDelay: `${0.3 + index * 0.1}s` }}
+              className="group relative p-8 rounded-2xl bg-card/50 border border-border/40 backdrop-blur-sm hover:border-primary/30 hover:shadow-glow transition-all duration-500 animate-slide-up"
+              style={{ animationDelay: `${0.5 + index * 0.1}s` }}
             >
-              <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-5 group-hover:bg-primary/20 transition-colors">
-                <feature.icon className="h-7 w-7 text-primary" />
+              {/* Accent gradient */}
+              <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${feature.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+
+              <div className="relative z-10">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-5 group-hover:bg-primary/15 transition-colors">
+                  <feature.icon className="h-6 w-6 text-primary" />
+                </div>
+                <h2 className="font-semibold text-lg text-foreground mb-2">{feature.title}</h2>
+                <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
               </div>
-              <h2 className="font-semibold text-xl text-foreground mb-3">
-                {feature.title}
-              </h2>
-              <p className="text-muted-foreground leading-relaxed">
-                {feature.description}
-              </p>
             </article>
           ))}
-        </nav>
+        </div>
+      </section>
+
+      {/* Bottom CTA */}
+      <section className="relative z-10 px-6 pb-20 text-center">
+        <div className="max-w-xl mx-auto">
+          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mb-4">
+            <Shield className="w-3.5 h-3.5" />
+            Enterprise-grade security
+            <span className="text-border">·</span>
+            <Zap className="w-3.5 h-3.5" />
+            99.9% uptime
+          </div>
+          <p className="text-xs text-muted-foreground/50">© 2026 GarlicBread.ai</p>
+        </div>
       </section>
     </main>
   );
