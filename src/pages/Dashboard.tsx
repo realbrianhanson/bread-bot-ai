@@ -351,20 +351,30 @@ const Dashboard = () => {
           </ResizablePanelGroup>
         ) : (
           <div className="h-full w-full flex items-center justify-center p-4">
-            <Card className="max-w-md w-full">
-              <CardHeader>
-                <CardTitle className="text-xl">Welcome to AI Assistant</CardTitle>
-                <CardDescription>
-                  Start a new conversation or select an existing one
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button onClick={handleNewConversation} className="w-full">
-                  <MessageSquarePlus className="h-4 w-4 mr-2" />
-                  Start New Chat
-                </Button>
-              </CardContent>
-            </Card>
+            <div className="max-w-md w-full flex flex-col items-center text-center gap-6">
+              <span className="text-7xl">🧄</span>
+              <div>
+                <h2 className="text-2xl font-semibold text-foreground">What should I automate today?</h2>
+                <p className="text-muted-foreground mt-2">Describe a browser task or ask me to build something — I'll handle the rest.</p>
+              </div>
+              <Button onClick={handleNewConversation} size="lg" className="w-full">
+                <MessageSquarePlus className="h-4 w-4 mr-2" />
+                Start New Chat
+              </Button>
+              <div className="flex flex-col gap-2 w-full">
+                {quickStartExamples.map((example) => (
+                  <Button
+                    key={example}
+                    variant="outline"
+                    className="w-full text-muted-foreground hover:text-foreground justify-start gap-2"
+                    onClick={() => handleQuickStart(example)}
+                  >
+                    <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                    {example}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
