@@ -157,7 +157,7 @@ export const useChat = (projectId?: string) => {
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
         let assistantContent = '';
-        let assistantMessageId: string | null = null;
+        const tempId = crypto.randomUUID();
 
         if (reader) {
           while (true) {
@@ -180,33 +180,40 @@ export const useChat = (projectId?: string) => {
                     const delta = parsed.delta?.text || '';
                     assistantContent += delta;
 
-                    // Create or update assistant message
-                    if (!assistantMessageId) {
-                      const { data: newMessage, error: createError } = await supabase
-                        .from('messages')
-                        .insert({
-                          user_id: user.id,
-                          project_id: projectId,
-                          role: 'assistant',
-                          content: assistantContent,
-                        })
-                        .select()
-                        .single();
-
-                      if (!createError && newMessage) {
-                        assistantMessageId = newMessage.id;
+                    // Update local state only for smooth streaming UI
+                    setMessages((prev) => {
+                      const existing = prev.find((m) => m.id === tempId);
+                      if (existing) {
+                        return prev.map((m) => m.id === tempId ? { ...m, content: assistantContent } : m);
                       }
-                    } else {
-                      await supabase
-                        .from('messages')
-                        .update({ content: assistantContent })
-                        .eq('id', assistantMessageId);
-                    }
+                      return [...prev, { id: tempId, role: 'assistant' as const, content: assistantContent, created_at: new Date().toISOString() }];
+                    });
                   }
                 } catch (e) {
                   console.error('Error parsing SSE data:', e);
                 }
               }
+            }
+          }
+
+          // Write to database ONCE after stream completes
+          if (assistantContent) {
+            const { data: savedMessage } = await supabase
+              .from('messages')
+              .insert({
+                user_id: user.id,
+                project_id: projectId,
+                role: 'assistant',
+                content: assistantContent,
+              })
+              .select()
+              .single();
+
+            // Replace temp message with real DB message
+            if (savedMessage) {
+              setMessages((prev) =>
+                prev.map((m) => m.id === tempId ? { ...savedMessage as Message } : m)
+              );
             }
           }
         }
