@@ -286,7 +286,20 @@ const Dashboard = () => {
             </ResizablePanel>
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={65} minSize={40} className="relative">
-              {currentTask && currentTask.liveUrl ? (
+              {plan && plan.status === "reviewing" ? (
+                <div className="h-full overflow-auto p-4">
+                  <TaskPlanViewer
+                    plan={plan}
+                    onUpdateStep={updateStep}
+                    onRemoveStep={removeStep}
+                    onAddStep={addStep}
+                    onReorderSteps={reorderSteps}
+                    onExecute={handleExecutePlan}
+                    onCancel={clearPlan}
+                    isExecuting={isExecuting}
+                  />
+                </div>
+              ) : currentTask && currentTask.liveUrl ? (
                 <LiveBrowserView
                   liveUrl={currentTask.liveUrl} status={currentTask.status}
                   screenshots={currentTask.screenshots} actions={currentTask.actions}
