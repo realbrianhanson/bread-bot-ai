@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Settings, LogOut, MessageSquarePlus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Settings, LogOut, MessageSquarePlus, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import ChatContainer from "@/components/chat/ChatContainer";
 import ConversationList from "@/components/chat/ConversationList";
 import CodePreview from "@/components/chat/CodePreview";
