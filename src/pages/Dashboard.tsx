@@ -139,6 +139,7 @@ const Dashboard = () => {
           <PlanBadge size="sm" className="hidden sm:inline-flex" />
         </div>
         <div className="flex items-center gap-1.5">
+          <TaskTemplatesPanel onSelectTemplate={handleQuickStart} />
           <ThemeToggle />
           <TaskHistory onRerunTask={handleRerunTask} />
           <Button variant="ghost" size="icon" onClick={() => navigate("/settings")} className="h-8 w-8 text-muted-foreground hover:text-foreground">
