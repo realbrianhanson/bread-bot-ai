@@ -220,7 +220,7 @@ const Dashboard = () => {
             <div className="flex-1 min-h-0">
               <ChatContainer
                 messages={messages} isLoading={isLoading} isStreaming={isStreaming}
-                onSendMessage={sendMessage} onStopStreaming={stopStreaming}
+                onSendMessage={handleSendWithPlanner} onStopStreaming={stopStreaming}
                 currentTask={currentTask} isExecutingTask={isExecuting}
                 onExecuteTask={executeTask} onStopTask={stopTask} onPauseTask={pauseTask} onResumeTask={resumeTask}
                 isStopping={isStopping} isPausing={isPausing} isResuming={isResuming}
