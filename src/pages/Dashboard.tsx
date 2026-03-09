@@ -247,6 +247,7 @@ const Dashboard = () => {
                 onExecuteTask={executeTask} onStopTask={stopTask} onPauseTask={pauseTask} onResumeTask={resumeTask}
                 isStopping={isStopping} isPausing={isPausing} isResuming={isResuming}
                 selectedProfileId={selectedProfileId} projectId={activeConversationId || undefined}
+                onSlashCommand={handleSlashCommand}
               />
             </div>
             <div className="flex-1 min-h-0 border-t border-border/50">
