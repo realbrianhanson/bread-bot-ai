@@ -55,6 +55,21 @@ const Dashboard = () => {
     }
   };
 
+  const quickStartExamples = [
+    "Scrape leads from a website",
+    "Fill out a form automatically",
+    "Build me a landing page",
+  ];
+
+  const handleQuickStart = async (prompt: string) => {
+    const newConv = await createConversation();
+    if (newConv) {
+      setActiveConversationId(newConv.id);
+      // Small delay to let the conversation load, then send
+      setTimeout(() => sendMessage(prompt), 300);
+    }
+  };
+
   const handleRerunTask = (taskDescription: string) => {
     if (taskDescription) {
       executeTask(taskDescription, activeConversationId || undefined, selectedProfileId || undefined);
