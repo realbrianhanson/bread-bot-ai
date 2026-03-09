@@ -25,7 +25,7 @@ import { useConversations } from "@/hooks/useConversations";
 import { useBrowserTask } from "@/hooks/useBrowserTask";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { parseCodeFromMessages } from "@/lib/codeParser";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { PlanBadge } from "@/components/ui/plan-badge";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { TaskTemplatesPanel } from "@/components/templates/TaskTemplatesPanel";
