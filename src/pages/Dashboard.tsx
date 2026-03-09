@@ -31,6 +31,9 @@ import { CommandPalette } from "@/components/ui/command-palette";
 import { TaskTemplatesPanel } from "@/components/templates/TaskTemplatesPanel";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { ScheduledTasksPanel } from "@/components/scheduled/ScheduledTasksPanel";
+import { WorkflowBuilder } from "@/components/workflow/WorkflowBuilder";
+import { TaskPlanViewer } from "@/components/workflow/TaskPlanViewer";
+import { useTaskPlanner } from "@/hooks/useTaskPlanner";
 
 const Dashboard = () => {
   const { signOut, user } = useAuth();
@@ -43,6 +46,33 @@ const Dashboard = () => {
   const { conversations, createConversation, deleteConversation, renameConversation } = useConversations();
   const { currentTask, isExecuting, executeTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask();
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const { plan, isPlanning, generatePlan, updateStep, removeStep, addStep, reorderSteps, clearPlan } = useTaskPlanner();
+
+  const handleSendWithPlanner = async (content: string) => {
+    // If message starts with /plan, use the AI planner
+    if (content.trimStart().startsWith("/plan ")) {
+      const prompt = content.replace(/^\/plan\s+/, "");
+      await generatePlan(prompt);
+      return;
+    }
+    sendMessage(content);
+  };
+
+  const handleExecutePlan = async () => {
+    if (!plan) return;
+    for (const step of plan.steps) {
+      updateStep(step.id, { status: "running" });
+      await executeTask(step.prompt, activeConversationId || undefined, selectedProfileId || undefined);
+      updateStep(step.id, { status: "done" });
+    }
+    clearPlan();
+  };
+
+  const handleExecuteWorkflow = async (steps: { prompt: string }[]) => {
+    for (const step of steps) {
+      await executeTask(step.prompt, activeConversationId || undefined, selectedProfileId || undefined);
+    }
+  };
 
   const handleSignOut = async () => { await signOut(); navigate("/auth"); };
 
@@ -141,6 +171,7 @@ const Dashboard = () => {
         </div>
         <div className="flex items-center gap-1.5">
           <TaskTemplatesPanel onSelectTemplate={handleQuickStart} />
+          <WorkflowBuilder onExecuteWorkflow={handleExecuteWorkflow} />
           <ScheduledTasksPanel />
           <ThemeToggle />
           <TaskHistory onRerunTask={handleRerunTask} />
@@ -189,7 +220,7 @@ const Dashboard = () => {
             <div className="flex-1 min-h-0">
               <ChatContainer
                 messages={messages} isLoading={isLoading} isStreaming={isStreaming}
-                onSendMessage={sendMessage} onStopStreaming={stopStreaming}
+                onSendMessage={handleSendWithPlanner} onStopStreaming={stopStreaming}
                 currentTask={currentTask} isExecutingTask={isExecuting}
                 onExecuteTask={executeTask} onStopTask={stopTask} onPauseTask={pauseTask} onResumeTask={resumeTask}
                 isStopping={isStopping} isPausing={isPausing} isResuming={isResuming}
@@ -243,7 +274,7 @@ const Dashboard = () => {
                 <div className="flex-1 min-h-0">
                   <ChatContainer
                     messages={messages} isLoading={isLoading} isStreaming={isStreaming}
-                    onSendMessage={sendMessage} onStopStreaming={stopStreaming}
+                    onSendMessage={handleSendWithPlanner} onStopStreaming={stopStreaming}
                     currentTask={currentTask} isExecutingTask={isExecuting}
                     onExecuteTask={executeTask} onStopTask={stopTask} onPauseTask={pauseTask} onResumeTask={resumeTask}
                     isStopping={isStopping} isPausing={isPausing} isResuming={isResuming}
@@ -255,7 +286,20 @@ const Dashboard = () => {
             </ResizablePanel>
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={65} minSize={40} className="relative">
-              {currentTask && currentTask.liveUrl ? (
+              {plan && plan.status === "reviewing" ? (
+                <div className="h-full overflow-auto p-4">
+                  <TaskPlanViewer
+                    plan={plan}
+                    onUpdateStep={updateStep}
+                    onRemoveStep={removeStep}
+                    onAddStep={addStep}
+                    onReorderSteps={reorderSteps}
+                    onExecute={handleExecutePlan}
+                    onCancel={clearPlan}
+                    isExecuting={isExecuting}
+                  />
+                </div>
+              ) : currentTask && currentTask.liveUrl ? (
                 <LiveBrowserView
                   liveUrl={currentTask.liveUrl} status={currentTask.status}
                   screenshots={currentTask.screenshots} actions={currentTask.actions}
