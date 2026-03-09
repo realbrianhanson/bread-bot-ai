@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Globe, Code, FileStack, ArrowRight, Sparkles, Shield, Zap } from "lucide-react";
+import { AuroraBackground } from "@/components/ui/aurora-background";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const Index = () => {
   const { user } = useAuth();
