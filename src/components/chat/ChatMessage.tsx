@@ -1,13 +1,13 @@
 import { Message } from '@/hooks/useChat';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { User, Bot, Copy, Check } from 'lucide-react';
+import { Copy, Check, Bot, User } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 import { useState, lazy, Suspense } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 const MermaidDiagram = lazy(() => import('./MermaidDiagram'));
 
@@ -17,117 +17,132 @@ interface ChatMessageProps {
 
 const ChatMessage = ({ message }: ChatMessageProps) => {
   const isUser = message.role === 'user';
-  const { toast } = useToast();
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [showTime, setShowTime] = useState(false);
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedCode(id);
-    toast({
-      title: "Copied to clipboard",
-      duration: 2000,
-    });
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
+  const timestamp = message.created_at
+    ? new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : null;
+
   return (
-    <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+      className={cn('flex gap-2.5 group', isUser ? 'justify-end' : 'justify-start')}
+      onMouseEnter={() => setShowTime(true)}
+      onMouseLeave={() => setShowTime(false)}
+    >
+      {/* AI avatar */}
       {!isUser && (
-        <Avatar className="h-8 w-8 border-2 border-primary/20">
-          <AvatarFallback className="bg-primary/10">
-            <Bot className="h-4 w-4 text-primary" />
-          </AvatarFallback>
-        </Avatar>
+        <div className="h-7 w-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+          <Bot className="h-3.5 w-3.5 text-primary" />
+        </div>
       )}
 
-      <div
-        className={`rounded-lg px-4 py-3 max-w-[80%] ${
-          isUser
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-muted/50 backdrop-blur-sm border border-border/50 text-foreground'
-        }`}
-      >
-        {isUser ? (
-          <div className="whitespace-pre-wrap break-words">{message.content}</div>
-        ) : (
-          <div className="prose prose-sm dark:prose-invert max-w-none">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                code(props) {
-                  const { children, className, ...rest } = props;
-                  const match = /language-(\w+)/.exec(className || '');
-                  const codeString = String(children).replace(/\n$/, '');
-                  const codeId = `${message.id}-${codeString.substring(0, 20)}`;
-                  const isInline = !className;
-                  
-                  // Render Mermaid diagrams
-                  if (!isInline && match && match[1] === 'mermaid') {
-                    return (
-                      <Suspense fallback={<div className="animate-pulse bg-muted h-32 rounded-lg" />}>
-                        <MermaidDiagram chart={codeString} />
-                      </Suspense>
+      <div className={cn('flex flex-col gap-1', isUser ? 'items-end' : 'items-start', 'max-w-[82%]')}>
+        {/* Bubble */}
+        <div
+          className={cn(
+            'rounded-2xl px-4 py-3 text-sm leading-relaxed',
+            isUser
+              ? 'bg-primary text-primary-foreground rounded-tr-sm shadow-glow'
+              : 'bg-card border border-border/60 text-foreground rounded-tl-sm shadow-soft'
+          )}
+        >
+          {isUser ? (
+            <div className="whitespace-pre-wrap break-words">{message.content}</div>
+          ) : (
+            <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-pre:my-2 prose-headings:mt-3 prose-headings:mb-1">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  code(props) {
+                    const { children, className, ...rest } = props;
+                    const match = /language-(\w+)/.exec(className || '');
+                    const codeString = String(children).replace(/\n$/, '');
+                    const codeId = `${message.id}-${codeString.substring(0, 20)}`;
+                    const isInline = !className;
+
+                    if (!isInline && match && match[1] === 'mermaid') {
+                      return (
+                        <Suspense fallback={<div className="animate-pulse bg-muted h-32 rounded-lg" />}>
+                          <MermaidDiagram chart={codeString} />
+                        </Suspense>
+                      );
+                    }
+
+                    return !isInline && match ? (
+                      <div className="relative group/code my-2 rounded-xl overflow-hidden border border-border/50">
+                        {/* Language label + copy */}
+                        <div className="flex items-center justify-between px-4 py-2 bg-[hsl(220_13%_14%)] border-b border-border/30">
+                          <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">{match[1]}</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground opacity-0 group-hover/code:opacity-100 transition-opacity"
+                            onClick={() => copyToClipboard(codeString, codeId)}
+                          >
+                            {copiedCode === codeId ? (
+                              <><Check className="h-3 w-3 mr-1" />Copied</>
+                            ) : (
+                              <><Copy className="h-3 w-3 mr-1" />Copy</>
+                            )}
+                          </Button>
+                        </div>
+                        <SyntaxHighlighter
+                          style={oneDark as any}
+                          language={match[1]}
+                          PreTag="div"
+                          customStyle={{ margin: 0, borderRadius: 0, fontSize: '0.8125rem', background: 'hsl(220 13% 11%)' }}
+                        >
+                          {codeString}
+                        </SyntaxHighlighter>
+                      </div>
+                    ) : (
+                      <code className="bg-muted px-1.5 py-0.5 rounded-md text-xs font-mono text-foreground/90" {...rest}>
+                        {children}
+                      </code>
                     );
-                  }
-                  
-                  return !isInline && match ? (
-                    <div className="relative group my-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                        onClick={() => copyToClipboard(codeString, codeId)}
-                      >
-                        {copiedCode === codeId ? (
-                          <Check className="h-4 w-4" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </Button>
-                      <SyntaxHighlighter
-                        style={oneDark as any}
-                        language={match[1]}
-                        PreTag="div"
-                        customStyle={{ margin: 0, borderRadius: '0.375rem', fontSize: '0.875rem' }}
-                      >
-                        {codeString}
-                      </SyntaxHighlighter>
-                    </div>
-                  ) : (
-                    <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono" {...rest}>
-                      {children}
-                    </code>
-                  );
-                },
-              }}
-            >
-              {message.content}
-            </ReactMarkdown>
-          </div>
-        )}
-        
-        {message.metadata?.screenshots && message.metadata.screenshots.length > 0 && (
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {message.metadata.screenshots.map((screenshot: string, idx: number) => (
-              <img
-                key={idx}
-                src={screenshot}
-                alt={`Screenshot ${idx + 1}`}
-                className="rounded border border-border/50 w-full"
-              />
-            ))}
-          </div>
+                  },
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
+            </div>
+          )}
+
+          {/* Screenshots */}
+          {message.metadata?.screenshots && message.metadata.screenshots.length > 0 && (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {message.metadata.screenshots.map((screenshot: string, idx: number) => (
+                <img key={idx} src={screenshot} alt={`Screenshot ${idx + 1}`} className="rounded-lg border border-border/50 w-full" />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Timestamp */}
+        {timestamp && (
+          <span className={cn('text-[10px] text-muted-foreground/50 px-1 transition-opacity duration-200', showTime ? 'opacity-100' : 'opacity-0')}>
+            {timestamp}
+          </span>
         )}
       </div>
 
+      {/* User avatar */}
       {isUser && (
-        <Avatar className="h-8 w-8 border-2 border-primary/20">
-          <AvatarFallback className="bg-primary/10">
-            <User className="h-4 w-4 text-primary" />
-          </AvatarFallback>
-        </Avatar>
+        <div className="h-7 w-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+          <User className="h-3.5 w-3.5 text-primary" />
+        </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 

@@ -1,23 +1,32 @@
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { motion } from 'framer-motion';
 import { Bot } from 'lucide-react';
 
 const TypingIndicator = () => {
   return (
-    <div className="flex gap-3 justify-start animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <Avatar className="h-8 w-8 border-2 border-primary/20">
-        <AvatarFallback className="bg-primary/10">
-          <Bot className="h-4 w-4 text-primary" />
-        </AvatarFallback>
-      </Avatar>
-
-      <div className="rounded-lg px-4 py-3 bg-muted/50 backdrop-blur-sm border border-border/50">
-        <div className="flex items-center gap-1">
-          <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-          <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-          <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-        </div>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 4 }}
+      transition={{ duration: 0.2 }}
+      className="flex gap-2.5 justify-start"
+    >
+      <div className="h-7 w-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+        <Bot className="h-3.5 w-3.5 text-primary" />
       </div>
-    </div>
+      <div className="rounded-2xl rounded-tl-sm px-4 py-3 bg-card border border-border/60 shadow-soft flex items-center gap-3">
+        <div className="flex items-center gap-1">
+          {[0, 150, 300].map((delay, i) => (
+            <motion.div
+              key={i}
+              className="w-1.5 h-1.5 bg-primary/60 rounded-full"
+              animate={{ y: [0, -5, 0], opacity: [0.4, 1, 0.4] }}
+              transition={{ duration: 0.8, repeat: Infinity, delay: delay / 1000, ease: 'easeInOut' }}
+            />
+          ))}
+        </div>
+        <span className="text-xs text-muted-foreground">Thinking…</span>
+      </div>
+    </motion.div>
   );
 };
 
