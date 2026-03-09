@@ -1,0 +1,2 @@
+ALTER TABLE usage_tracking DROP CONSTRAINT IF EXISTS usage_tracking_usage_type_check;
+ALTER TABLE usage_tracking ADD CONSTRAINT usage_tracking_usage_type_check CHECK (usage_type IN ('task_execution', 'api_call', 'storage', 'chat_message', 'browser_task'));
