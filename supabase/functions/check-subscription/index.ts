@@ -110,7 +110,7 @@ serve(async (req) => {
 
     // Get usage for current period
     const { data: usageData } = await supabaseClient.rpc('get_user_tier_and_usage', {
-      p_user_id: user.id
+      p_user_id: userId
     });
 
     const result = usageData?.[0] || {
