@@ -27,6 +27,9 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 import { parseCodeFromMessages } from "@/lib/codeParser";
 import { useState, useMemo } from "react";
 import { PlanBadge } from "@/components/ui/plan-badge";
+import { CommandPalette } from "@/components/ui/command-palette";
+import { TaskTemplatesPanel } from "@/components/templates/TaskTemplatesPanel";
+import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 
 const Dashboard = () => {
   const { signOut, user } = useAuth();
