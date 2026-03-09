@@ -303,6 +303,7 @@ const Dashboard = () => {
                     isStopping={isStopping} isPausing={isPausing} isResuming={isResuming}
                     selectedProfileId={selectedProfileId} projectId={activeConversationId || undefined}
                     hideTaskPreview={true}
+                    onSlashCommand={handleSlashCommand}
                   />
                 </div>
               </div>
