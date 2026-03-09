@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Settings, LogOut, MessageSquarePlus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Settings, LogOut, MessageSquarePlus, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import ChatContainer from "@/components/chat/ChatContainer";
 import ConversationList from "@/components/chat/ConversationList";
 import CodePreview from "@/components/chat/CodePreview";
@@ -52,6 +52,21 @@ const Dashboard = () => {
     const newConv = await createConversation();
     if (newConv) {
       setActiveConversationId(newConv.id);
+    }
+  };
+
+  const quickStartExamples = [
+    "Scrape leads from a website",
+    "Fill out a form automatically",
+    "Build me a landing page",
+  ];
+
+  const handleQuickStart = async (prompt: string) => {
+    const newConv = await createConversation();
+    if (newConv) {
+      setActiveConversationId(newConv.id);
+      // Small delay to let the conversation load, then send
+      setTimeout(() => sendMessage(prompt), 300);
     }
   };
 
@@ -199,20 +214,30 @@ const Dashboard = () => {
           </>
         ) : (
           <div className="h-full flex items-center justify-center p-4">
-            <Card className="max-w-md w-full">
-              <CardHeader>
-                <CardTitle className="text-lg">Welcome to AI Assistant</CardTitle>
-                <CardDescription className="text-sm">
-                  Start a new conversation or select an existing one from the sidebar
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button onClick={handleNewConversation} className="w-full">
-                  <MessageSquarePlus className="h-4 w-4 mr-2" />
-                  Start New Chat
-                </Button>
-              </CardContent>
-            </Card>
+            <div className="max-w-md w-full flex flex-col items-center text-center gap-6">
+              <span className="text-6xl">🧄</span>
+              <div>
+                <h2 className="text-xl font-semibold text-foreground">What should I automate today?</h2>
+                <p className="text-sm text-muted-foreground mt-1.5">Describe a browser task or ask me to build something — I'll handle the rest.</p>
+              </div>
+              <Button onClick={handleNewConversation} className="w-full">
+                <MessageSquarePlus className="h-4 w-4 mr-2" />
+                Start New Chat
+              </Button>
+              <div className="flex flex-col gap-2 w-full">
+                {quickStartExamples.map((example) => (
+                  <Button
+                    key={example}
+                    variant="outline"
+                    className="w-full text-muted-foreground hover:text-foreground justify-start gap-2 text-sm"
+                    onClick={() => handleQuickStart(example)}
+                  >
+                    <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                    {example}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -326,20 +351,30 @@ const Dashboard = () => {
           </ResizablePanelGroup>
         ) : (
           <div className="h-full w-full flex items-center justify-center p-4">
-            <Card className="max-w-md w-full">
-              <CardHeader>
-                <CardTitle className="text-xl">Welcome to AI Assistant</CardTitle>
-                <CardDescription>
-                  Start a new conversation or select an existing one
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button onClick={handleNewConversation} className="w-full">
-                  <MessageSquarePlus className="h-4 w-4 mr-2" />
-                  Start New Chat
-                </Button>
-              </CardContent>
-            </Card>
+            <div className="max-w-md w-full flex flex-col items-center text-center gap-6">
+              <span className="text-7xl">🧄</span>
+              <div>
+                <h2 className="text-2xl font-semibold text-foreground">What should I automate today?</h2>
+                <p className="text-muted-foreground mt-2">Describe a browser task or ask me to build something — I'll handle the rest.</p>
+              </div>
+              <Button onClick={handleNewConversation} size="lg" className="w-full">
+                <MessageSquarePlus className="h-4 w-4 mr-2" />
+                Start New Chat
+              </Button>
+              <div className="flex flex-col gap-2 w-full">
+                {quickStartExamples.map((example) => (
+                  <Button
+                    key={example}
+                    variant="outline"
+                    className="w-full text-muted-foreground hover:text-foreground justify-start gap-2"
+                    onClick={() => handleQuickStart(example)}
+                  >
+                    <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                    {example}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
