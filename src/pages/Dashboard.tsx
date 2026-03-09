@@ -35,6 +35,7 @@ import { WorkflowBuilder } from "@/components/workflow/WorkflowBuilder";
 import { TaskPlanViewer } from "@/components/workflow/TaskPlanViewer";
 import { useTaskPlanner } from "@/hooks/useTaskPlanner";
 import { WebhookManager } from "@/components/webhooks/WebhookManager";
+import { ResultsDashboard } from "@/components/results/ResultsDashboard";
 
 const Dashboard = () => {
   const { signOut, user } = useAuth();
