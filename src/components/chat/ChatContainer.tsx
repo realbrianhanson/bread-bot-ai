@@ -1,11 +1,14 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import TypingIndicator from './TypingIndicator';
 import TaskStatus from './TaskStatus';
 import LiveBrowserView from './LiveBrowserView';
 import { Message } from '@/hooks/useChat';
-import { BrowserTask, TaskStatus as TaskStatusType } from '@/hooks/useBrowserTask';
+import { BrowserTask } from '@/hooks/useBrowserTask';
+import { Button } from '@/components/ui/button';
+import { ArrowDown, Sparkles, Terminal } from 'lucide-react';
 
 interface ChatContainerProps {
   messages: Message[];
@@ -47,61 +50,101 @@ const ChatContainer = ({
   hideTaskPreview = false,
 }: ChatContainerProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    }
+  };
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    scrollToBottom();
   }, [messages, currentTask]);
+
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+    setShowScrollButton(!isNearBottom);
+  };
 
   const handleSendMessage = (content: string) => {
     const trimmedContent = content.trim();
     
-    // Check if it's a browser command (with or without space after /browse)
     if (trimmedContent.startsWith('/browse')) {
       const task = trimmedContent.replace(/^\/browse\s*/, '').trim();
       if (task && onExecuteTask) {
-        console.log('[ChatContainer] Executing browser task:', task);
         onExecuteTask(task, projectId, selectedProfileId || undefined);
-        return; // Don't send to chat AI
+        return;
       }
     }
     
-    // Regular message - send to chat AI
     onSendMessage(content);
   };
 
+  const quickCommands = [
+    { label: 'Chat with AI', hint: 'Ask me anything', icon: Sparkles },
+    { label: '/browse', hint: 'Automate a website', icon: Terminal },
+  ];
+
   return (
-    <div className="flex flex-col h-full bg-background/50 backdrop-blur-sm border border-border/50 rounded-lg overflow-hidden">
-      <div 
-        ref={scrollRef}
-        className="flex-1 p-4 overflow-y-auto"
-      >
-        <div className="space-y-4 max-w-4xl mx-auto">
+    <div className="flex flex-col h-full bg-gradient-to-b from-background/40 to-background/60 backdrop-blur-sm rounded-lg overflow-hidden relative">
+      {/* Messages */}
+      <div ref={scrollRef} onScroll={handleScroll} className="flex-1 p-4 overflow-y-auto scroll-smooth">
+        <div className="space-y-3.5 max-w-3xl mx-auto pb-4">
           {messages.length === 0 ? (
-            <div className="text-center text-muted-foreground py-12">
-              <p className="text-lg">Start a conversation</p>
-              <p className="text-sm mt-2">Ask me anything or use a command like /browse</p>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="flex flex-col items-center justify-center text-center py-16 px-4"
+            >
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-primary/10 rounded-full blur-xl animate-pulse-glow" />
+                <span className="relative text-4xl block">🧄</span>
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">How can I help?</h3>
+              <p className="text-sm text-muted-foreground mb-6 max-w-sm">Ask me anything, or use a command to get started.</p>
+              
+              <div className="flex flex-col gap-2 w-full max-w-xs">
+                {quickCommands.map((cmd) => (
+                  <button
+                    key={cmd.label}
+                    onClick={() => cmd.label === '/browse' ? handleSendMessage('/browse ') : null}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-card/60 border border-border/40 hover:border-primary/30 hover:bg-card/80 transition-all group text-left"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/15 transition-colors">
+                      <cmd.icon className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground">{cmd.label}</p>
+                      <p className="text-xs text-muted-foreground truncate">{cmd.hint}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
           ) : (
-            messages.map((message) => (
-              <ChatMessage key={message.id} message={message} />
-            ))
+            <>
+              {messages.map((message) => (
+                <ChatMessage key={message.id} message={message} />
+              ))}
+              <AnimatePresence>
+                {isLoading && messages[messages.length - 1]?.role !== 'assistant' && <TypingIndicator />}
+              </AnimatePresence>
+            </>
           )}
-          {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
-            <TypingIndicator />
-          )}
-          
-          {/* Browser Task Status - only show if not hiding preview */}
+
           {currentTask && !hideTaskPreview && (
             <div className="space-y-3">
-              <TaskStatus 
-                status={currentTask.status} 
+              <TaskStatus
+                status={currentTask.status}
                 message={currentTask.error_message}
                 currentPhase={currentTask.currentPhase}
                 duration={currentTask.duration}
               />
-              <LiveBrowserView 
+              <LiveBrowserView
                 liveUrl={currentTask.liveUrl}
                 status={currentTask.status}
                 screenshots={currentTask.screenshots}
@@ -123,11 +166,10 @@ const ChatContainer = ({
               />
             </div>
           )}
-          
-          {/* Show just task status if preview is hidden */}
+
           {currentTask && hideTaskPreview && (
-            <TaskStatus 
-              status={currentTask.status} 
+            <TaskStatus
+              status={currentTask.status}
               message={currentTask.error_message}
               currentPhase={currentTask.currentPhase}
               duration={currentTask.duration}
@@ -136,8 +178,30 @@ const ChatContainer = ({
         </div>
       </div>
 
-      <div className="border-t border-border/50 bg-background/30 backdrop-blur-sm p-4">
-        <div className="max-w-4xl mx-auto">
+      {/* Scroll to bottom */}
+      <AnimatePresence>
+        {showScrollButton && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="absolute bottom-20 right-4"
+          >
+            <Button
+              onClick={scrollToBottom}
+              size="icon"
+              className="h-9 w-9 rounded-full shadow-glow bg-card/90 backdrop-blur-sm hover:bg-card border border-border/50"
+              variant="outline"
+            >
+              <ArrowDown className="h-4 w-4" />
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Input */}
+      <div className="p-4 bg-gradient-to-t from-background/80 to-transparent backdrop-blur-sm">
+        <div className="max-w-3xl mx-auto">
           <ChatInput
             onSend={handleSendMessage}
             disabled={isLoading || isExecutingTask}
