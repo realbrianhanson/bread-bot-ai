@@ -34,6 +34,7 @@ import { ScheduledTasksPanel } from "@/components/scheduled/ScheduledTasksPanel"
 import { WorkflowBuilder } from "@/components/workflow/WorkflowBuilder";
 import { TaskPlanViewer } from "@/components/workflow/TaskPlanViewer";
 import { useTaskPlanner } from "@/hooks/useTaskPlanner";
+import { WebhookManager } from "@/components/webhooks/WebhookManager";
 
 const Dashboard = () => {
   const { signOut, user } = useAuth();
@@ -173,6 +174,7 @@ const Dashboard = () => {
           <TaskTemplatesPanel onSelectTemplate={handleQuickStart} />
           <WorkflowBuilder onExecuteWorkflow={handleExecuteWorkflow} />
           <ScheduledTasksPanel />
+          <WebhookManager />
           <ThemeToggle />
           <TaskHistory onRerunTask={handleRerunTask} />
           <Button variant="ghost" size="icon" onClick={() => navigate("/settings")} className="h-8 w-8 text-muted-foreground hover:text-foreground">
