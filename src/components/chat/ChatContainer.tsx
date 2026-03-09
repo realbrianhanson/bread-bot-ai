@@ -209,6 +209,7 @@ const ChatContainer = ({
             disabled={isLoading || isExecutingTask}
             isStreaming={isStreaming}
             onStop={onStopStreaming}
+            onSlashCommand={onSlashCommand}
           />
         </div>
       </div>
