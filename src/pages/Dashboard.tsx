@@ -30,6 +30,7 @@ import { PlanBadge } from "@/components/ui/plan-badge";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { TaskTemplatesPanel } from "@/components/templates/TaskTemplatesPanel";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
+import { ScheduledTasksPanel } from "@/components/scheduled/ScheduledTasksPanel";
 
 const Dashboard = () => {
   const { signOut, user } = useAuth();
