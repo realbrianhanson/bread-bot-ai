@@ -46,6 +46,33 @@ const Dashboard = () => {
   const { conversations, createConversation, deleteConversation, renameConversation } = useConversations();
   const { currentTask, isExecuting, executeTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask();
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const { plan, isPlanning, generatePlan, updateStep, removeStep, addStep, reorderSteps, clearPlan } = useTaskPlanner();
+
+  const handleSendWithPlanner = async (content: string) => {
+    // If message starts with /plan, use the AI planner
+    if (content.trimStart().startsWith("/plan ")) {
+      const prompt = content.replace(/^\/plan\s+/, "");
+      await generatePlan(prompt);
+      return;
+    }
+    sendMessage(content);
+  };
+
+  const handleExecutePlan = async () => {
+    if (!plan) return;
+    for (const step of plan.steps) {
+      updateStep(step.id, { status: "running" });
+      await executeTask(step.prompt, activeConversationId || undefined, selectedProfileId || undefined);
+      updateStep(step.id, { status: "done" });
+    }
+    clearPlan();
+  };
+
+  const handleExecuteWorkflow = async (steps: { prompt: string }[]) => {
+    for (const step of steps) {
+      await executeTask(step.prompt, activeConversationId || undefined, selectedProfileId || undefined);
+    }
+  };
 
   const handleSignOut = async () => { await signOut(); navigate("/auth"); };
 
