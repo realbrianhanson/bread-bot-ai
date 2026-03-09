@@ -49,6 +49,7 @@ const ChatContainer = ({
   projectId,
   selectedProfileId,
   hideTaskPreview = false,
+  onSlashCommand,
 }: ChatContainerProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
