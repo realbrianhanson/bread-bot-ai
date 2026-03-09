@@ -25,7 +25,7 @@ import { useConversations } from "@/hooks/useConversations";
 import { useBrowserTask } from "@/hooks/useBrowserTask";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { parseCodeFromMessages } from "@/lib/codeParser";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { PlanBadge } from "@/components/ui/plan-badge";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { TaskTemplatesPanel } from "@/components/templates/TaskTemplatesPanel";
@@ -35,6 +35,7 @@ import { WorkflowBuilder } from "@/components/workflow/WorkflowBuilder";
 import { TaskPlanViewer } from "@/components/workflow/TaskPlanViewer";
 import { useTaskPlanner } from "@/hooks/useTaskPlanner";
 import { WebhookManager } from "@/components/webhooks/WebhookManager";
+import { ResultsDashboard } from "@/components/results/ResultsDashboard";
 
 const Dashboard = () => {
   const { signOut, user } = useAuth();
@@ -74,6 +75,24 @@ const Dashboard = () => {
       await executeTask(step.prompt, activeConversationId || undefined, selectedProfileId || undefined);
     }
   };
+
+  // Slash command handler — triggers UI panel opens via toast notifications
+  const handleSlashCommand = useCallback((command: string) => {
+    const messages: Record<string, string> = {
+      "/schedule": "Open the ⏰ clock icon in the header to manage scheduled tasks",
+      "/template": "Open the 📋 template icon in the header to browse templates",
+      "/history": "Open the 📜 history icon in the header to view past tasks",
+      "/workflow": "Open the 🔀 workflow icon in the header to build workflows",
+      "/results": "Open the 📊 chart icon in the header to view results",
+      "/webhooks": "Open the 🔗 webhook icon in the header to manage webhooks",
+    };
+    const msg = messages[command];
+    if (msg) {
+      import("@/hooks/use-toast").then(({ toast }) => {
+        toast({ title: "Tip", description: msg });
+      });
+    }
+  }, []);
 
   const handleSignOut = async () => { await signOut(); navigate("/auth"); };
 
@@ -175,6 +194,7 @@ const Dashboard = () => {
           <WorkflowBuilder onExecuteWorkflow={handleExecuteWorkflow} />
           <ScheduledTasksPanel />
           <WebhookManager />
+          <ResultsDashboard />
           <ThemeToggle />
           <TaskHistory onRerunTask={handleRerunTask} />
           <Button variant="ghost" size="icon" onClick={() => navigate("/settings")} className="h-8 w-8 text-muted-foreground hover:text-foreground">
@@ -227,6 +247,7 @@ const Dashboard = () => {
                 onExecuteTask={executeTask} onStopTask={stopTask} onPauseTask={pauseTask} onResumeTask={resumeTask}
                 isStopping={isStopping} isPausing={isPausing} isResuming={isResuming}
                 selectedProfileId={selectedProfileId} projectId={activeConversationId || undefined}
+                onSlashCommand={handleSlashCommand}
               />
             </div>
             <div className="flex-1 min-h-0 border-t border-border/50">
@@ -282,6 +303,7 @@ const Dashboard = () => {
                     isStopping={isStopping} isPausing={isPausing} isResuming={isResuming}
                     selectedProfileId={selectedProfileId} projectId={activeConversationId || undefined}
                     hideTaskPreview={true}
+                    onSlashCommand={handleSlashCommand}
                   />
                 </div>
               </div>

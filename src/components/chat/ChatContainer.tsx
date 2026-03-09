@@ -28,6 +28,7 @@ interface ChatContainerProps {
   projectId?: string;
   selectedProfileId?: string | null;
   hideTaskPreview?: boolean;
+  onSlashCommand?: (command: string) => void;
 }
 
 const ChatContainer = ({
@@ -48,6 +49,7 @@ const ChatContainer = ({
   projectId,
   selectedProfileId,
   hideTaskPreview = false,
+  onSlashCommand,
 }: ChatContainerProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -207,6 +209,7 @@ const ChatContainer = ({
             disabled={isLoading || isExecutingTask}
             isStreaming={isStreaming}
             onStop={onStopStreaming}
+            onSlashCommand={onSlashCommand}
           />
         </div>
       </div>
