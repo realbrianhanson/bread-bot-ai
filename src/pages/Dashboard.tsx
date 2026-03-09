@@ -141,6 +141,7 @@ const Dashboard = () => {
         </div>
         <div className="flex items-center gap-1.5">
           <TaskTemplatesPanel onSelectTemplate={handleQuickStart} />
+          <ScheduledTasksPanel />
           <ThemeToggle />
           <TaskHistory onRerunTask={handleRerunTask} />
           <Button variant="ghost" size="icon" onClick={() => navigate("/settings")} className="h-8 w-8 text-muted-foreground hover:text-foreground">
