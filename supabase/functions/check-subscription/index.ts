@@ -28,21 +28,49 @@ serve(async (req) => {
     if (!authHeader) throw new Error("No authorization header provided");
     logStep("Authorization header found");
 
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      {
+        global: { headers: { Authorization: authHeader } },
+        auth: { persistSession: false, autoRefreshToken: false },
+      }
+    );
+
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
-    logStep("User authenticated", { userId: user.id, email: user.email });
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    if (!token) throw new Error("No bearer token provided");
+
+    const tokenParts = token.split(".");
+    if (tokenParts.length < 2) throw new Error("Authentication error: Invalid token format");
+
+    const base64Payload = tokenParts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const paddedPayload = base64Payload.padEnd(Math.ceil(base64Payload.length / 4) * 4, "=");
+    const claims = JSON.parse(atob(paddedPayload));
+
+    const userId = claims?.sub;
+    if (typeof userId !== "string") throw new Error("Authentication error: Invalid auth claims");
+
+    const { data: profile, error: profileError } = await userClient
+      .from("profiles")
+      .select("id, email")
+      .eq("id", userId)
+      .single();
+
+    if (profileError || !profile?.email) {
+      throw new Error("Authentication error: Auth session missing!");
+    }
+
+    const userEmail = profile.email;
+    logStep("User authenticated", { userId, email: userEmail });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
     
     if (customers.data.length === 0) {
       logStep("No customer found, returning free tier");
@@ -104,7 +132,7 @@ serve(async (req) => {
 
     // Get usage for current period
     const { data: usageData } = await supabaseClient.rpc('get_user_tier_and_usage', {
-      p_user_id: user.id
+      p_user_id: userId
     });
 
     const result = usageData?.[0] || {
