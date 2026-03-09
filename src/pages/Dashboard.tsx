@@ -76,6 +76,24 @@ const Dashboard = () => {
     }
   };
 
+  // Slash command handler — triggers UI panel opens via toast notifications
+  const handleSlashCommand = useCallback((command: string) => {
+    const messages: Record<string, string> = {
+      "/schedule": "Open the ⏰ clock icon in the header to manage scheduled tasks",
+      "/template": "Open the 📋 template icon in the header to browse templates",
+      "/history": "Open the 📜 history icon in the header to view past tasks",
+      "/workflow": "Open the 🔀 workflow icon in the header to build workflows",
+      "/results": "Open the 📊 chart icon in the header to view results",
+      "/webhooks": "Open the 🔗 webhook icon in the header to manage webhooks",
+    };
+    const msg = messages[command];
+    if (msg) {
+      import("@/hooks/use-toast").then(({ toast }) => {
+        toast({ title: "Tip", description: msg });
+      });
+    }
+  }, []);
+
   const handleSignOut = async () => { await signOut(); navigate("/auth"); };
 
   const handleNewConversation = async () => {
