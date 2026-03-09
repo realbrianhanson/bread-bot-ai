@@ -53,15 +53,19 @@ export const useChat = (projectId?: string) => {
     loadMessages();
 
     // Subscribe to realtime updates
+    const channelFilter = projectId
+      ? `user_id=eq.${user.id}&project_id=eq.${projectId}`
+      : `user_id=eq.${user.id}`;
+
     const channel = supabase
-      .channel('messages-changes')
+      .channel(`messages-changes-${projectId || 'all'}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'messages',
-          filter: `user_id=eq.${user.id}`,
+          filter: channelFilter,
         },
         (payload) => {
           console.log('Message change:', payload);
