@@ -25,17 +25,8 @@ serve(async (req) => {
     logStep("Stripe key verified");
 
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
+    if (!authHeader?.startsWith("Bearer ")) throw new Error("No authorization header provided");
     logStep("Authorization header found");
-
-    const userClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: { headers: { Authorization: authHeader } },
-        auth: { persistSession: false, autoRefreshToken: false },
-      }
-    );
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -43,27 +34,23 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
-    if (!token) throw new Error("No bearer token provided");
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      throw new Error("Authentication error: Invalid token");
+    }
 
-    const tokenParts = token.split(".");
-    if (tokenParts.length < 2) throw new Error("Authentication error: Invalid token format");
+    const userId = claimsData.claims.sub;
+    if (!userId) throw new Error("Authentication error: No user ID in token");
 
-    const base64Payload = tokenParts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const paddedPayload = base64Payload.padEnd(Math.ceil(base64Payload.length / 4) * 4, "=");
-    const claims = JSON.parse(atob(paddedPayload));
-
-    const userId = claims?.sub;
-    if (typeof userId !== "string") throw new Error("Authentication error: Invalid auth claims");
-
-    const { data: profile, error: profileError } = await userClient
+    const { data: profile, error: profileError } = await supabaseClient
       .from("profiles")
       .select("id, email")
       .eq("id", userId)
       .single();
 
     if (profileError || !profile?.email) {
-      throw new Error("Authentication error: Auth session missing!");
+      throw new Error("Authentication error: Profile not found");
     }
 
     const userEmail = profile.email;
