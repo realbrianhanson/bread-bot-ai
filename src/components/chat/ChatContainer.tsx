@@ -28,6 +28,7 @@ interface ChatContainerProps {
   projectId?: string;
   selectedProfileId?: string | null;
   hideTaskPreview?: boolean;
+  onSlashCommand?: (command: string) => void;
 }
 
 const ChatContainer = ({
