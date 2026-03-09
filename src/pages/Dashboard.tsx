@@ -117,7 +117,7 @@ const Dashboard = () => {
   );
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-background overflow-hidden dark">
+    <div className="h-screen w-screen flex flex-col bg-background overflow-hidden">
       {/* Header */}
       <header className="shrink-0 h-12 border-b border-border/50 bg-card/80 backdrop-blur-sm z-10 flex items-center justify-between px-4">
         <div className="flex items-center gap-2.5">
