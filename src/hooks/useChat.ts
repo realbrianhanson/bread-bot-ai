@@ -22,20 +22,18 @@ export const useChat = (projectId?: string) => {
 
   // Load messages from database
   useEffect(() => {
-    if (!user) return;
+    if (!user || !projectId) {
+      setMessages([]);
+      return;
+    }
 
     const loadMessages = async () => {
-      let query = supabase
+      const { data, error } = await supabase
         .from('messages')
         .select('*')
         .eq('user_id', user.id)
+        .eq('project_id', projectId)
         .order('created_at', { ascending: true });
-
-      if (projectId) {
-        query = query.eq('project_id', projectId);
-      }
-
-      const { data, error } = await query;
 
       if (error) {
         console.error('Error loading messages:', error);
@@ -52,31 +50,22 @@ export const useChat = (projectId?: string) => {
 
     loadMessages();
 
-    // Subscribe to realtime updates
-    const channelFilter = projectId
-      ? `user_id=eq.${user.id}&project_id=eq.${projectId}`
-      : `user_id=eq.${user.id}`;
-
     const channel = supabase
-      .channel(`messages-changes-${projectId || 'all'}`)
+      .channel(`messages-changes-${projectId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'messages',
-          filter: channelFilter,
+          filter: `user_id=eq.${user.id}&project_id=eq.${projectId}`,
         },
         (payload) => {
-          console.log('Message change:', payload);
           if (payload.eventType === 'INSERT') {
-            const newMessage = payload.new as any;
-            setMessages((prev) => [...prev, newMessage as Message]);
+            setMessages((prev) => [...prev, payload.new as Message]);
           } else if (payload.eventType === 'UPDATE') {
-            const updatedMessage = payload.new as any;
-            setMessages((prev) =>
-              prev.map((msg) => (msg.id === updatedMessage.id ? (updatedMessage as Message) : msg))
-            );
+            const updated = payload.new as Message;
+            setMessages((prev) => prev.map((msg) => msg.id === updated.id ? updated : msg));
           } else if (payload.eventType === 'DELETE') {
             setMessages((prev) => prev.filter((msg) => msg.id !== payload.old.id));
           }
