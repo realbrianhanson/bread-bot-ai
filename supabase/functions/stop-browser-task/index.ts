@@ -95,7 +95,7 @@ serve(async (req) => {
         .eq('is_active', true)
         .maybeSingle();
 
-      browserUseApiKey = apiKeyData?.encrypted_key || Deno.env.get('BROWSER_USE_API_KEY') ?? '';
+      browserUseApiKey = apiKeyData?.encrypted_key || (Deno.env.get('BROWSER_USE_API_KEY') ?? '');
     } else {
       browserUseApiKey = Deno.env.get('BROWSER_USE_API_KEY') ?? '';
     }
