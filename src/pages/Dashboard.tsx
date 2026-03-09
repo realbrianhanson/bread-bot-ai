@@ -171,6 +171,7 @@ const Dashboard = () => {
         </div>
         <div className="flex items-center gap-1.5">
           <TaskTemplatesPanel onSelectTemplate={handleQuickStart} />
+          <WorkflowBuilder onExecuteWorkflow={handleExecuteWorkflow} />
           <ScheduledTasksPanel />
           <ThemeToggle />
           <TaskHistory onRerunTask={handleRerunTask} />
