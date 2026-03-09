@@ -31,6 +31,9 @@ import { CommandPalette } from "@/components/ui/command-palette";
 import { TaskTemplatesPanel } from "@/components/templates/TaskTemplatesPanel";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { ScheduledTasksPanel } from "@/components/scheduled/ScheduledTasksPanel";
+import { WorkflowBuilder } from "@/components/workflow/WorkflowBuilder";
+import { TaskPlanViewer } from "@/components/workflow/TaskPlanViewer";
+import { useTaskPlanner } from "@/hooks/useTaskPlanner";
 
 const Dashboard = () => {
   const { signOut, user } = useAuth();
