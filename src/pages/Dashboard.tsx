@@ -236,10 +236,7 @@ const Dashboard = () => {
         )}
         {(activeConversationId || messages.length > 0) ? (
           <>
-            <div className="px-4 py-2">
-              <ProfileSelector onProfileSelect={setSelectedProfileId} />
-            </div>
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 flex flex-col">
               <ChatContainer
                 messages={messages} isLoading={isLoading} isStreaming={isStreaming}
                 onSendMessage={handleSendWithPlanner} onStopStreaming={stopStreaming}
@@ -249,25 +246,6 @@ const Dashboard = () => {
                 selectedProfileId={selectedProfileId} projectId={activeConversationId || undefined}
                 onSlashCommand={handleSlashCommand}
               />
-            </div>
-            <div className="flex-1 min-h-0 border-t border-border/50">
-              {currentTask && currentTask.liveUrl ? (
-                <LiveBrowserView
-                  liveUrl={currentTask.liveUrl} status={currentTask.status}
-                  screenshots={currentTask.screenshots} actions={currentTask.actions}
-                  steps={currentTask.steps} taskId={currentTask.id}
-                  onStopTask={stopTask} onPauseTask={pauseTask} onResumeTask={resumeTask}
-                  isStopping={isStopping} isPausing={isPausing} isResuming={isResuming}
-                  interventionReason={currentTask.interventionReason}
-                  interventionMessage={currentTask.interventionMessage}
-                  currentPhase={currentTask.currentPhase}
-                  deliverables={currentTask.deliverables}
-                  extractedData={currentTask.extractedData}
-                  taskSummary={currentTask.taskSummary}
-                />
-              ) : (
-                <CodePreview files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} />
-              )}
             </div>
           </>
         ) : (
