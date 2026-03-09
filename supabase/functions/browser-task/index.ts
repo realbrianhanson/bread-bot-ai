@@ -137,7 +137,7 @@ serve(async (req) => {
 
     // Call Browser Use Cloud API with webhook
     try {
-      const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/browser-task-webhook`;
+      const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/browser-task-webhook?secret=${Deno.env.get('WEBHOOK_SECRET')}`;
 
       const browserUseResponse = await fetch(`${BROWSER_USE_API_URL}/run-task`, {
         method: 'POST',

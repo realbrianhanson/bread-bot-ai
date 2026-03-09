@@ -72,7 +72,19 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
+    // Verify shared secret
+    const url = new URL(req.url);
+    const secret = url.searchParams.get('secret');
+    const expectedSecret = Deno.env.get('WEBHOOK_SECRET');
+
+    if (!expectedSecret || secret !== expectedSecret) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+
     const body = await req.json();
     const { task_id, status, output, steps, live_url, error: taskError } = body;
 
