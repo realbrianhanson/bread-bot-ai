@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const BROWSER_USE_API_URL = 'https://api.browser-use.com/api/v1';
+const BROWSER_USE_API_URL = 'https://api.browser-use.com/api/v3';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -112,7 +112,7 @@ serve(async (req) => {
       try {
         const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/browser-task-webhook?secret=${Deno.env.get('WEBHOOK_SECRET')}`;
 
-        const response = await fetch(`${BROWSER_USE_API_URL}/run-task`, {
+        const response = await fetch(`${BROWSER_USE_API_URL}/sessions`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${browserUseApiKey}`,

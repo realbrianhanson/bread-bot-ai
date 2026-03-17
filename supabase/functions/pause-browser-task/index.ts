@@ -60,9 +60,9 @@ Deno.serve(async (req) => {
     }
 
     const pauseResponse = await fetch(
-      `https://api.browser-use.com/api/v1/pause-task?task_id=${browserUseTaskId}`,
+      `https://api.browser-use.com/api/v3/sessions/${browserUseTaskId}/stop`,
       {
-        method: 'PUT',
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${browserUseApiKey}`,
         },

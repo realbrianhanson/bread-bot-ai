@@ -7,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const BROWSER_USE_API_URL = 'https://api.browser-use.com/api/v1';
+const BROWSER_USE_API_URL = 'https://api.browser-use.com/api/v3';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -100,8 +100,8 @@ serve(async (req) => {
       browserUseApiKey = Deno.env.get('BROWSER_USE_API_KEY') ?? '';
     }
 
-    const stopResponse = await fetch(`${BROWSER_USE_API_URL}/task/${browserUseTaskId}/stop`, {
-      method: 'PUT',
+    const stopResponse = await fetch(`${BROWSER_USE_API_URL}/sessions/${browserUseTaskId}/stop`, {
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${browserUseApiKey}`,
       },

@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const BROWSER_USE_API_URL = 'https://api.browser-use.com/api/v1';
+const BROWSER_USE_API_URL = 'https://api.browser-use.com/api/v3';
 
 async function fetchAndStoreScreenshots(
   browserUseTaskId: string,
@@ -15,7 +15,7 @@ async function fetchAndStoreScreenshots(
   supabaseClient: any,
 ) {
   try {
-    const response = await fetch(`${BROWSER_USE_API_URL}/task/${browserUseTaskId}/screenshots`, {
+    const response = await fetch(`${BROWSER_USE_API_URL}/sessions/${browserUseTaskId}/files`, {
       headers: { Authorization: `Bearer ${apiKey}` },
     });
 
