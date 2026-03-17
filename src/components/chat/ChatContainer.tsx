@@ -114,7 +114,7 @@ const ChatContainer = ({
                 {quickCommands.map((cmd) => (
                   <button
                     key={cmd.label}
-                    onClick={() => cmd.label === '/browse' ? handleSendMessage('/browse ') : null}
+                    onClick={() => {}}
                     className="flex items-center gap-3 p-3 rounded-xl bg-card/60 border border-border/40 hover:border-primary/30 hover:bg-card/80 transition-all group text-left"
                   >
                     <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/15 transition-colors">
