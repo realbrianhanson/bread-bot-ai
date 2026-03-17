@@ -80,6 +80,7 @@ const ChatContainer = ({
         onExecuteTask(task, projectId, selectedProfileId || undefined);
         return;
       }
+      if (!task) return; // Don't send empty /browse as chat
     }
     
     onSendMessage(content);
