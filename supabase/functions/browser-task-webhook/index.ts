@@ -16,7 +16,7 @@ async function fetchAndStoreScreenshots(
 ) {
   try {
     const response = await fetch(`${BROWSER_USE_API_URL}/sessions/${browserUseTaskId}/files`, {
-      headers: { Authorization: `Bearer ${apiKey}` },
+      headers: { 'X-Browser-Use-API-Key': apiKey },
     });
 
     if (!response.ok) {

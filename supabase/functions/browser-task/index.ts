@@ -144,7 +144,7 @@ serve(async (req) => {
       const browserUseResponse = await fetch(`${BROWSER_USE_API_URL}/sessions`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${browserUseApiKey}`,
+          'X-Browser-Use-API-Key': browserUseApiKey,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
