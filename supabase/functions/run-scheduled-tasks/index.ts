@@ -120,9 +120,7 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             task: scheduledTask.prompt,
-            live_url: true,
-            webhook_url: webhookUrl,
-            ...(browserUseProfileId ? { profile_id: browserUseProfileId } : {}),
+            ...(browserUseProfileId ? { profileId: browserUseProfileId } : {}),
           }),
         });
 
