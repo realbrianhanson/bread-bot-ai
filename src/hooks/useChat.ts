@@ -88,6 +88,10 @@ export const useChat = (projectId?: string) => {
     };
   }, [user, projectId]);
 
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
   const sendMessage = useCallback(
     async (content: string) => {
       if (!user || !content.trim()) return;
