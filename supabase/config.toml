@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.browser-task-webhook]
 verify_jwt = false
+
+[functions.ghl-contact-webhook]
+verify_jwt = false
