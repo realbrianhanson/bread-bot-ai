@@ -626,6 +626,53 @@ export const useBrowserTask = () => {
     };
   }, [user]);
 
+  // Client-side polling for session status (primary update mechanism since v3 doesn't support per-session webhooks)
+  useEffect(() => {
+    if (!isExecuting || !currentTaskIdRef.current) return;
+
+    const pollInterval = setInterval(async () => {
+      if (!currentTaskIdRef.current) {
+        clearInterval(pollInterval);
+        return;
+      }
+
+      try {
+        const response = await supabase.functions.invoke('poll-session', {
+          body: { taskId: currentTaskIdRef.current },
+        });
+
+        if (response.error) {
+          console.error('[POLL] Error polling session:', response.error);
+          return;
+        }
+
+        const data = response.data;
+        if (!data || !data.id) return;
+
+        const task = buildBrowserTaskFromRow(data);
+        setCurrentTask(task);
+
+        // Handle terminal states
+        if (['completed', 'failed', 'stopped'].includes(data.status)) {
+          setIsExecuting(false);
+          clearInterval(pollInterval);
+
+          if (data.status === 'completed') {
+            toast({ title: 'Task Completed', description: 'Browser automation finished successfully' });
+          } else if (data.status === 'failed') {
+            toast({ title: 'Task Failed', description: data.error_message || 'Browser automation failed', variant: 'destructive' });
+          } else if (data.status === 'stopped') {
+            toast({ title: 'Task Stopped', description: 'Browser automation was stopped' });
+          }
+        }
+      } catch (err) {
+        console.error('[POLL] Polling error:', err);
+      }
+    }, 5000);
+
+    return () => clearInterval(pollInterval);
+  }, [isExecuting]);
+
   const executeTask = useCallback(
     async (task: string, projectId?: string, profileId?: string) => {
       if (!user) return;
