@@ -433,6 +433,45 @@ const LiveBrowserView = ({
     );
   }
 
+  // Show connecting state when running but no live URL yet
+  if (status === 'running' && !liveUrl) {
+    return (
+      <div className="space-y-3">
+        <Card className="p-4 bg-muted/30 backdrop-blur-sm border-border/50">
+          <div className="flex items-center gap-2 mb-3">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <h3 className="font-semibold text-sm">Connecting to browser session...</h3>
+            <div className="ml-auto flex items-center gap-2">
+              {taskId && onStopTask && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => onStopTask(taskId)}
+                  disabled={isStopping}
+                  className="h-7 text-xs"
+                >
+                  {isStopping ? (
+                    <>
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      Stopping...
+                    </>
+                  ) : (
+                    <>
+                      <Square className="h-3 w-3 mr-1 fill-current" />
+                      Stop Task
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">Setting up the live view. This may take a moment.</p>
+        </Card>
+        {steps.length > 0 && <StepTimeline steps={steps} isRunning={true} currentPhase={currentPhase} />}
+      </div>
+    );
+  }
+
   return null;
 };
 

@@ -301,7 +301,7 @@ const Dashboard = () => {
                     isExecuting={isExecuting}
                   />
                 </div>
-              ) : currentTask && currentTask.liveUrl ? (
+              ) : currentTask ? (
                 <LiveBrowserView
                   liveUrl={currentTask.liveUrl} status={currentTask.status}
                   screenshots={currentTask.screenshots} actions={currentTask.actions}

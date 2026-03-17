@@ -110,7 +110,7 @@ serve(async (req) => {
 
       // Launch browser task
       try {
-        const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/browser-task-webhook?secret=${Deno.env.get('WEBHOOK_SECRET')}`;
+        // Polling handles status updates; no webhook URL needed
 
         const response = await fetch(`${BROWSER_USE_API_URL}/sessions`, {
           method: 'POST',

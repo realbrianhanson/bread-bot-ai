@@ -626,47 +626,53 @@ export const useBrowserTask = () => {
     };
   }, [user]);
 
-  // Client-side polling for session status (primary update mechanism since v3 doesn't support per-session webhooks)
+  // Polling — checks Browser Use API for task status updates
   useEffect(() => {
     if (!isExecuting || !currentTaskIdRef.current) return;
 
     const pollInterval = setInterval(async () => {
-      if (!currentTaskIdRef.current) {
+      const taskId = currentTaskIdRef.current;
+      if (!taskId) {
         clearInterval(pollInterval);
         return;
       }
 
       try {
-        const response = await supabase.functions.invoke('poll-session', {
-          body: { taskId: currentTaskIdRef.current },
+        const response = await supabase.functions.invoke('poll-browser-task', {
+          body: { taskId },
         });
 
         if (response.error) {
-          console.error('[POLL] Error polling session:', response.error);
+          console.error('[POLL] Edge function error:', response.error);
           return;
         }
 
-        const data = response.data;
-        if (!data || !data.id) return;
+        // Re-read the fresh row from DB after the edge function updates it
+        const { data: freshRow, error: fetchError } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('id', taskId)
+          .single();
 
-        const task = buildBrowserTaskFromRow(data);
+        if (fetchError || !freshRow) return;
+
+        const task = buildBrowserTaskFromRow(freshRow);
         setCurrentTask(task);
 
-        // Handle terminal states
-        if (['completed', 'failed', 'stopped'].includes(data.status)) {
+        if (freshRow.status === 'completed' || freshRow.status === 'failed' || freshRow.status === 'stopped') {
           setIsExecuting(false);
           clearInterval(pollInterval);
 
-          if (data.status === 'completed') {
+          if (freshRow.status === 'completed') {
             toast({ title: 'Task Completed', description: 'Browser automation finished successfully' });
-          } else if (data.status === 'failed') {
-            toast({ title: 'Task Failed', description: data.error_message || 'Browser automation failed', variant: 'destructive' });
-          } else if (data.status === 'stopped') {
-            toast({ title: 'Task Stopped', description: 'Browser automation was stopped' });
+          } else if (freshRow.status === 'failed') {
+            toast({ title: 'Task Failed', description: freshRow.error_message || 'Browser automation failed', variant: 'destructive' });
+          } else if (freshRow.status === 'stopped') {
+            toast({ title: 'Task Stopped', description: 'Browser automation was stopped by user' });
           }
         }
       } catch (err) {
-        console.error('[POLL] Polling error:', err);
+        console.error('[POLL] Error polling task status:', err);
       }
     }, 5000);
 
