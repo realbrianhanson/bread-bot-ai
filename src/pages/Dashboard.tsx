@@ -259,7 +259,7 @@ const Dashboard = () => {
           <ResizablePanelGroup direction="horizontal" className="h-full w-full">
             <ResizablePanel defaultSize={35} minSize={25} maxSize={50}>
               <div className="h-full flex flex-col border-r border-border/50">
-                <div className="border-b border-border/50">
+                <div className="border-b border-border/50 max-h-48 overflow-y-auto shrink-0">
                   <ConversationList
                     conversations={conversations}
                     activeConversationId={activeConversationId}
