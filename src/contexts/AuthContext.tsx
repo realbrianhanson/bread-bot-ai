@@ -141,6 +141,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     
     if (!error) {
+      // Fire GHL webhook with contact info (non-blocking)
+      const nameParts = fullName.trim().split(/\s+/);
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+      
+      supabase.functions.invoke("ghl-contact-webhook", {
+        body: { email, firstName, lastName },
+      }).catch((err) => {
+        console.error("GHL webhook failed (non-blocking):", err);
+      });
+
       navigate('/dashboard');
     }
     
