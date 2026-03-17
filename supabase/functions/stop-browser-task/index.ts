@@ -103,7 +103,7 @@ serve(async (req) => {
     const stopResponse = await fetch(`${BROWSER_USE_API_URL}/sessions/${browserUseTaskId}/stop`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${browserUseApiKey}`,
+        'X-Browser-Use-API-Key': browserUseApiKey,
       },
     });
 

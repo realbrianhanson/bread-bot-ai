@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
       const createResponse = await fetch('https://api.browser-use.com/api/v3/browser-profiles', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${browserUseApiKey}`,
+           'X-Browser-Use-API-Key': browserUseApiKey,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ profile_name: name || 'Default Profile' }),
@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
           {
             method: 'DELETE',
             headers: {
-              'Authorization': `Bearer ${browserUseApiKey}`,
+              'X-Browser-Use-API-Key': browserUseApiKey,
             },
           }
         );
