@@ -131,7 +131,7 @@ export const useChat = (projectId?: string) => {
         // Call edge function for streaming response
         abortControllerRef.current = new AbortController();
         
-        const messagesForAPI = messages
+        const messagesForAPI = messagesRef.current
           .concat([userMessage as Message])
           .map((msg) => ({
             role: msg.role,
