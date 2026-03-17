@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
           {
             method: 'DELETE',
             headers: {
-              'Authorization': `Bearer ${browserUseApiKey}`,
+              'X-Browser-Use-API-Key': browserUseApiKey,
             },
           }
         );
