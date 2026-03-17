@@ -46,7 +46,9 @@ export const useChat = (projectId?: string) => {
         return;
       }
 
-      setMessages((data || []) as Message[]);
+      const loaded = (data || []) as Message[];
+      setMessages(loaded);
+      messagesRef.current = loaded;
     };
 
     loadMessages();
