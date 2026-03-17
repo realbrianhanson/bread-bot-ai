@@ -143,7 +143,7 @@ serve(async (req) => {
             started_at: now.toISOString(),
             output_data: {
               browser_use_task_id: browserData.id,
-              live_url: browserData.live_url || browserData.liveUrl,
+              live_url: browserData.liveUrl || browserData.live_url,
             },
           })
           .eq('id', taskRecord.id);
