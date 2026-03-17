@@ -149,9 +149,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           task,
-          live_url: true,
-          webhook_url: webhookUrl,
-          ...(browserUseProfileId ? { profile_id: browserUseProfileId } : {})
+          ...(browserUseProfileId ? { profileId: browserUseProfileId } : {})
         }),
       });
 
@@ -173,8 +171,9 @@ serve(async (req) => {
       }
 
       const browserUseData = await browserUseResponse.json();
+      console.log('[BROWSER-TASK] Full API response:', JSON.stringify(browserUseData));
       const browserUseTaskId = browserUseData.id;
-      const liveUrl = browserUseData.live_url || browserUseData.liveUrl;
+      const liveUrl = browserUseData.liveUrl || browserUseData.live_url;
 
       console.log('[BROWSER-TASK] Task created:', browserUseTaskId, 'Live URL:', liveUrl);
 
