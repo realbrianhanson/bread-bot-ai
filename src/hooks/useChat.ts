@@ -19,6 +19,7 @@ export const useChat = (projectId?: string) => {
   const { user } = useAuth();
   const { canSendMessage, refreshSubscription } = useSubscription();
   const abortControllerRef = useRef<AbortController | null>(null);
+  const messagesRef = useRef<Message[]>([]);
 
   // Load messages from database
   useEffect(() => {
@@ -45,7 +46,9 @@ export const useChat = (projectId?: string) => {
         return;
       }
 
-      setMessages((data || []) as Message[]);
+      const loaded = (data || []) as Message[];
+      setMessages(loaded);
+      messagesRef.current = loaded;
     };
 
     loadMessages();
@@ -58,16 +61,23 @@ export const useChat = (projectId?: string) => {
           event: '*',
           schema: 'public',
           table: 'messages',
-          filter: `user_id=eq.${user.id}&project_id=eq.${projectId}`,
+          filter: `project_id=eq.${projectId}`,
         },
         (payload) => {
+          const msg = payload.new as Message;
+          // Guard: ignore messages from other users
+          if (payload.eventType !== 'DELETE' && (payload.new as any).user_id !== user.id) return;
+
           if (payload.eventType === 'INSERT') {
-            setMessages((prev) => [...prev, payload.new as Message]);
+            setMessages((prev) => {
+              if (prev.some(m => m.id === msg.id)) return prev;
+              return [...prev, msg];
+            });
           } else if (payload.eventType === 'UPDATE') {
             const updated = payload.new as Message;
-            setMessages((prev) => prev.map((msg) => msg.id === updated.id ? updated : msg));
+            setMessages((prev) => prev.map((m) => m.id === updated.id ? updated : m));
           } else if (payload.eventType === 'DELETE') {
-            setMessages((prev) => prev.filter((msg) => msg.id !== payload.old.id));
+            setMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
           }
         }
       )
@@ -77,6 +87,10 @@ export const useChat = (projectId?: string) => {
       supabase.removeChannel(channel);
     };
   }, [user, projectId]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -117,7 +131,7 @@ export const useChat = (projectId?: string) => {
         // Call edge function for streaming response
         abortControllerRef.current = new AbortController();
         
-        const messagesForAPI = messages
+        const messagesForAPI = messagesRef.current
           .concat([userMessage as Message])
           .map((msg) => ({
             role: msg.role,
@@ -225,7 +239,7 @@ export const useChat = (projectId?: string) => {
         refreshSubscription();
       }
     },
-    [user, projectId, messages, canSendMessage, refreshSubscription]
+    [user, projectId, canSendMessage, refreshSubscription]
   );
 
   const stopStreaming = useCallback(() => {
