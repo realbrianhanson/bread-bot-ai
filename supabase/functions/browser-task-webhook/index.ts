@@ -87,9 +87,43 @@ serve(async (req) => {
 
 
     const body = await req.json();
-    const { task_id, status, output, steps, live_url, error: taskError } = body;
 
-    console.log('[WEBHOOK] Received:', { task_id, status });
+    // Handle test events from Browser Use Cloud
+    if (body.type === 'test') {
+      console.log('[WEBHOOK] Test event received');
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Support both Browser Use Cloud event format and flat format
+    let task_id: string | undefined;
+    let status: string | undefined;
+    let output: any;
+    let steps: any;
+    let live_url: string | undefined;
+    let taskError: string | undefined;
+
+    if (body.type && body.payload) {
+      // Browser Use Cloud event format
+      task_id = body.payload.session_id || body.payload.task_id;
+      status = body.payload.status;
+      output = body.payload.output;
+      steps = body.payload.steps;
+      live_url = body.payload.live_url;
+      taskError = body.payload.error;
+    } else {
+      // Flat format (backward compat)
+      task_id = body.task_id;
+      status = body.status;
+      output = body.output;
+      steps = body.steps;
+      live_url = body.live_url;
+      taskError = body.error;
+    }
+
+    console.log('[WEBHOOK] Received:', { type: body.type, task_id, status });
 
     if (!task_id) {
       return new Response(JSON.stringify({ error: 'Missing task_id' }), {
