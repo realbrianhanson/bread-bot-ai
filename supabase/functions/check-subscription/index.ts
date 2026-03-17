@@ -112,7 +112,7 @@ serve(async (req) => {
       
       if (tierData) {
         tier = tierData.tier;
-        canUseOwnKeys = tier === 'lifetime';
+        canUseOwnKeys = tier === 'lifetime' || tier === 'enterprise';
         logStep("Determined subscription tier", { tier, canUseOwnKeys });
       }
     }
