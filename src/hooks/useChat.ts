@@ -19,6 +19,7 @@ export const useChat = (projectId?: string) => {
   const { user } = useAuth();
   const { canSendMessage, refreshSubscription } = useSubscription();
   const abortControllerRef = useRef<AbortController | null>(null);
+  const messagesRef = useRef<Message[]>([]);
 
   // Load messages from database
   useEffect(() => {
