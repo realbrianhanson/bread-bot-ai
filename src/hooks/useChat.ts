@@ -66,7 +66,7 @@ export const useChat = (projectId?: string) => {
         (payload) => {
           const msg = payload.new as Message;
           // Guard: ignore messages from other users
-          if (payload.eventType !== 'DELETE' && msg.user_id !== user.id) return;
+          if (payload.eventType !== 'DELETE' && (payload.new as any).user_id !== user.id) return;
 
           if (payload.eventType === 'INSERT') {
             setMessages((prev) => {
