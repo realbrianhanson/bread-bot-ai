@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
 
       if (profile.browser_use_profile_id) {
         const deleteResponse = await fetch(
-          `https://api.browser-use.com/api/v1/browser-profiles/${profile.browser_use_profile_id}`,
+          `https://api.browser-use.com/api/v3/browser-profiles/${profile.browser_use_profile_id}`,
           {
             method: 'DELETE',
             headers: {

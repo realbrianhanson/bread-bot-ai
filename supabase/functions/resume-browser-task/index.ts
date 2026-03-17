@@ -60,12 +60,17 @@ Deno.serve(async (req) => {
     }
 
     const resumeResponse = await fetch(
-      `https://api.browser-use.com/api/v1/resume-task?task_id=${browserUseTaskId}`,
+      `https://api.browser-use.com/api/v3/sessions`,
       {
-        method: 'PUT',
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${browserUseApiKey}`,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          session_id: browserUseTaskId,
+          task: 'Resume the previous task',
+        }),
       }
     );
 

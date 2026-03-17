@@ -15,7 +15,7 @@ async function fetchAndStoreScreenshots(
   supabaseClient: any,
 ) {
   try {
-    const response = await fetch(`${BROWSER_USE_API_URL}/task/${browserUseTaskId}/screenshots`, {
+    const response = await fetch(`${BROWSER_USE_API_URL}/sessions/${browserUseTaskId}/files`, {
       headers: { Authorization: `Bearer ${apiKey}` },
     });
 

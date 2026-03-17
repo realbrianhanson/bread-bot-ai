@@ -100,8 +100,8 @@ serve(async (req) => {
       browserUseApiKey = Deno.env.get('BROWSER_USE_API_KEY') ?? '';
     }
 
-    const stopResponse = await fetch(`${BROWSER_USE_API_URL}/task/${browserUseTaskId}/stop`, {
-      method: 'PUT',
+    const stopResponse = await fetch(`${BROWSER_USE_API_URL}/sessions/${browserUseTaskId}/stop`, {
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${browserUseApiKey}`,
       },
