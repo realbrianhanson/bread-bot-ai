@@ -629,10 +629,10 @@ export const useBrowserTask = () => {
 
   // Polling — checks Browser Use API for task status updates
   useEffect(() => {
-    if (!isExecuting || !currentTaskIdRef.current) return;
+    if (!isExecuting || !activePollingTaskId) return;
 
     const pollInterval = setInterval(async () => {
-      const taskId = currentTaskIdRef.current;
+      const taskId = activePollingTaskId;
       if (!taskId) {
         clearInterval(pollInterval);
         return;
@@ -662,6 +662,7 @@ export const useBrowserTask = () => {
 
         if (freshRow.status === 'completed' || freshRow.status === 'failed' || freshRow.status === 'stopped') {
           setIsExecuting(false);
+          setActivePollingTaskId(null);
           clearInterval(pollInterval);
 
           if (freshRow.status === 'completed') {
@@ -678,7 +679,7 @@ export const useBrowserTask = () => {
     }, 5000);
 
     return () => clearInterval(pollInterval);
-  }, [isExecuting]);
+  }, [isExecuting, activePollingTaskId]);
 
   const executeTask = useCallback(
     async (task: string, projectId?: string, profileId?: string) => {
