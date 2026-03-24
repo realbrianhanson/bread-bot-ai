@@ -707,6 +707,7 @@ export const useBrowserTask = () => {
 
         const taskData = response.data;
         currentTaskIdRef.current = taskData.taskId;
+        setActivePollingTaskId(taskData.taskId);
 
         setCurrentTask({
           id: taskData.taskId,
