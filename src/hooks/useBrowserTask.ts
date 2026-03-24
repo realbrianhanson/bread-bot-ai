@@ -200,6 +200,7 @@ export const useBrowserTask = () => {
   const [isStopping, setIsStopping] = useState(false);
   const [isPausing, setIsPausing] = useState(false);
   const [isResuming, setIsResuming] = useState(false);
+  const [activePollingTaskId, setActivePollingTaskId] = useState<string | null>(null);
   const { user } = useAuth();
   const { canRunBrowserTask, refreshSubscription } = useSubscription();
   const currentTaskIdRef = useRef<string | null>(null);
@@ -628,10 +629,10 @@ export const useBrowserTask = () => {
 
   // Polling — checks Browser Use API for task status updates
   useEffect(() => {
-    if (!isExecuting || !currentTaskIdRef.current) return;
+    if (!isExecuting || !activePollingTaskId) return;
 
     const pollInterval = setInterval(async () => {
-      const taskId = currentTaskIdRef.current;
+      const taskId = activePollingTaskId;
       if (!taskId) {
         clearInterval(pollInterval);
         return;
@@ -661,6 +662,7 @@ export const useBrowserTask = () => {
 
         if (freshRow.status === 'completed' || freshRow.status === 'failed' || freshRow.status === 'stopped') {
           setIsExecuting(false);
+          setActivePollingTaskId(null);
           clearInterval(pollInterval);
 
           if (freshRow.status === 'completed') {
@@ -677,7 +679,7 @@ export const useBrowserTask = () => {
     }, 5000);
 
     return () => clearInterval(pollInterval);
-  }, [isExecuting]);
+  }, [isExecuting, activePollingTaskId]);
 
   const executeTask = useCallback(
     async (task: string, projectId?: string, profileId?: string) => {
@@ -705,6 +707,7 @@ export const useBrowserTask = () => {
 
         const taskData = response.data;
         currentTaskIdRef.current = taskData.taskId;
+        setActivePollingTaskId(taskData.taskId);
 
         setCurrentTask({
           id: taskData.taskId,
@@ -729,6 +732,7 @@ export const useBrowserTask = () => {
           variant: 'destructive',
         });
         setIsExecuting(false);
+        setActivePollingTaskId(null);
         setCurrentTask(null);
         currentTaskIdRef.current = null;
         refreshSubscription();
