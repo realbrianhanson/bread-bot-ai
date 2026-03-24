@@ -200,6 +200,7 @@ export const useBrowserTask = () => {
   const [isStopping, setIsStopping] = useState(false);
   const [isPausing, setIsPausing] = useState(false);
   const [isResuming, setIsResuming] = useState(false);
+  const [activePollingTaskId, setActivePollingTaskId] = useState<string | null>(null);
   const { user } = useAuth();
   const { canRunBrowserTask, refreshSubscription } = useSubscription();
   const currentTaskIdRef = useRef<string | null>(null);
