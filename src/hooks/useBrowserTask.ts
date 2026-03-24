@@ -732,6 +732,7 @@ export const useBrowserTask = () => {
           variant: 'destructive',
         });
         setIsExecuting(false);
+        setActivePollingTaskId(null);
         setCurrentTask(null);
         currentTaskIdRef.current = null;
         refreshSubscription();
