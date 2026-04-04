@@ -94,9 +94,9 @@ serve(async (req) => {
       });
     }
 
-    const { messages } = await req.json();
+    const { messages, ghlMode } = await req.json();
 
-    console.log('Calling Anthropic API with', messages.length, 'messages');
+    console.log('Calling Anthropic API with', messages.length, 'messages, ghlMode:', !!ghlMode);
 
     const systemPrompt = `You are an expert full-stack web developer and UI designer with browser automation capabilities. You create stunning, modern, production-quality web applications.
 
