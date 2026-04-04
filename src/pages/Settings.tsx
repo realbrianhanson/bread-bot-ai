@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Save, Eye, EyeOff, Crown, RefreshCw, Settings2, BarChart3, Shield, FileUp, Book, Globe, Bot } from 'lucide-react';
+import { ArrowLeft, Save, Eye, EyeOff, Crown, RefreshCw, Settings2, BarChart3, Shield, FileUp, Book, Globe, Bot, CheckCircle2, Unlink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
@@ -44,6 +44,62 @@ export default function Settings() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [managingSubscription, setManagingSubscription] = useState(false);
+  const [googleIntegration, setGoogleIntegration] = useState<{ provider_email: string | null; connected: boolean }>({ connected: false, provider_email: null });
+  const [connectingGoogle, setConnectingGoogle] = useState(false);
+
+  const loadGoogleIntegration = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('user_integrations' as any)
+      .select('provider_email')
+      .eq('user_id', user.id)
+      .eq('provider', 'google')
+      .maybeSingle();
+    if (data) {
+      setGoogleIntegration({ connected: true, provider_email: (data as any).provider_email });
+    } else {
+      setGoogleIntegration({ connected: false, provider_email: null });
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadGoogleIntegration();
+    // Listen for OAuth popup callback
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'google-oauth-success') {
+        toast.success('Google account connected!');
+        loadGoogleIntegration();
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [loadGoogleIntegration]);
+
+  const handleConnectGoogle = () => {
+    if (!user) return;
+    setConnectingGoogle(true);
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-oauth/authorize?user_id=${user.id}`;
+    const popup = window.open(url, 'google-oauth', 'width=600,height=700,popup=yes');
+    // Poll for popup close
+    const interval = setInterval(() => {
+      if (popup?.closed) {
+        clearInterval(interval);
+        setConnectingGoogle(false);
+        loadGoogleIntegration();
+      }
+    }, 500);
+  };
+
+  const handleDisconnectGoogle = async () => {
+    if (!user) return;
+    await supabase
+      .from('user_integrations' as any)
+      .delete()
+      .eq('user_id', user.id)
+      .eq('provider', 'google');
+    setGoogleIntegration({ connected: false, provider_email: null });
+    toast.success('Google account disconnected');
+  };
 
   useEffect(() => {
     if (canUseOwnKeys) {
@@ -366,6 +422,51 @@ export default function Settings() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Integrations */}
+            <Card className="glass-strong border-white/20">
+              <CardHeader>
+                <CardTitle>Integrations</CardTitle>
+                <CardDescription>Connect external services to extend agent capabilities</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-background/30">
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-background flex items-center justify-center border border-border/50">
+                      <svg className="h-5 w-5" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Google Docs & Drive</p>
+                      {googleIntegration.connected ? (
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle2 className="h-3 w-3 text-green-500" />
+                          <span className="text-xs text-muted-foreground">
+                            {googleIntegration.provider_email || 'Connected'}
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">Create docs from research results</p>
+                      )}
+                    </div>
+                  </div>
+                  {googleIntegration.connected ? (
+                    <Button variant="outline" size="sm" onClick={handleDisconnectGoogle} className="gap-1.5">
+                      <Unlink className="h-3.5 w-3.5" />
+                      Disconnect
+                    </Button>
+                  ) : (
+                    <Button size="sm" onClick={handleConnectGoogle} disabled={connectingGoogle}>
+                      {connectingGoogle ? 'Connecting...' : 'Connect'}
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
             <Card className="glass-strong border-white/20">
               <CardHeader>

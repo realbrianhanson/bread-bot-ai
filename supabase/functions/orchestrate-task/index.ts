@@ -112,6 +112,18 @@ const toolDefinitions = [
       required: ['topic', 'content'],
     },
   },
+  {
+    name: 'create_google_doc',
+    description: 'Create a Google Doc with the provided content. Use this when the user wants their results saved to Google Docs. Requires the user to have connected their Google account.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        title: { type: 'string', description: 'The document title' },
+        content: { type: 'string', description: 'The document content in markdown format' },
+      },
+      required: ['title', 'content'],
+    },
+  },
 ];
 
 const SYSTEM_PROMPT = `You are an AI task orchestrator with access to powerful tools. Given a user's request, determine which tools to use and in what order.
@@ -148,13 +160,17 @@ AVAILABLE TOOLS AND WHEN TO USE THEM:
 
 - generate_file: Create a downloadable file (HTML report, CSV, etc.) for the user.
 
+- create_google_doc: Create a Google Doc with content. Use when the user wants results saved to Google Docs. The user must have connected their Google account in Settings first.
+
 CHAINING STRATEGY:
 - Research tasks: search_web → scrape_url (multiple) → execute_code (if data processing needed) → synthesize → generate_file
 - Data analysis: scrape_url → execute_code (process + visualize) → synthesize
 - Comparison tasks: search_web → scrape_url (multiple) → execute_code (build comparison table + charts) → synthesize
 - Simple questions: search_web → scrape_url → synthesize (no code needed)
 - Presentation tasks: search_web (if research needed) → scrape_url → synthesize (outline) → generate_slides
+- Google Docs tasks: research/synthesize → create_google_doc
 - When the user asks for slides/presentation/deck: ALWAYS use generate_slides as the final step
+- When the user asks to save to Google Docs: use create_google_doc after synthesizing content
 
 Always end with synthesize to produce a polished final output. Include any generated charts or files in your synthesis.`;
 
@@ -322,6 +338,20 @@ async function executeTool(
         if (data.gammaUrl) result += `URL: ${data.gammaUrl}\n`;
         result += `Title: ${data.title}\nSlides: ${data.numSlides}`;
         return result;
+      }
+
+      case 'create_google_doc': {
+        const res = await fetch(`${supabaseUrl}/functions/v1/create-google-doc`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({
+            title: toolInput.title,
+            content: toolInput.content,
+          }),
+        });
+        const data = await res.json();
+        if (data.error) return `Error creating Google Doc: ${data.error}`;
+        return `Google Doc created successfully!\nTitle: ${data.title}\nURL: ${data.url}\nDocument ID: ${data.documentId}`;
       }
 
       default:
