@@ -13,7 +13,7 @@ import { BrowserTask } from '@/hooks/useBrowserTask';
 import { useOrchestrator } from '@/hooks/useOrchestrator';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { ArrowDown, Sparkles, Terminal, Search, FileText, Globe, Loader2 } from 'lucide-react';
+import { ArrowDown, Sparkles, Terminal, Search, FileText, Loader2, LayoutGrid } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface ChatContainerProps {
