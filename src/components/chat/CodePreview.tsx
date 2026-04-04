@@ -256,9 +256,7 @@ ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n
         <SandpackWithFallback
           key={key}
           files={files}
-          mainFile={mainFile}
           template="react-ts"
-          buildHTML={buildCombinedHTML}
           onFallback={() => setUseFallback(true)}
         />
       </div>
