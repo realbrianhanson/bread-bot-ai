@@ -91,10 +91,7 @@ serve(async (req) => {
 
     const effectiveTimeout = Math.min(timeout, MAX_TIMEOUT_MS);
 
-    const E2B_API_KEY = Deno.env.get('E2B_API_KEY');
-    if (!E2B_API_KEY) {
-      return new Response(JSON.stringify({ error: 'E2B API key is not configured. Please add the E2B_API_KEY secret.' }), { status: 500, headers: jsonHeaders });
-    }
+    const E2B_API_KEY = e2bApiKey;
 
     const startTime = Date.now();
     let sandboxId: string | null = null;
