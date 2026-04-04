@@ -149,6 +149,13 @@ ${bodyContent}
 ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n  <\/script>` : ''}
 </body>
 </html>`;
+
+    // Auto-fix contrast issues in the generated HTML
+    const { html: fixedHtml, issuesFound } = fixContrastIssues(rawHtml);
+    if (issuesFound > 0) {
+      console.log(`[ContrastFixer] Auto-fixed ${issuesFound} contrast issue(s) in generated HTML`);
+    }
+    return fixedHtml;
   }, [files, mainFile]);
 
   const handleRefresh = () => {
