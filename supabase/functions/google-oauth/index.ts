@@ -121,7 +121,7 @@ serve(async (req) => {
           access_token: tokenData.access_token,
           refresh_token: tokenData.refresh_token || null,
           token_expiry: tokenExpiry,
-          scopes: ['documents', 'drive.file', 'userinfo.email'],
+          scopes: ['documents', 'spreadsheets', 'drive.file', 'userinfo.email'],
           provider_email: userInfo.email || null,
         }, { onConflict: 'user_id,provider' });
 
