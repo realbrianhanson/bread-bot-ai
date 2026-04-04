@@ -5,10 +5,12 @@ import ChatInput from './ChatInput';
 import TypingIndicator from './TypingIndicator';
 import TaskStatus from './TaskStatus';
 import LiveBrowserView from './LiveBrowserView';
+import OrchestrationProgress from './OrchestrationProgress';
 import { Message } from '@/hooks/useChat';
 import { BrowserTask } from '@/hooks/useBrowserTask';
+import { useOrchestrator } from '@/hooks/useOrchestrator';
 import { Button } from '@/components/ui/button';
-import { ArrowDown, Sparkles, Terminal } from 'lucide-react';
+import { ArrowDown, Sparkles, Terminal, Search } from 'lucide-react';
 
 interface ChatContainerProps {
   messages: Message[];
