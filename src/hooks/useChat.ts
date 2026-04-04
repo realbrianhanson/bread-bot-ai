@@ -297,6 +297,65 @@ export const useChat = (projectId?: string) => {
         return;
       }
 
+      // Handle /slides command — route to orchestrator with presentation hint
+      if (content.trim().startsWith('/slides ')) {
+        const topic = content.trim().slice(8);
+        const orchestratorMessage = `Create a professional presentation about: ${topic}. Research the topic thoroughly, then generate slides using the generate_slides tool.`;
+        setIsLoading(true);
+        setIsStreaming(true);
+        try {
+          await supabase.from('messages').insert({
+            user_id: user.id,
+            project_id: projectId,
+            role: 'user',
+            content: content.trim(),
+          });
+
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) throw new Error('No active session');
+
+          const { data, error } = await supabase.functions.invoke('orchestrate-task', {
+            body: {
+              message: orchestratorMessage,
+              projectId,
+              conversationHistory: messagesRef.current.slice(-6).map(m => ({ role: m.role, content: m.content })),
+            },
+          });
+
+          if (error) throw error;
+
+          const metadata: any = {
+            type: 'slides_generation',
+            title: topic,
+            toolsUsed: data?.toolsUsed || [],
+          };
+
+          // Extract gamma URL from result
+          const urlMatch = (data?.result || '').match(/https:\/\/gamma\.app\/[^\s)]+/);
+          if (urlMatch) {
+            metadata.gammaUrl = urlMatch[0];
+          }
+
+          await supabase.from('messages').insert({
+            user_id: user.id,
+            project_id: projectId,
+            role: 'assistant',
+            content: data?.result || 'Presentation generation completed.',
+            metadata,
+          });
+        } catch (err: any) {
+          toast({
+            title: 'Error',
+            description: err.message || 'Failed to generate slides',
+            variant: 'destructive',
+          });
+        } finally {
+          setIsLoading(false);
+          setIsStreaming(false);
+          refreshSubscription();
+        }
+      }
+
       // Detect conversational code execution patterns
       const codeBlockMatch = content.match(/(?:run this code|execute this|run this)[:.]?\s*```[\w]*\n?([\s\S]+?)```/i);
       if (codeBlockMatch) {

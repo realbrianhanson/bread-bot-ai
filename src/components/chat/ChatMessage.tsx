@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import CodeExecutionResult from './CodeExecutionResult';
 import SandboxComputerView from './SandboxComputerView';
 import FileAttachment from './FileAttachment';
+import SlidePreview from './SlidePreview';
 
 const MermaidDiagram = lazy(() => import('./MermaidDiagram'));
 
@@ -149,6 +150,16 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
                 files={message.metadata.files}
               />
             </div>
+          )}
+
+          {/* Slides generation preview */}
+          {message.metadata?.type === 'slides_generation' && (
+            <SlidePreview
+              title={message.metadata.title || 'Presentation'}
+              numSlides={message.metadata.numSlides}
+              gammaUrl={message.metadata.gammaUrl}
+              status="completed"
+            />
           )}
 
           {/* Screenshots */}

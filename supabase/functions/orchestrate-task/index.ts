@@ -99,6 +99,19 @@ const toolDefinitions = [
       required: ['code'],
     },
   },
+  {
+    name: 'generate_slides',
+    description: 'Generate a professional presentation/slide deck from content. Use this when the user asks for a presentation, deck, slides, or pitch deck. Provide detailed content for each slide including titles, bullet points, and speaker notes.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        topic: { type: 'string', description: 'The presentation title/topic' },
+        content: { type: 'string', description: 'Detailed content outline with slide-by-slide breakdown. Include main points, data, and key takeaways for each slide.' },
+        numSlides: { type: 'number', description: 'Number of slides (default 8-10)' },
+      },
+      required: ['topic', 'content'],
+    },
+  },
 ];
 
 const SYSTEM_PROMPT = `You are an AI task orchestrator with access to powerful tools. Given a user's request, determine which tools to use and in what order.
@@ -140,6 +153,8 @@ CHAINING STRATEGY:
 - Data analysis: scrape_url → execute_code (process + visualize) → synthesize
 - Comparison tasks: search_web → scrape_url (multiple) → execute_code (build comparison table + charts) → synthesize
 - Simple questions: search_web → scrape_url → synthesize (no code needed)
+- Presentation tasks: search_web (if research needed) → scrape_url → synthesize (outline) → generate_slides
+- When the user asks for slides/presentation/deck: ALWAYS use generate_slides as the final step
 
 Always end with synthesize to produce a polished final output. Include any generated charts or files in your synthesis.`;
 
@@ -288,6 +303,24 @@ async function executeTool(
           result += `GENERATED FILES:\n${out.files.map((f: any) => `- ${f.name}: ${f.url}`).join('\n')}\n`;
         }
         result += `Execution time: ${out.executionTime}ms`;
+        return result;
+      }
+
+      case 'generate_slides': {
+        const res = await fetch(`${supabaseUrl}/functions/v1/generate-slides`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({
+            topic: toolInput.topic,
+            content: toolInput.content,
+            numSlides: toolInput.numSlides || 10,
+          }),
+        });
+        const data = await res.json();
+        if (data.error) return `Error generating slides: ${data.error}`;
+        let result = `Presentation generated successfully!\n`;
+        if (data.gammaUrl) result += `URL: ${data.gammaUrl}\n`;
+        result += `Title: ${data.title}\nSlides: ${data.numSlides}`;
         return result;
       }
 
