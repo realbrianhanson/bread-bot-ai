@@ -9,6 +9,99 @@ const corsHeaders = {
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
+// --- Honcho helpers ---
+const HONCHO_API_BASE = 'https://api.honcho.dev/v1';
+
+async function getHonchoContext(userId: string): Promise<string> {
+  const apiKey = Deno.env.get('HONCHO_API_KEY');
+  const workspaceId = Deno.env.get('HONCHO_WORKSPACE_ID');
+  if (!apiKey || !workspaceId) return '';
+
+  const headers = { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
+
+  try {
+    // Get or create user peer
+    await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ configuration: { observe_me: true } }),
+    });
+
+    // Ensure assistant peer exists
+    await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/assistant`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ configuration: { observe_me: false } }),
+    });
+
+    // Create a session for this orchestration
+    const sessionRes = await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ metadata: { source: 'orchestrator' } }),
+    });
+    const sessionData = await sessionRes.json();
+
+    // Get context
+    const contextRes = await fetch(
+      `${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions/${sessionData.id}/context`,
+      { method: 'POST', headers, body: JSON.stringify({ max_tokens: 2000 }) },
+    );
+    const contextData = await contextRes.json();
+    return contextData?.context || contextData?.content || '';
+  } catch (err) {
+    console.error('[ORCHESTRATE] Honcho context fetch failed:', err);
+    return '';
+  }
+}
+
+async function storeHonchoMessages(userId: string, userMessage: string, assistantMessage: string): Promise<void> {
+  const apiKey = Deno.env.get('HONCHO_API_KEY');
+  const workspaceId = Deno.env.get('HONCHO_WORKSPACE_ID');
+  if (!apiKey || !workspaceId) return;
+
+  const headers = { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
+
+  try {
+    const sessionRes = await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ metadata: { source: 'orchestrator_store' } }),
+    });
+    const session = await sessionRes.json();
+
+    await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions/${session.id}/messages`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify([
+        { peer_id: userId, content: userMessage },
+        { peer_id: 'assistant', content: assistantMessage },
+      ]),
+    });
+  } catch (err) {
+    console.error('[ORCHESTRATE] Honcho store failed:', err);
+  }
+}
+
+async function queryHonchoMemory(userId: string, query: string): Promise<string> {
+  const apiKey = Deno.env.get('HONCHO_API_KEY');
+  const workspaceId = Deno.env.get('HONCHO_WORKSPACE_ID');
+  if (!apiKey || !workspaceId) return 'Memory system unavailable.';
+
+  try {
+    const res = await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/chat`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query }),
+    });
+    const data = await res.json();
+    return data?.response || data?.content || 'No information found about this topic.';
+  } catch (err) {
+    console.error('[ORCHESTRATE] Honcho query failed:', err);
+    return 'Memory query failed.';
+  }
+}
+
 const toolDefinitions = [
   {
     name: 'browse_web',
