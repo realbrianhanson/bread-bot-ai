@@ -570,36 +570,21 @@ export const useChat = (projectId?: string) => {
   };
 };
 
-/** Trims long HTML intelligently, preserving design-critical structure */
 function trimHtmlIntelligently(html: string, maxLen: number): string {
   if (html.length <= maxLen) return html;
 
-  // Extract <style> blocks (keep first 3000 chars worth)
   const styleMatches = html.match(/<style[^>]*>[\s\S]*?<\/style>/gi) || [];
   const styles = styleMatches.join('\n').slice(0, 3000);
 
-  // Get the body content
   const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
   const body = bodyMatch ? bodyMatch[1] : html;
-
-  // Split into top-level sections
-  const sectionRegex = /<(section|header|nav|main|footer|div\s+class)[^>]*>[\s\S]*?<\/\1>/gi;
-  const sections: string[] = [];
-  let match: RegExpExecArray | null;
-  let lastIndex = 0;
-
-  const tempBody = body;
-  const sectionSplitRegex = /(<(?:section|header|nav|footer|main)[^>]*>)/gi;
-  const parts = tempBody.split(sectionSplitRegex);
 
   let accumulated = styles + '\n';
   const budget = maxLen - styles.length - 200;
 
-  // Always keep the first ~5000 chars (hero/nav area)
   const heroChunk = body.slice(0, 5000);
   accumulated += heroChunk;
 
-  // Add remaining sections until budget runs out
   const rest = body.slice(5000);
   const remaining = budget - heroChunk.length;
   if (rest.length <= remaining) {
