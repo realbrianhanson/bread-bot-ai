@@ -636,16 +636,22 @@ Format the output with clear headers, scores in bold, and specific actionable re
 
         // Fetch design template content
         let designMd: string | undefined = options?.customDesignMd;
+        let templateMarketingMd: string | undefined;
         if (!designMd) {
           const templateId = options?.designTemplateId;
           const query = templateId
-            ? supabase.from('design_templates').select('design_md').eq('id', templateId).single()
-            : supabase.from('design_templates').select('design_md').eq('is_default', true).single();
+            ? supabase.from('design_templates').select('design_md, marketing_md').eq('id', templateId).single()
+            : supabase.from('design_templates').select('design_md, marketing_md').eq('is_default', true).single();
           const { data: tmpl } = await query;
           if (tmpl && typeof (tmpl as any).design_md === 'string') {
             designMd = (tmpl as any).design_md;
           }
+          if (tmpl && typeof (tmpl as any).marketing_md === 'string') {
+            templateMarketingMd = (tmpl as any).marketing_md;
+          }
         }
+        // Use marketing_md from design template if no separate marketing template selected
+        const finalMarketingMd = options?.marketingMd || templateMarketingMd;
 
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
@@ -655,7 +661,7 @@ Format the output with clear headers, scores in bold, and specific actionable re
               'Content-Type': 'application/json',
               Authorization: `Bearer ${session.access_token}`,
             },
-            body: JSON.stringify({ messages: messagesForAPI, ghlMode: options?.ghlMode || false, designMd, marketingMd: options?.marketingMd }),
+            body: JSON.stringify({ messages: messagesForAPI, ghlMode: options?.ghlMode || false, designMd, marketingMd: finalMarketingMd }),
             signal: abortControllerRef.current.signal,
           }
         );

@@ -86,8 +86,10 @@ export type Database = {
           id: string
           is_active: boolean | null
           is_default: boolean | null
+          marketing_md: string | null
           name: string
           preview_colors: string[] | null
+          source: string | null
           user_id: string | null
         }
         Insert: {
@@ -98,8 +100,10 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           is_default?: boolean | null
+          marketing_md?: string | null
           name: string
           preview_colors?: string[] | null
+          source?: string | null
           user_id?: string | null
         }
         Update: {
@@ -110,8 +114,10 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           is_default?: boolean | null
+          marketing_md?: string | null
           name?: string
           preview_colors?: string[] | null
+          source?: string | null
           user_id?: string | null
         }
         Relationships: []

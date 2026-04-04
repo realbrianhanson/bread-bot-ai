@@ -1,10 +1,11 @@
 import { SandpackProvider, SandpackLayout, SandpackPreview } from '@codesandbox/sandpack-react';
-import { Maximize2, RefreshCw, Copy, Download, Check } from 'lucide-react';
+import { Maximize2, RefreshCw, Copy, Download, Check, BookmarkPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import { fixContrastIssues } from '@/lib/contrastFixer';
+import { SaveTemplateDialog } from '@/components/chat/SaveTemplateDialog';
 
 interface CodePreviewProps {
   files: Record<string, string>;
@@ -88,6 +89,7 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
   const [key, setKey] = useState(0);
   const [copied, setCopied] = useState(false);
   const [useFallback, setUseFallback] = useState(false);
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const isStatic = template === 'static' || template === 'vanilla';
@@ -227,6 +229,14 @@ ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n
         <Button variant="ghost" size="icon" onClick={handleDownloadHTML} className="h-6 w-6">
           <Download className="h-3 w-3" />
         </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={() => setShowSaveTemplate(true)} className="h-6 w-6">
+              <BookmarkPlus className="h-3 w-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">Save as reusable template</TooltipContent>
+        </Tooltip>
         <Button variant="ghost" size="icon" onClick={handleRefresh} className="h-6 w-6">
           <RefreshCw className="h-3 w-3" />
         </Button>
@@ -252,6 +262,7 @@ ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n
             title="Preview"
           />
         </div>
+        <SaveTemplateDialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate} files={files} />
       </div>
     );
   }
@@ -268,6 +279,7 @@ ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n
           onFallback={() => setUseFallback(true)}
         />
       </div>
+      <SaveTemplateDialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate} files={files} />
     </div>
   );
 };
