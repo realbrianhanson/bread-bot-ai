@@ -311,12 +311,23 @@ CHAINING STRATEGY:
 - Simple questions: search_web → scrape_url → synthesize (no code needed)
 - Presentation tasks: search_web (if research needed) → scrape_url → synthesize (outline) → generate_slides
 - Google Docs tasks: research/synthesize → create_google_doc
+- Google Sheets tasks: research/scrape → execute_code (process data) → create_google_sheet
+- Email tasks: research/synthesize → send_email
+- File download: search_web → download_file (grab PDFs, datasets, images)
 - When the user asks for slides/presentation/deck: ALWAYS use generate_slides as the final step
 - When the user asks to save to Google Docs: use create_google_doc after synthesizing content
+- When the user asks to save data to a spreadsheet: use create_google_sheet with structured headers and rows
+- When the user asks to email results: use send_email with well-formatted HTML
 
 - recall_user_context: Query the memory system for information about the user. Use when you want to personalize results based on user's industry, past research, preferences, or history. Call early in the workflow if personalization would help.
 
-Always end with synthesize to produce a polished final output. Include any generated charts or files in your synthesis.`;
+- create_google_sheet: Create a Google Spreadsheet with structured tabular data. Pass headers and rows arrays.
+
+- send_email: Send a formatted HTML email. Always create professional, well-styled HTML content.
+
+- download_file: Download and store a file from a URL. Returns a signed download link.
+
+Always end with synthesize to produce a polished final output. Include any generated charts, files, or links in your synthesis.`;
 
 async function resolveAnthropicKey(
   supabaseClient: any,
