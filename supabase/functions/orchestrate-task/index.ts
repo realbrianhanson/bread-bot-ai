@@ -692,6 +692,12 @@ serve(async (req) => {
       task_id: taskRecord.id,
     });
 
+    // Store interaction in Honcho (fire-and-forget)
+    const assistantSummary = `Orchestrated task using tools: ${executionLog.map((e: any) => e.tool).join(', ')}.\n\nResult summary: ${finalResult.slice(0, 1000)}`;
+    storeHonchoMessages(user.id, message, assistantSummary).catch(err =>
+      console.error('[ORCHESTRATE] Honcho background store error:', err)
+    );
+
     return new Response(JSON.stringify({
       taskId: taskRecord.id,
       result: finalResult,
