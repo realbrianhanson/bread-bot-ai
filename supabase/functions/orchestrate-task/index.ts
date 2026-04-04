@@ -916,6 +916,15 @@ serve(async (req) => {
         });
       }
 
+      // Update progress: synthesizing if this is the last iteration
+      await supabaseClient.from('tasks').update({
+        output_data: {
+          execution_log: executionLog,
+          current_step: 'Synthesizing results...',
+          tools_completed: executionLog.length,
+        },
+      }).eq('id', taskRecord.id);
+
       // Feed tool results back to Claude
       messages.push({ role: 'user', content: toolResults });
     }
