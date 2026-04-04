@@ -55,6 +55,42 @@ export const useOrchestrator = () => {
     }
   }, []);
 
+  const subscribeToTask = useCallback((taskId: string) => {
+    cleanupChannel();
+    const channel = supabase
+      .channel(`task-progress-${taskId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'tasks',
+        filter: `id=eq.${taskId}`,
+      }, (payload) => {
+        const outputData = payload.new?.output_data as any;
+        if (!outputData) return;
+
+        if (outputData.current_step) {
+          setCurrentStep(outputData.current_step);
+          if (outputData.current_step.includes('Synthesizing')) {
+            setStatus('synthesizing');
+          }
+        }
+
+        const log: any[] = outputData.execution_log || [];
+        if (log.length > 0) {
+          const steps: ToolStep[] = log.map((entry: any) => ({
+            tool: entry.tool,
+            status: 'completed' as const,
+            label: TOOL_LABELS[entry.tool] || entry.tool,
+            result: entry.output_preview,
+          }));
+          setToolChain(steps);
+        }
+      })
+      .subscribe();
+
+    channelRef.current = channel;
+  }, [cleanupChannel]);
+
   const orchestrate = useCallback(async (message: string, conversationHistory?: { role: string; content: string }[]) => {
     setStatus('planning');
     setCurrentStep('Analyzing your request…');
@@ -66,9 +102,52 @@ export const useOrchestrator = () => {
     cleanupChannel();
 
     try {
-      setStatus('executing');
-      setCurrentStep('Orchestrating tools…');
+      // First, create the task record ourselves to get the ID early
+      // so we can subscribe before the long-running function starts
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
 
+      setStatus('executing');
+      setCurrentStep('Starting orchestration…');
+
+      // Subscribe to ALL task updates for this user to catch the new task
+      // We'll refine to the specific task once we get the ID back
+      const tempChannel = supabase
+        .channel('task-progress-temp')
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'tasks',
+          filter: `user_id=eq.${user.id}`,
+        }, (payload) => {
+          const row = payload.new as any;
+          if (row.task_type !== 'orchestrated' || row.status === 'completed') return;
+          const outputData = row.output_data;
+          if (!outputData) return;
+
+          if (outputData.current_step) {
+            setCurrentStep(outputData.current_step);
+            if (outputData.current_step.includes('Synthesizing')) {
+              setStatus('synthesizing');
+            }
+          }
+
+          const log: any[] = outputData.execution_log || [];
+          if (log.length > 0) {
+            const steps: ToolStep[] = log.map((entry: any) => ({
+              tool: entry.tool,
+              status: 'completed' as const,
+              label: TOOL_LABELS[entry.tool] || entry.tool,
+              result: entry.output_preview,
+            }));
+            setToolChain(steps);
+          }
+        })
+        .subscribe();
+
+      channelRef.current = tempChannel;
+
+      // Now invoke the long-running function
       const { data, error: fnError } = await supabase.functions.invoke('orchestrate-task', {
         body: { message, conversationHistory },
       });
@@ -76,47 +155,7 @@ export const useOrchestrator = () => {
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
 
-      // Subscribe to realtime updates on the task record
-      const taskId = data?.taskId;
-      if (taskId) {
-        const channel = supabase
-          .channel(`task-progress-${taskId}`)
-          .on('postgres_changes', {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'tasks',
-            filter: `id=eq.${taskId}`,
-          }, (payload) => {
-            const outputData = payload.new?.output_data as any;
-            if (!outputData) return;
-
-            // Update current step
-            if (outputData.current_step) {
-              setCurrentStep(outputData.current_step);
-              if (outputData.current_step.includes('Synthesizing')) {
-                setStatus('synthesizing');
-              }
-            }
-
-            // Build tool chain from execution log
-            const log: any[] = outputData.execution_log || [];
-            if (log.length > 0) {
-              const steps: ToolStep[] = log.map((entry: any) => ({
-                tool: entry.tool,
-                status: 'completed' as const,
-                label: TOOL_LABELS[entry.tool] || entry.tool,
-                result: entry.output_preview,
-              }));
-              setToolChain(steps);
-            }
-          })
-          .subscribe();
-
-        channelRef.current = channel;
-      }
-
-      // The function call has already returned with full results
-      // Build final tool chain from execution log
+      // Function returned — set final state from the response
       const log: any[] = data?.executionLog || [];
       const steps: ToolStep[] = log.map((entry: any) => ({
         tool: entry.tool,
@@ -126,7 +165,6 @@ export const useOrchestrator = () => {
       }));
       setToolChain(steps);
 
-      // Extract generated files
       const files: GeneratedFile[] = [];
       for (const entry of log) {
         if (entry.tool === 'generate_file' && entry.output_preview) {
@@ -135,7 +173,7 @@ export const useOrchestrator = () => {
             if (parsed.success && parsed.fileUrl) {
               files.push({ fileUrl: parsed.fileUrl, filename: parsed.filename || 'file', size: parsed.size, type: parsed.type });
             }
-          } catch { /* ignore parse errors */ }
+          } catch { /* ignore */ }
         }
       }
       setGeneratedFiles(files);
@@ -155,7 +193,7 @@ export const useOrchestrator = () => {
     } finally {
       setIsOrchestrating(false);
     }
-  }, [cleanupChannel]);
+  }, [cleanupChannel, subscribeToTask]);
 
   const reset = useCallback(() => {
     cleanupChannel();
