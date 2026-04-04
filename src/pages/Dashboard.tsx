@@ -54,6 +54,14 @@ const Dashboard = () => {
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const { plan, isPlanning, generatePlan, updateStep, removeStep, addStep, reorderSteps, clearPlan } = useTaskPlanner();
 
+  const [memoryActive, setMemoryActive] = useState(false);
+
+  useEffect(() => {
+    supabase.functions.invoke('honcho-proxy', { body: { action: 'status' } })
+      .then(({ data }) => setMemoryActive(data?.available ?? false))
+      .catch(() => setMemoryActive(false));
+  }, []);
+
   const handleSendWithPlanner = async (content: string, options?: { ghlMode?: boolean }) => {
     // If message starts with /plan, use the AI planner
     if (content.trimStart().startsWith("/plan ")) {
