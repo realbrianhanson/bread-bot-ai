@@ -6,6 +6,7 @@ import TypingIndicator from './TypingIndicator';
 import TaskStatus from './TaskStatus';
 import LiveBrowserView from './LiveBrowserView';
 import OrchestrationProgress from './OrchestrationProgress';
+import GHLPageTypeSelector from './GHLPageTypeSelector';
 import FirecrawlResults, { FirecrawlResult } from './FirecrawlResults';
 import { Message } from '@/hooks/useChat';
 import { BrowserTask } from '@/hooks/useBrowserTask';
