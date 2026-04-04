@@ -231,6 +231,9 @@ const ChatContainer = ({
       <div ref={scrollRef} onScroll={handleScroll} className="flex-1 p-4 overflow-y-auto scroll-smooth">
         <div className="space-y-3.5 max-w-3xl mx-auto pb-4">
           {messages.length === 0 && firecrawlResults.length === 0 ? (
+            isGhlMode ? (
+              <GHLPageTypeSelector onSelectPrompt={(prompt) => setInputPrefill(prompt)} />
+            ) : (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -262,6 +265,7 @@ const ChatContainer = ({
                 ))}
               </div>
             </motion.div>
+            )
           ) : (
             <>
               {messages.map((message) => (
