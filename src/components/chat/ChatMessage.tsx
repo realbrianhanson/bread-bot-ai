@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import CodeExecutionResult from './CodeExecutionResult';
 import SandboxComputerView from './SandboxComputerView';
+import FileAttachment from './FileAttachment';
 
 const MermaidDiagram = lazy(() => import('./MermaidDiagram'));
 
