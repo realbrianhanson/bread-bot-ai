@@ -279,6 +279,7 @@ ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n
           onFallback={() => setUseFallback(true)}
         />
       </div>
+      <SaveTemplateDialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate} files={files} />
     </div>
   );
 };
