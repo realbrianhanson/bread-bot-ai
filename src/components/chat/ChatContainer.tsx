@@ -19,7 +19,7 @@ interface ChatContainerProps {
   messages: Message[];
   isLoading: boolean;
   isStreaming: boolean;
-  onSendMessage: (content: string) => void;
+  onSendMessage: (content: string, options?: { ghlMode?: boolean }) => void;
   onStopStreaming: () => void;
   currentTask?: BrowserTask | null;
   isExecutingTask?: boolean;
@@ -170,7 +170,7 @@ const ChatContainer = ({
     }
   }, []);
 
-  const handleSendMessage = (content: string) => {
+  const handleSendMessage = (content: string, options?: { ghlMode?: boolean }) => {
     const trimmedContent = content.trim();
     
     if (trimmedContent.startsWith('/browse')) {
@@ -204,14 +204,14 @@ const ChatContainer = ({
     if (researchMatch) {
       const query = researchMatch[2].trim();
       if (query) {
-        onSendMessage(content);
+        onSendMessage(content, options);
         const history = messages.map((m) => ({ role: m.role, content: m.content }));
         orchestrator.orchestrate(query, history);
         return;
       }
     }
     
-    onSendMessage(content);
+    onSendMessage(content, options);
   };
 
   const quickCommands = [

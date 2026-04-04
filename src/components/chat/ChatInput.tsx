@@ -1,12 +1,12 @@
 import { useState, KeyboardEvent, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Square, Zap } from 'lucide-react';
+import { Send, Square, Zap, ToggleLeft, ToggleRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { VoiceInputButton } from '@/components/chat/VoiceInputButton';
 
 interface ChatInputProps {
-  onSend: (content: string) => void;
+  onSend: (content: string, options?: { ghlMode?: boolean }) => void;
   disabled?: boolean;
   isStreaming?: boolean;
   onStop?: () => void;
@@ -33,6 +33,7 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
   const [input, setInput] = useState('');
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [selectedSlashIndex, setSelectedSlashIndex] = useState(0);
+  const [ghlMode, setGhlMode] = useState(() => localStorage.getItem('ghl-mode') === 'true');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleVoiceResult = useCallback((text: string) => {
@@ -73,9 +74,17 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
     textareaRef.current?.focus();
   };
 
+  const toggleGhlMode = () => {
+    setGhlMode((prev) => {
+      const next = !prev;
+      localStorage.setItem('ghl-mode', String(next));
+      return next;
+    });
+  };
+
   const handleSend = () => {
     if (input.trim() && !disabled) {
-      onSend(input.trim());
+      onSend(input.trim(), { ghlMode });
       setInput('');
     }
   };
@@ -176,6 +185,21 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
             disabled && 'opacity-50'
           )}
         />
+
+        {/* GHL Mode toggle */}
+        <button
+          onClick={toggleGhlMode}
+          className={cn(
+            'shrink-0 mb-0.5 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold transition-all duration-200 border',
+            ghlMode
+              ? 'bg-accent/15 border-accent/40 text-accent shadow-[0_0_8px_hsl(var(--accent)/0.3)]'
+              : 'bg-muted/30 border-border/40 text-muted-foreground hover:border-border/60'
+          )}
+          title={ghlMode ? 'GHL Mode ON — code optimized for GoHighLevel' : 'GHL Mode OFF — standard Tailwind output'}
+        >
+          {ghlMode ? <ToggleRight className="h-3 w-3" /> : <ToggleLeft className="h-3 w-3" />}
+          GHL
+        </button>
 
         <VoiceInputButton isListening={isListening} isSupported={isSupported} onToggle={toggle} />
 

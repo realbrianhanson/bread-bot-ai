@@ -93,7 +93,7 @@ export const useChat = (projectId?: string) => {
   }, [messages]);
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, options?: { ghlMode?: boolean }) => {
       if (!user || !content.trim()) return;
 
       // Check if user can send message
@@ -146,7 +146,7 @@ export const useChat = (projectId?: string) => {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${session.access_token}`,
             },
-            body: JSON.stringify({ messages: messagesForAPI }),
+            body: JSON.stringify({ messages: messagesForAPI, ghlMode: options?.ghlMode || false }),
             signal: abortControllerRef.current.signal,
           }
         );
