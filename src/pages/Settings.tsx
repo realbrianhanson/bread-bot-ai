@@ -36,10 +36,11 @@ export default function Settings() {
     refreshSubscription
   } = useSubscription();
   const navigate = useNavigate();
-  const [showKeys, setShowKeys] = useState({ browserUse: false, anthropic: false });
+  const [showKeys, setShowKeys] = useState({ browserUse: false, anthropic: false, e2b: false });
   const [apiKeys, setApiKeys] = useState({
     browserUse: '',
     anthropic: '',
+    e2b: '',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [managingSubscription, setManagingSubscription] = useState(false);
