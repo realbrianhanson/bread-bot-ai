@@ -338,7 +338,13 @@ const Dashboard = () => {
                   onAcceptTakeover={pauseTask} onDeclineTakeover={() => {}}
                 />
               ) : isGhlMode && ghlCode ? (
-                <GHLCodeOutput code={ghlCode} />
+                <GHLCodeOutput
+                  code={ghlCode}
+                  onExecuteTask={executeTask}
+                  currentTaskScreenshots={currentTask?.screenshots}
+                  isExecutingTask={isExecuting}
+                  projectId={activeConversationId || undefined}
+                />
               ) : (
                 <CodePreview files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} />
               )}
