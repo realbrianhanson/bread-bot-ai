@@ -276,6 +276,8 @@ CHAINING STRATEGY:
 - When the user asks for slides/presentation/deck: ALWAYS use generate_slides as the final step
 - When the user asks to save to Google Docs: use create_google_doc after synthesizing content
 
+- recall_user_context: Query the memory system for information about the user. Use when you want to personalize results based on user's industry, past research, preferences, or history. Call early in the workflow if personalization would help.
+
 Always end with synthesize to produce a polished final output. Include any generated charts or files in your synthesis.`;
 
 async function resolveAnthropicKey(
