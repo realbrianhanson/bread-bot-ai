@@ -1,7 +1,9 @@
 import { SandpackProvider, SandpackLayout, SandpackPreview, useSandpack } from '@codesandbox/sandpack-react';
-import { Maximize2, RefreshCw, Loader2 } from 'lucide-react';
+import { Maximize2, RefreshCw, Loader2, Copy, Download, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 
 interface CodePreviewProps {
   files: Record<string, string>;
