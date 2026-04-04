@@ -148,7 +148,9 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           task,
-          ...(browserUseProfileId ? { profileId: browserUseProfileId } : {})
+          model: 'bu-ultra',
+          ...(browserUseProfileId ? { profileId: browserUseProfileId } : {}),
+          ...(outputSchema ? { output_schema: outputSchema } : {})
         }),
       });
 
