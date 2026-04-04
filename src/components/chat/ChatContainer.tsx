@@ -165,6 +165,7 @@ const ChatContainer = ({
               toolChain={orchestrator.toolChain}
               finalResult={orchestrator.finalResult}
               error={orchestrator.error}
+              generatedFiles={orchestrator.generatedFiles}
             />
           )}
 

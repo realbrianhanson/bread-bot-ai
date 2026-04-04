@@ -1,8 +1,18 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Loader2, AlertCircle, Search, Globe, FileText, Brain, Sparkles, File } from 'lucide-react';
+import { Check, Loader2, AlertCircle, Search, Globe, FileText, Brain, Sparkles, File, Download, Link2, FileSpreadsheet, FileCode } from 'lucide-react';
 import { OrchestrationStatus, ToolStep } from '@/hooks/useOrchestrator';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+
+export interface GeneratedFile {
+  fileUrl: string;
+  filename: string;
+  size?: number;
+  type?: string;
+}
 
 interface OrchestrationProgressProps {
   status: OrchestrationStatus;
@@ -10,6 +20,7 @@ interface OrchestrationProgressProps {
   toolChain: ToolStep[];
   finalResult: string;
   error: string;
+  generatedFiles?: GeneratedFile[];
 }
 
 const TOOL_ICONS: Record<string, typeof Search> = {
@@ -21,14 +32,39 @@ const TOOL_ICONS: Record<string, typeof Search> = {
   generate_file: File,
 };
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getFileIcon(filename: string) {
+  if (filename.match(/\.(csv|xlsx)$/i)) return FileSpreadsheet;
+  if (filename.match(/\.(json)$/i)) return FileCode;
+  return FileText;
+}
+
 const OrchestrationProgress = ({
   status,
   currentStep,
   toolChain,
   finalResult,
   error,
+  generatedFiles = [],
 }: OrchestrationProgressProps) => {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const isActive = status === 'planning' || status === 'executing' || status === 'synthesizing';
+
+  const handleCopyLink = async (url: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(id);
+      toast({ title: 'Copied', description: 'Link copied to clipboard' });
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      toast({ title: 'Error', description: 'Failed to copy', variant: 'destructive' });
+    }
+  };
 
   return (
     <motion.div
@@ -106,6 +142,56 @@ const OrchestrationProgress = ({
         {error && (
           <div className="px-4 py-3 bg-destructive/5">
             <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
+
+        {/* Generated files — shown prominently before text result */}
+        {generatedFiles.length > 0 && status === 'completed' && (
+          <div className="px-4 pt-4 space-y-2">
+            {generatedFiles.map((file, i) => {
+              const Icon = getFileIcon(file.filename);
+              return (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 p-3 rounded-xl border border-primary/15 bg-gradient-to-r from-primary/5 to-accent/5 hover:shadow-md transition-all group"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/15 transition-colors">
+                    <Icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{file.filename}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {file.type?.toUpperCase() || 'FILE'}
+                      {file.size ? ` · ${formatFileSize(file.size)}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => handleCopyLink(file.fileUrl, `orch-file-${i}`)}
+                      title="Copy link"
+                    >
+                      {copiedId === `orch-file-${i}` ? (
+                        <Check className="h-3.5 w-3.5 text-primary" />
+                      ) : (
+                        <Link2 className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="h-8 gap-1.5 text-xs"
+                      onClick={() => window.open(file.fileUrl, '_blank')}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Download
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 

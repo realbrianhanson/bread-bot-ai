@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { GeneratedFile } from '@/components/chat/OrchestrationProgress';
 import { toast } from '@/hooks/use-toast';
 
 export type OrchestrationStatus =
@@ -31,6 +32,7 @@ export const useOrchestrator = () => {
   const [currentStep, setCurrentStep] = useState('');
   const [toolChain, setToolChain] = useState<ToolStep[]>([]);
   const [finalResult, setFinalResult] = useState('');
+  const [generatedFiles, setGeneratedFiles] = useState<GeneratedFile[]>([]);
   const [error, setError] = useState('');
   const [isOrchestrating, setIsOrchestrating] = useState(false);
 
@@ -39,6 +41,7 @@ export const useOrchestrator = () => {
     setCurrentStep('Analyzing your request…');
     setToolChain([]);
     setFinalResult('');
+    setGeneratedFiles([]);
     setError('');
     setIsOrchestrating(true);
 
@@ -66,6 +69,21 @@ export const useOrchestrator = () => {
       }));
 
       setToolChain(steps);
+
+      // Extract generated files from execution log
+      const files: GeneratedFile[] = [];
+      for (const entry of log) {
+        if (entry.tool === 'generate_file' && entry.output_preview) {
+          try {
+            const parsed = JSON.parse(entry.output_preview);
+            if (parsed.success && parsed.fileUrl) {
+              files.push({ fileUrl: parsed.fileUrl, filename: parsed.filename || 'file', size: parsed.size, type: parsed.type });
+            }
+          } catch { /* ignore parse errors */ }
+        }
+      }
+      setGeneratedFiles(files);
+
       setFinalResult(data?.result || 'No result returned.');
       setStatus('completed');
       setCurrentStep('Done');
@@ -86,6 +104,7 @@ export const useOrchestrator = () => {
     setCurrentStep('');
     setToolChain([]);
     setFinalResult('');
+    setGeneratedFiles([]);
     setError('');
     setIsOrchestrating(false);
   }, []);
@@ -97,6 +116,7 @@ export const useOrchestrator = () => {
     currentStep,
     toolChain,
     finalResult,
+    generatedFiles,
     error,
     isOrchestrating,
   };

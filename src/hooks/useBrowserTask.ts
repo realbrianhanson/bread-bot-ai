@@ -46,6 +46,8 @@ export interface TaskDeliverable {
   url?: string;
   content?: string;
   mimeType?: string;
+  size?: number;
+  fileType?: string;
   timestamp: string;
 }
 

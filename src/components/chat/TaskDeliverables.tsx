@@ -10,11 +10,14 @@ import {
   Copy, 
   Check,
   ExternalLink,
-  Package
+  Package,
+  FileSpreadsheet,
+  FileCode,
+  ChevronDown,
+  Link2,
 } from 'lucide-react';
 import { TaskDeliverable } from '@/hooks/useBrowserTask';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from '@/hooks/use-toast';
 
@@ -22,6 +25,20 @@ interface TaskDeliverablesProps {
   deliverables: TaskDeliverable[];
   taskSummary?: string;
   extractedData?: Record<string, any>;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getFileIcon(deliverable: TaskDeliverable) {
+  const ft = deliverable.fileType || deliverable.mimeType || '';
+  if (ft.includes('spreadsheet') || ft === 'xlsx' || ft === 'csv') return FileSpreadsheet;
+  if (ft.includes('json') || ft === 'json') return FileCode;
+  if (ft.includes('html') || ft === 'docx' || ft === 'markdown' || ft === 'md') return FileText;
+  return File;
 }
 
 const getDeliverableIcon = (type: TaskDeliverable['type']) => {
@@ -43,21 +60,17 @@ const TaskDeliverables = ({ deliverables, taskSummary, extractedData }: TaskDeli
   const [isOpen, setIsOpen] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  const fileDeliverables = deliverables.filter(d => d.type === 'file');
+  const otherDeliverables = deliverables.filter(d => d.type !== 'file');
+
   const handleCopy = async (content: string, id: string) => {
     try {
       await navigator.clipboard.writeText(content);
       setCopiedId(id);
-      toast({
-        title: 'Copied',
-        description: 'Content copied to clipboard',
-      });
+      toast({ title: 'Copied', description: 'Content copied to clipboard' });
       setTimeout(() => setCopiedId(null), 2000);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to copy content',
-        variant: 'destructive',
-      });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to copy content', variant: 'destructive' });
     }
   };
 
@@ -79,9 +92,13 @@ const TaskDeliverables = ({ deliverables, taskSummary, extractedData }: TaskDeli
     }
   };
 
-  if (deliverables.length === 0 && !taskSummary && !extractedData) {
-    return null;
-  }
+  const handleDownloadAll = () => {
+    for (const d of fileDeliverables) {
+      if (d.url) window.open(d.url, '_blank');
+    }
+  };
+
+  if (deliverables.length === 0 && !taskSummary && !extractedData) return null;
 
   return (
     <Card className="bg-muted/20 backdrop-blur-sm border-border/50">
@@ -99,6 +116,69 @@ const TaskDeliverables = ({ deliverables, taskSummary, extractedData }: TaskDeli
         
         <CollapsibleContent>
           <div className="px-4 pb-4 space-y-3">
+            {/* File Deliverables — shown first and prominently */}
+            {fileDeliverables.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-muted-foreground">Generated Files</p>
+                  {fileDeliverables.length > 1 && (
+                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={handleDownloadAll}>
+                      <Download className="h-3 w-3" />
+                      Download All
+                    </Button>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {fileDeliverables.map((deliverable, index) => {
+                    const Icon = getFileIcon(deliverable);
+                    return (
+                      <div
+                        key={`file-${index}`}
+                        className="flex items-center gap-3 p-3 rounded-xl border border-primary/15 bg-gradient-to-r from-primary/5 to-accent/5 hover:shadow-md transition-all group"
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/15 transition-colors">
+                          <Icon className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{deliverable.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {deliverable.fileType?.toUpperCase() || 'FILE'}
+                            {deliverable.size ? ` · ${formatFileSize(deliverable.size)}` : ''}
+                          </p>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          {deliverable.url && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleCopy(deliverable.url!, `file-link-${index}`)}
+                              title="Copy link"
+                            >
+                              {copiedId === `file-link-${index}` ? (
+                                <Check className="h-3.5 w-3.5 text-green-500" />
+                              ) : (
+                                <Link2 className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                          )}
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="h-8 gap-1.5 text-xs"
+                            onClick={() => handleDownload(deliverable)}
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                            Download
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Task Summary */}
             {taskSummary && (
               <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
@@ -107,17 +187,8 @@ const TaskDeliverables = ({ deliverables, taskSummary, extractedData }: TaskDeli
                     <p className="text-xs font-medium text-green-500 mb-1">Summary</p>
                     <p className="text-sm text-foreground">{taskSummary}</p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={() => handleCopy(taskSummary, 'summary')}
-                  >
-                    {copiedId === 'summary' ? (
-                      <Check className="h-3 w-3 text-green-500" />
-                    ) : (
-                      <Copy className="h-3 w-3" />
-                    )}
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleCopy(taskSummary, 'summary')}>
+                    {copiedId === 'summary' ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
                   </Button>
                 </div>
               </div>
@@ -134,30 +205,10 @@ const TaskDeliverables = ({ deliverables, taskSummary, extractedData }: TaskDeli
                     </pre>
                   </div>
                   <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      onClick={() => handleCopy(JSON.stringify(extractedData, null, 2), 'data')}
-                    >
-                      {copiedId === 'data' ? (
-                        <Check className="h-3 w-3 text-green-500" />
-                      ) : (
-                        <Copy className="h-3 w-3" />
-                      )}
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleCopy(JSON.stringify(extractedData, null, 2), 'data')}>
+                      {copiedId === 'data' ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      onClick={() => handleDownload({
-                        type: 'data',
-                        name: 'Extracted Data',
-                        content: JSON.stringify(extractedData, null, 2),
-                        mimeType: 'application/json',
-                        timestamp: new Date().toISOString()
-                      })}
-                    >
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleDownload({ type: 'data', name: 'Extracted Data', content: JSON.stringify(extractedData, null, 2), mimeType: 'application/json', timestamp: new Date().toISOString() })}>
                       <Download className="h-3 w-3" />
                     </Button>
                   </div>
@@ -165,12 +216,12 @@ const TaskDeliverables = ({ deliverables, taskSummary, extractedData }: TaskDeli
               </div>
             )}
 
-            {/* Deliverables List */}
-            {deliverables.length > 0 && (
+            {/* Other Deliverables (screenshots, data, text) */}
+            {otherDeliverables.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground">Attachments</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {deliverables.map((deliverable, index) => {
+                  {otherDeliverables.map((deliverable, index) => {
                     const Icon = getDeliverableIcon(deliverable.type);
                     return (
                       <div
@@ -180,27 +231,15 @@ const TaskDeliverables = ({ deliverables, taskSummary, extractedData }: TaskDeli
                         <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium truncate">{deliverable.name}</p>
-                          <p className="text-[10px] text-muted-foreground">
-                            {deliverable.type}
-                          </p>
+                          <p className="text-[10px] text-muted-foreground">{deliverable.type}</p>
                         </div>
                         <div className="flex gap-1">
                           {deliverable.url && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              onClick={() => window.open(deliverable.url, '_blank')}
-                            >
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => window.open(deliverable.url, '_blank')}>
                               <ExternalLink className="h-3 w-3" />
                             </Button>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            onClick={() => handleDownload(deliverable)}
-                          >
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handleDownload(deliverable)}>
                             <Download className="h-3 w-3" />
                           </Button>
                         </div>
