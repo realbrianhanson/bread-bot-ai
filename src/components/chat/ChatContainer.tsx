@@ -64,6 +64,7 @@ const ChatContainer = ({
   const [isFirecrawling, setIsFirecrawling] = useState(false);
   const [firecrawlStatus, setFirecrawlStatus] = useState('');
   const [inputPrefill, setInputPrefill] = useState('');
+  const [showTemplateGallery, setShowTemplateGallery] = useState(false);
   const isGhlMode = typeof window !== 'undefined' && localStorage.getItem('ghl-mode') === 'true';
 
   const scrollToBottom = () => {
