@@ -120,15 +120,18 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
             </div>
           )}
 
-          {/* Code execution results */}
+          {/* Code execution results — full computer view */}
           {message.metadata?.type === 'code_execution' && (
-            <div className="mt-3">
-              <CodeExecutionResult
+            <div className="mt-3 -mx-4 -mb-3">
+              <SandboxComputerView
                 code={message.metadata.code}
-                language={message.metadata.language}
-                stdout={message.metadata.stdout}
-                stderr={message.metadata.stderr}
-                result={message.metadata.result}
+                language={message.metadata.language || 'python'}
+                status={message.metadata.stderr && !message.metadata.stdout ? 'failed' : 'completed'}
+                output={{
+                  stdout: message.metadata.stdout || '',
+                  stderr: message.metadata.stderr || '',
+                  result: message.metadata.result || '',
+                }}
                 executionTime={message.metadata.executionTime}
                 files={message.metadata.files}
               />

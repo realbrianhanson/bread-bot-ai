@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Check, X, Loader2, Search, Globe, FileText, Brain, Sparkles,
-  File, Download, Link2, FileSpreadsheet, FileCode, Cpu,
+  File, Download, Link2, FileSpreadsheet, FileCode, Cpu, Code2,
   Clock, ChevronDown, ChevronUp, RefreshCw, BookOpen, ArrowRight,
 } from 'lucide-react';
 import { OrchestrationStatus, ToolStep } from '@/hooks/useOrchestrator';
@@ -13,6 +13,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { toast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import SandboxComputerView from './SandboxComputerView';
 
 export interface GeneratedFile {
   fileUrl: string;
