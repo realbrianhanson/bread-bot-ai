@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
+import { validateWebsite, hasCodeBlocks, extractCodeFromResponse } from '@/lib/validateWebsite';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
