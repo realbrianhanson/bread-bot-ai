@@ -337,6 +337,8 @@ const Dashboard = () => {
                   deployments={currentTask.deployments} notifications={currentTask.notifications}
                   onAcceptTakeover={pauseTask} onDeclineTakeover={() => {}}
                 />
+              ) : isGhlMode && ghlCode ? (
+                <GHLCodeOutput code={ghlCode} />
               ) : (
                 <CodePreview files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} />
               )}
