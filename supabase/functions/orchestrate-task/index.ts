@@ -899,6 +899,16 @@ serve(async (req) => {
           timestamp: new Date().toISOString(),
         });
 
+        // Update task with progress
+        await supabaseClient.from('tasks').update({
+          output_data: {
+            execution_log: executionLog,
+            current_step: `Completed ${block.name}`,
+            tools_completed: executionLog.length,
+            status_message: `Step ${executionLog.length}: ${block.name} completed`,
+          },
+        }).eq('id', taskRecord.id);
+
         toolResults.push({
           type: 'tool_result',
           tool_use_id: block.id,
