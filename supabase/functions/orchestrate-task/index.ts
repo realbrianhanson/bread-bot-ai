@@ -462,9 +462,7 @@ async function executeTool(
       }
 
       case 'recall_user_context': {
-        // userId is passed via closure — we need to pass it through executeTool
-        // For now, extract from the authToken context
-        return await queryHonchoMemory(toolInput._userId || 'unknown', toolInput.query);
+        return await queryHonchoMemory(userId || 'unknown', toolInput.query);
       }
 
       default:
