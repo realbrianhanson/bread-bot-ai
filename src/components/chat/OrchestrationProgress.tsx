@@ -38,6 +38,7 @@ const TOOL_ICONS: Record<string, typeof Search> = {
   scrape_url: FileText,
   crawl_site: Globe,
   browse_web: Globe,
+  execute_code: Code2,
   synthesize: Cpu,
   generate_file: Download,
 };
