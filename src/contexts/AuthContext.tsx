@@ -67,6 +67,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setBrowserTasksUsed(data.browser_tasks_used || 0);
         setChatMessagesLimit(data.chat_messages_limit || 100);
         setBrowserTasksLimit(data.browser_tasks_limit || 10);
+        setCodeExecutionsUsed(data.code_executions_used || 0);
+        setCodeExecutionsLimit(data.code_executions_limit || 5);
       }
     } catch (error) {
       console.error('Error refreshing subscription, using free tier defaults:', error);
