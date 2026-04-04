@@ -16,6 +16,7 @@ export interface ToolStep {
   status: 'pending' | 'running' | 'completed' | 'failed';
   label: string;
   result?: string;
+  duration?: number;
 }
 
 const TOOL_LABELS: Record<string, string> = {
