@@ -13,6 +13,7 @@ import CodeExecutionResult from './CodeExecutionResult';
 import SandboxComputerView from './SandboxComputerView';
 import FileAttachment from './FileAttachment';
 import SlidePreview from './SlidePreview';
+import AuditResults from './AuditResults';
 
 const MermaidDiagram = lazy(() => import('./MermaidDiagram'));
 
@@ -160,6 +161,14 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
               numSlides={message.metadata.numSlides}
               gammaUrl={message.metadata.gammaUrl}
               status="completed"
+            />
+          )}
+
+          {/* CRO Audit results */}
+          {message.metadata?.type === 'cro_audit' && (
+            <AuditResults
+              content={message.content}
+              url={message.metadata.auditUrl || ''}
             />
           )}
 

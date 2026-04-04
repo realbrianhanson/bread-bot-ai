@@ -41,6 +41,7 @@ const SLASH_COMMANDS = [
   { cmd: "/results", label: "Open results", icon: "📊" },
   { cmd: "/webhooks", label: "Open webhooks", icon: "🔗" },
   { cmd: "/inspire", label: "Build a page inspired by an existing website's design", icon: "✨" },
+  { cmd: "/audit", label: "Analyze any webpage for conversion optimization", icon: "📈" },
 ];
 
 const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSlashCommand, onInspire, isInspirationLoading, prefill }: ChatInputProps) => {
