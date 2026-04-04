@@ -5,10 +5,12 @@ import ChatInput from './ChatInput';
 import TypingIndicator from './TypingIndicator';
 import TaskStatus from './TaskStatus';
 import LiveBrowserView from './LiveBrowserView';
+import OrchestrationProgress from './OrchestrationProgress';
 import { Message } from '@/hooks/useChat';
 import { BrowserTask } from '@/hooks/useBrowserTask';
+import { useOrchestrator } from '@/hooks/useOrchestrator';
 import { Button } from '@/components/ui/button';
-import { ArrowDown, Sparkles, Terminal } from 'lucide-react';
+import { ArrowDown, Sparkles, Terminal, Search } from 'lucide-react';
 
 interface ChatContainerProps {
   messages: Message[];
@@ -53,6 +55,7 @@ const ChatContainer = ({
 }: ChatContainerProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const orchestrator = useOrchestrator();
 
   const scrollToBottom = () => {
     if (scrollRef.current) {
@@ -80,7 +83,21 @@ const ChatContainer = ({
         onExecuteTask(task, projectId, selectedProfileId || undefined);
         return;
       }
-      if (!task) return; // Don't send empty /browse as chat
+      if (!task) return;
+    }
+
+    // Route /research and /deep commands to orchestrator
+    const researchMatch = trimmedContent.match(/^\/(research|deep)\s+(.+)/s);
+    if (researchMatch) {
+      const query = researchMatch[2].trim();
+      if (query) {
+        // Add the user message to chat for context
+        onSendMessage(content);
+        // Kick off orchestration
+        const history = messages.map((m) => ({ role: m.role, content: m.content }));
+        orchestrator.orchestrate(query, history);
+        return;
+      }
     }
     
     onSendMessage(content);
@@ -89,6 +106,7 @@ const ChatContainer = ({
   const quickCommands = [
     { label: 'Chat with AI', hint: 'Ask me anything', icon: Sparkles },
     { label: '/browse', hint: 'Automate a website', icon: Terminal },
+    { label: '/research', hint: 'Deep research with AI', icon: Search },
   ];
 
   return (
@@ -137,6 +155,17 @@ const ChatContainer = ({
                 {isLoading && messages[messages.length - 1]?.role !== 'assistant' && <TypingIndicator />}
               </AnimatePresence>
             </>
+          )}
+
+          {/* Orchestration progress */}
+          {orchestrator.status !== 'idle' && (
+            <OrchestrationProgress
+              status={orchestrator.status}
+              currentStep={orchestrator.currentStep}
+              toolChain={orchestrator.toolChain}
+              finalResult={orchestrator.finalResult}
+              error={orchestrator.error}
+            />
           )}
 
           {currentTask && !hideTaskPreview && (
