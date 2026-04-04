@@ -217,6 +217,17 @@ const toolDefinitions = [
       required: ['title', 'content'],
     },
   },
+  {
+    name: 'recall_user_context',
+    description: "Query the memory system for specific information about the user. Use this when you need to know the user's preferences, past research topics, industry, company details, or any historical context. Ask natural language questions like 'What industry does the user work in?' or 'Has the user researched competitors before?'",
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        query: { type: 'string', description: 'Natural language question about the user' },
+      },
+      required: ['query'],
+    },
+  },
 ];
 
 const SYSTEM_PROMPT = `You are an AI task orchestrator with access to powerful tools. Given a user's request, determine which tools to use and in what order.
