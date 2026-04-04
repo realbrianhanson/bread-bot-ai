@@ -75,16 +75,28 @@ const toolDefinitions = [
     },
   },
   {
-    name: 'generate_file',
-    description: 'Generate a downloadable file (PDF, CSV, etc.) from the provided content. Currently a stub — returns a placeholder.',
+    name: 'execute_code',
+    description: 'Execute Python code in a secure sandbox. Use this when you need to: process or transform data (clean CSVs, merge datasets, calculate statistics), generate visualizations (charts, graphs using matplotlib/plotly), perform calculations or data analysis, convert between file formats, or run any computation that requires actual code execution. The sandbox has Python with pandas, numpy, matplotlib, plotly, openpyxl, and other common data science libraries pre-installed.',
     input_schema: {
       type: 'object' as const,
       properties: {
-        filename: { type: 'string', description: 'Desired filename with extension' },
-        content: { type: 'string', description: 'Content to put in the file' },
-        format: { type: 'string', enum: ['pdf', 'csv', 'json', 'txt', 'html'], description: 'File format' },
+        code: {
+          type: 'string',
+          description: "Python code to execute. Always print results you want to show the user. For charts, save them as files (e.g., plt.savefig('/home/user/chart.png')). For data output, save as CSV (e.g., df.to_csv('/home/user/output.csv')).",
+        },
+        files: {
+          type: 'array',
+          description: 'Optional files to upload to the sandbox before execution. Use this to pass scraped data or user-provided content.',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              content: { type: 'string' },
+            },
+          },
+        },
       },
-      required: ['filename', 'content', 'format'],
+      required: ['code'],
     },
   },
 ];
@@ -96,10 +108,12 @@ Guidelines:
 - For browser interaction tasks (login, form filling, clicking): use browse_web.
 - For extracting data from a known URL: use scrape_url.
 - For mapping an entire site: use crawl_site.
+- When you need to process data, generate charts, clean or transform files, or perform calculations, use the execute_code tool. Write clean Python code using pandas, matplotlib, numpy, or other standard libraries. Save output files to /home/user/ directory. Always print key results so the user can see them.
+- You can chain execute_code with other tools. For example: search_web → scrape_url → execute_code (process data + generate chart) → synthesize (summary with chart).
 - Always end with synthesize to produce a polished, well-formatted final output for the user.
 - Chain multiple tools when needed — you can call tools sequentially.
 - Be efficient: don't scrape more pages than necessary.
-- When synthesizing, produce rich markdown output with clear headings, bullet points, and structure.`;
+- When synthesizing, produce rich markdown output with clear headings, bullet points, and structure. If code execution produced files (charts, CSVs), reference them in the synthesis.`;
 
 async function resolveAnthropicKey(
   supabaseClient: any,
@@ -222,6 +236,31 @@ async function executeTool(
         const data = await res.json();
         if (data.error) return `Error: ${data.error}`;
         return JSON.stringify({ success: true, fileUrl: data.fileUrl, filename: data.filename, size: data.size });
+      }
+
+      case 'execute_code': {
+        const res = await fetch(`${supabaseUrl}/functions/v1/code-sandbox`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({
+            code: toolInput.code,
+            language: 'python',
+            files: toolInput.files || [],
+            timeout: 45000,
+          }),
+        });
+        const data = await res.json();
+        if (!data.success) return `Execution error: ${data.error || data.output?.stderr || 'Unknown'}`;
+        const out = data.output;
+        let result = '';
+        if (out.stdout) result += `STDOUT:\n${out.stdout}\n`;
+        if (out.stderr) result += `STDERR:\n${out.stderr}\n`;
+        if (out.result) result += `RESULT:\n${out.result}\n`;
+        if (out.files?.length) {
+          result += `GENERATED FILES:\n${out.files.map((f: any) => `- ${f.name}: ${f.url}`).join('\n')}\n`;
+        }
+        result += `Execution time: ${out.executionTime}ms`;
+        return result;
       }
 
       default:
