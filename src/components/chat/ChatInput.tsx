@@ -2,6 +2,7 @@ import { useState, KeyboardEvent, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Send, Square, Zap, ToggleLeft, ToggleRight, Paperclip } from 'lucide-react';
 import { StylePicker } from '@/components/chat/StylePicker';
+import { PurposePicker } from '@/components/chat/PurposePicker';
 import { cn } from '@/lib/utils';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { VoiceInputButton } from '@/components/chat/VoiceInputButton';
@@ -13,7 +14,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ACCEPTED_TYPES = '.csv,.json,.txt,.pdf,.xlsx,.xls,.png,.jpg,.jpeg,.md';
 
 interface ChatInputProps {
-  onSend: (content: string, options?: { ghlMode?: boolean; files?: File[]; designTemplateId?: string | null; customDesignMd?: string }) => void;
+  onSend: (content: string, options?: { ghlMode?: boolean; files?: File[]; designTemplateId?: string | null; customDesignMd?: string; marketingMd?: string; marketingCategory?: string }) => void;
   disabled?: boolean;
   isStreaming?: boolean;
   onStop?: () => void;
@@ -50,6 +51,9 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [selectedDesignId, setSelectedDesignId] = useState<string | null>(null);
   const [customDesignMd, setCustomDesignMd] = useState<string | undefined>();
+  const [selectedPurposeId, setSelectedPurposeId] = useState<string | null>(null);
+  const [marketingMd, setMarketingMd] = useState<string | undefined>();
+  const [marketingCategory, setMarketingCategory] = useState<string | undefined>();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -131,6 +135,8 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
         files: attachedFiles.length > 0 ? attachedFiles : undefined,
         designTemplateId: selectedDesignId,
         customDesignMd: selectedDesignId === 'custom' ? customDesignMd : undefined,
+        marketingMd,
+        marketingCategory,
       });
       setInput('');
       setAttachedFiles([]);
@@ -248,6 +254,17 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
           onSelect={(id, md) => {
             setSelectedDesignId(id);
             if (md) setCustomDesignMd(md);
+          }}
+          disabled={disabled}
+        />
+
+        {/* Purpose picker */}
+        <PurposePicker
+          selectedId={selectedPurposeId}
+          onSelect={(id, md, cat) => {
+            setSelectedPurposeId(id);
+            setMarketingMd(md);
+            setMarketingCategory(cat);
           }}
           disabled={disabled}
         />
