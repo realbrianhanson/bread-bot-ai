@@ -667,6 +667,37 @@ async function executeTool(
         }
       }
 
+      case 'knowledge_search': {
+        const res = await fetch(`${supabaseUrl}/functions/v1/knowledge-base`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({ action: 'search', userId, query: toolInput.query }),
+        });
+        const data = await res.json();
+        if (data.error) return `Knowledge search error: ${data.error}`;
+        const entries = data.entries || [];
+        if (entries.length === 0) return 'No relevant entries found in the knowledge base.';
+        return entries.map((e: any) => `**${e.title}** (${e.topic})\n${e.content}\nSources: ${(e.source_urls || []).join(', ')}`).join('\n\n---\n\n');
+      }
+
+      case 'knowledge_store': {
+        const res = await fetch(`${supabaseUrl}/functions/v1/knowledge-base`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({
+            action: 'store',
+            userId,
+            topic: toolInput.topic,
+            title: toolInput.title,
+            content: toolInput.content,
+            tags: toolInput.tags || [],
+          }),
+        });
+        const data = await res.json();
+        if (data.error) return `Knowledge store error: ${data.error}`;
+        return `Successfully saved "${toolInput.title}" to the knowledge base under topic "${toolInput.topic}".`;
+      }
+
       default:
         return `Unknown tool: ${toolName}`;
     }
