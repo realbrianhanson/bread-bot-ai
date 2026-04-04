@@ -41,6 +41,7 @@ export const useOrchestrator = () => {
     setCurrentStep('Analyzing your request…');
     setToolChain([]);
     setFinalResult('');
+    setGeneratedFiles([]);
     setError('');
     setIsOrchestrating(true);
 
