@@ -157,6 +157,17 @@ const ChatContainer = ({
             </>
           )}
 
+          {/* Orchestration progress */}
+          {orchestrator.status !== 'idle' && (
+            <OrchestrationProgress
+              status={orchestrator.status}
+              currentStep={orchestrator.currentStep}
+              toolChain={orchestrator.toolChain}
+              finalResult={orchestrator.finalResult}
+              error={orchestrator.error}
+            />
+          )}
+
           {currentTask && !hideTaskPreview && (
             <div className="space-y-3">
               <TaskStatus
