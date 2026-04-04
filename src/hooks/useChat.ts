@@ -93,7 +93,7 @@ export const useChat = (projectId?: string) => {
   }, [messages]);
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, options?: { ghlMode?: boolean }) => {
       if (!user || !content.trim()) return;
 
       // Check if user can send message
