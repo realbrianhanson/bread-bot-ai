@@ -176,6 +176,29 @@ ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 bg-background/50 shrink-0 z-20">
         <span className="text-xs font-medium">Live Preview</span>
         <div className="flex gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleCopyForGHL}
+                className="h-6 w-6"
+              >
+                {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[220px] text-xs">
+              Copies self-contained HTML ready to paste into GoHighLevel's Custom Code block. Works with any website builder that supports custom HTML.
+            </TooltipContent>
+          </Tooltip>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleDownloadHTML}
+            className="h-6 w-6"
+          >
+            <Download className="h-3 w-3" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
