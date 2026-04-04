@@ -1,12 +1,12 @@
 import { useState, KeyboardEvent, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Square, Zap } from 'lucide-react';
+import { Send, Square, Zap, ToggleLeft, ToggleRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { VoiceInputButton } from '@/components/chat/VoiceInputButton';
 
 interface ChatInputProps {
-  onSend: (content: string) => void;
+  onSend: (content: string, options?: { ghlMode?: boolean }) => void;
   disabled?: boolean;
   isStreaming?: boolean;
   onStop?: () => void;
