@@ -338,7 +338,7 @@ export const useChat = (projectId?: string) => {
   );
 
   const sendMessage = useCallback(
-    async (content: string, options?: { ghlMode?: boolean; files?: File[]; designTemplateId?: string | null; customDesignMd?: string }) => {
+    async (content: string, options?: { ghlMode?: boolean; files?: File[]; designTemplateId?: string | null; customDesignMd?: string; marketingMd?: string; marketingCategory?: string }) => {
       if (!user || (!content.trim() && !(options?.files?.length))) return;
 
       if (!canSendMessage()) {
