@@ -51,15 +51,28 @@ const Dashboard = () => {
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const { plan, isPlanning, generatePlan, updateStep, removeStep, addStep, reorderSteps, clearPlan } = useTaskPlanner();
 
-  const handleSendWithPlanner = async (content: string) => {
+  const handleSendWithPlanner = async (content: string, options?: { ghlMode?: boolean }) => {
     // If message starts with /plan, use the AI planner
     if (content.trimStart().startsWith("/plan ")) {
       const prompt = content.replace(/^\/plan\s+/, "");
       await generatePlan(prompt);
       return;
     }
-    sendMessage(content);
+    sendMessage(content, options);
   };
+
+  const isGhlMode = typeof window !== 'undefined' && localStorage.getItem('ghl-mode') === 'true';
+
+  // Extract GHL code (single HTML blob) from latest assistant message
+  const ghlCode = useMemo(() => {
+    if (!isGhlMode) return '';
+    const assistantMsgs = messages.filter((m) => m.role === 'assistant');
+    if (assistantMsgs.length === 0) return '';
+    const last = assistantMsgs[assistantMsgs.length - 1].content;
+    // Match a single html code block
+    const match = last.match(/```html?\n([\s\S]*?)```/);
+    return match ? match[1].trim() : '';
+  }, [messages, isGhlMode]);
 
   const handleExecutePlan = async () => {
     if (!plan) return;
