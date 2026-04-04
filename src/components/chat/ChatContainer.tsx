@@ -35,6 +35,8 @@ interface ChatContainerProps {
   selectedProfileId?: string | null;
   hideTaskPreview?: boolean;
   onSlashCommand?: (command: string) => void;
+  onInspire?: (url: string, content: string, ghlMode: boolean) => void;
+  isInspirationLoading?: boolean;
 }
 
 const ChatContainer = ({
@@ -56,6 +58,8 @@ const ChatContainer = ({
   selectedProfileId,
   hideTaskPreview = false,
   onSlashCommand,
+  onInspire,
+  isInspirationLoading,
 }: ChatContainerProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -433,6 +437,8 @@ const ChatContainer = ({
             isStreaming={isStreaming}
             onStop={onStopStreaming}
             onSlashCommand={onSlashCommand}
+            onInspire={onInspire}
+            isInspirationLoading={isInspirationLoading}
             prefill={inputPrefill}
           />
         </div>

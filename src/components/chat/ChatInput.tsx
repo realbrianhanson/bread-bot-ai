@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { VoiceInputButton } from '@/components/chat/VoiceInputButton';
 import { FileChip } from '@/components/chat/FileAttachment';
+import InspirationPopover from '@/components/chat/InspirationPopover';
 
 const MAX_FILES = 5;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -16,6 +17,8 @@ interface ChatInputProps {
   isStreaming?: boolean;
   onStop?: () => void;
   onSlashCommand?: (command: string) => void;
+  onInspire?: (url: string, content: string, ghlMode: boolean) => void;
+  isInspirationLoading?: boolean;
   prefill?: string;
 }
 
@@ -35,9 +38,10 @@ const SLASH_COMMANDS = [
   { cmd: "/workflow", label: "Open workflows", icon: "🔀" },
   { cmd: "/results", label: "Open results", icon: "📊" },
   { cmd: "/webhooks", label: "Open webhooks", icon: "🔗" },
+  { cmd: "/inspire", label: "Build a page inspired by an existing website's design", icon: "✨" },
 ];
 
-const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSlashCommand, prefill }: ChatInputProps) => {
+const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSlashCommand, onInspire, isInspirationLoading, prefill }: ChatInputProps) => {
   const [input, setInput] = useState('');
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [selectedSlashIndex, setSelectedSlashIndex] = useState(0);
@@ -222,6 +226,13 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
             <span className="text-[10px] font-medium text-accent">Sandbox</span>
           </div>
         )}
+
+        {/* Inspiration button */}
+        <InspirationPopover
+          disabled={disabled}
+          isLoading={isInspirationLoading}
+          onSubmit={(url, content, ghl) => onInspire?.(url, content, ghl)}
+        />
 
         {/* Attachment button */}
         <button
