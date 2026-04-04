@@ -37,7 +37,13 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
   const [ghlMode, setGhlMode] = useState(() => localStorage.getItem('ghl-mode') === 'true');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleVoiceResult = useCallback((text: string) => {
+  useEffect(() => {
+    if (prefill !== undefined && prefill !== '') {
+      setInput(prefill);
+      setTimeout(() => textareaRef.current?.focus(), 50);
+    }
+  }, [prefill]);
+
     setInput((prev) => (prev ? prev + ' ' + text : text));
   }, []);
 
