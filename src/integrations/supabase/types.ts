@@ -116,6 +116,45 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_entries: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          source_task_id: string | null
+          source_urls: string[] | null
+          tags: string[] | null
+          title: string
+          topic: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          source_task_id?: string | null
+          source_urls?: string[] | null
+          tags?: string[] | null
+          title: string
+          topic: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          source_task_id?: string | null
+          source_urls?: string[] | null
+          tags?: string[] | null
+          title?: string
+          topic?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string

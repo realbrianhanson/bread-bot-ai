@@ -266,6 +266,31 @@ const toolDefinitions = [
       required: ['url', 'filename'],
     },
   },
+  {
+    name: 'knowledge_search',
+    description: "Search the user's personal knowledge base for information from previous research tasks. Use this BEFORE searching the web to check if we already have relevant data. Returns previously researched topics, findings, and source URLs.",
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        query: { type: 'string', description: 'What to search for in the knowledge base' },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'knowledge_store',
+    description: "Save research findings to the user's knowledge base for future reference. Use this after completing research to store key findings. Future tasks will be able to access this information without re-researching.",
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        topic: { type: 'string', description: 'Research topic category' },
+        title: { type: 'string', description: 'Entry title' },
+        content: { type: 'string', description: 'The findings in clean markdown format' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Searchable tags' },
+      },
+      required: ['topic', 'title', 'content'],
+    },
+  },
 ];
 
 const SYSTEM_PROMPT = `You are an AI task orchestrator with access to powerful tools. Given a user's request, determine which tools to use and in what order.
@@ -326,6 +351,17 @@ CHAINING STRATEGY:
 - send_email: Send a formatted HTML email. Always create professional, well-styled HTML content.
 
 - download_file: Download and store a file from a URL. Returns a signed download link.
+
+KNOWLEDGE BASE:
+- ALWAYS call knowledge_search before search_web to check if we already have relevant data
+- After completing any research task, ALWAYS call knowledge_store to save key findings
+- When storing knowledge, write clean summaries — not raw scraped content
+- Tag entries with relevant keywords for future searchability
+- If knowledge_search returns relevant results, use them and only search the web for gaps or updates
+
+CHAINING WITH KNOWLEDGE:
+- Research tasks: knowledge_search → (if gaps) search_web → scrape_url → synthesize → knowledge_store
+- Repeat research: knowledge_search → synthesize (if knowledge is sufficient)
 
 Always end with synthesize to produce a polished final output. Include any generated charts, files, or links in your synthesis.`;
 
@@ -629,6 +665,37 @@ async function executeTool(
         } catch (err) {
           return `Error downloading file: ${err instanceof Error ? err.message : 'Unknown error'}`;
         }
+      }
+
+      case 'knowledge_search': {
+        const res = await fetch(`${supabaseUrl}/functions/v1/knowledge-base`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({ action: 'search', userId, query: toolInput.query }),
+        });
+        const data = await res.json();
+        if (data.error) return `Knowledge search error: ${data.error}`;
+        const entries = data.entries || [];
+        if (entries.length === 0) return 'No relevant entries found in the knowledge base.';
+        return entries.map((e: any) => `**${e.title}** (${e.topic})\n${e.content}\nSources: ${(e.source_urls || []).join(', ')}`).join('\n\n---\n\n');
+      }
+
+      case 'knowledge_store': {
+        const res = await fetch(`${supabaseUrl}/functions/v1/knowledge-base`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({
+            action: 'store',
+            userId,
+            topic: toolInput.topic,
+            title: toolInput.title,
+            content: toolInput.content,
+            tags: toolInput.tags || [],
+          }),
+        });
+        const data = await res.json();
+        if (data.error) return `Knowledge store error: ${data.error}`;
+        return `Successfully saved "${toolInput.title}" to the knowledge base under topic "${toolInput.topic}".`;
       }
 
       default:
