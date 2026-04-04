@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Save, Eye, EyeOff, Crown, RefreshCw, Settings2, BarChart3, Shield, FileUp, Book, Globe, Bot, CheckCircle2, Link2, Unlink } from 'lucide-react';
+import { ArrowLeft, Save, Eye, EyeOff, Crown, RefreshCw, Settings2, BarChart3, Shield, FileUp, Book, Globe, Bot, CheckCircle2, Unlink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
@@ -44,8 +44,62 @@ export default function Settings() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [managingSubscription, setManagingSubscription] = useState(false);
-  const [googleIntegration, setGoogleIntegration] = useState<{ provider_email: string | null; connected: boolean } | null>(null);
+  const [googleIntegration, setGoogleIntegration] = useState<{ provider_email: string | null; connected: boolean }>({ connected: false, provider_email: null });
   const [connectingGoogle, setConnectingGoogle] = useState(false);
+
+  const loadGoogleIntegration = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('user_integrations' as any)
+      .select('provider_email')
+      .eq('user_id', user.id)
+      .eq('provider', 'google')
+      .maybeSingle();
+    if (data) {
+      setGoogleIntegration({ connected: true, provider_email: (data as any).provider_email });
+    } else {
+      setGoogleIntegration({ connected: false, provider_email: null });
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadGoogleIntegration();
+    // Listen for OAuth popup callback
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'google-oauth-success') {
+        toast.success('Google account connected!');
+        loadGoogleIntegration();
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [loadGoogleIntegration]);
+
+  const handleConnectGoogle = () => {
+    if (!user) return;
+    setConnectingGoogle(true);
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-oauth/authorize?user_id=${user.id}`;
+    const popup = window.open(url, 'google-oauth', 'width=600,height=700,popup=yes');
+    // Poll for popup close
+    const interval = setInterval(() => {
+      if (popup?.closed) {
+        clearInterval(interval);
+        setConnectingGoogle(false);
+        loadGoogleIntegration();
+      }
+    }, 500);
+  };
+
+  const handleDisconnectGoogle = async () => {
+    if (!user) return;
+    await supabase
+      .from('user_integrations' as any)
+      .delete()
+      .eq('user_id', user.id)
+      .eq('provider', 'google');
+    setGoogleIntegration({ connected: false, provider_email: null });
+    toast.success('Google account disconnected');
+  };
 
   useEffect(() => {
     if (canUseOwnKeys) {
