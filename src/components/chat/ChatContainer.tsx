@@ -304,9 +304,25 @@ const ChatContainer = ({
             )
           ) : (
             <>
-              {messages.map((message) => (
-                <ChatMessage key={message.id} message={message} />
-              ))}
+              {messages.map((message) => {
+                const msgHasCode = message.role === 'assistant' && hasCodeBlocks(message.content);
+                const codeFiles = msgHasCode ? extractCodeFromResponse(message.content) : {};
+                return (
+                  <div key={message.id}>
+                    <ChatMessage message={message} />
+                    <MessageFeedback
+                      messageId={message.id}
+                      messageContent={message.content}
+                      isAssistant={message.role === 'assistant'}
+                      hasCode={msgHasCode}
+                      codeFiles={codeFiles}
+                      sentimentTriggered={sentimentTriggeredIds.has(message.id)}
+                      offeredIds={offeredTemplateIds}
+                      onOffered={handleOffered}
+                    />
+                  </div>
+                );
+              })}
               <AnimatePresence>
                 {isLoading && messages[messages.length - 1]?.role !== 'assistant' && <TypingIndicator />}
               </AnimatePresence>
