@@ -92,12 +92,116 @@ export const useChat = (projectId?: string) => {
     messagesRef.current = messages;
   }, [messages]);
 
+  const executeCode = useCallback(
+    async (code: string, userContent: string) => {
+      if (!user) return;
+
+      // Save user message
+      await supabase.from('messages').insert({
+        user_id: user.id,
+        project_id: projectId,
+        role: 'user',
+        content: userContent,
+      });
+
+      const runningId = crypto.randomUUID();
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: runningId,
+          role: 'assistant',
+          content: '⏳ Executing code in sandbox...',
+          created_at: new Date().toISOString(),
+        },
+      ]);
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('No active session');
+
+        const { data, error } = await supabase.functions.invoke('code-sandbox', {
+          body: { code, language: 'python' },
+        });
+
+        if (error) throw error;
+
+        const output = data?.output || data;
+        const metadata = {
+          type: 'code_execution',
+          code,
+          language: 'python',
+          stdout: output?.stdout || '',
+          stderr: output?.stderr || '',
+          result: output?.result || '',
+          executionTime: output?.executionTime,
+          files: output?.files || [],
+        };
+
+        const summary = output?.stderr
+          ? `Code execution completed with errors.\n\`\`\`\n${output.stderr}\n\`\`\``
+          : `Code execution completed.${output?.stdout ? `\n\`\`\`\n${output.stdout}\n\`\`\`` : ''}`;
+
+        const { data: savedMsg } = await supabase
+          .from('messages')
+          .insert({
+            user_id: user.id,
+            project_id: projectId,
+            role: 'assistant',
+            content: summary,
+            metadata,
+          })
+          .select()
+          .single();
+
+        setMessages((prev) =>
+          prev.map((m) => (m.id === runningId ? (savedMsg as Message) : m))
+        );
+      } catch (err: any) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === runningId
+              ? { ...m, content: `❌ Code execution failed: ${err.message}` }
+              : m
+          )
+        );
+      }
+    },
+    [user, projectId]
+  );
+
   const sendMessage = useCallback(
     async (content: string, options?: { ghlMode?: boolean }) => {
       if (!user || !content.trim()) return;
 
       // Check if user can send message
       if (!canSendMessage()) {
+        return;
+      }
+
+      // Handle /code command
+      if (content.trim().startsWith('/code ')) {
+        const code = content.trim().slice(6);
+        setIsLoading(true);
+        try {
+          await executeCode(code, content);
+        } finally {
+          setIsLoading(false);
+          refreshSubscription();
+        }
+        return;
+      }
+
+      // Detect conversational code execution patterns
+      const codeBlockMatch = content.match(/(?:run this code|execute this|run this)[:.]?\s*```[\w]*\n?([\s\S]+?)```/i);
+      if (codeBlockMatch) {
+        const code = codeBlockMatch[1].trim();
+        setIsLoading(true);
+        try {
+          await executeCode(code, content);
+        } finally {
+          setIsLoading(false);
+          refreshSubscription();
+        }
         return;
       }
 
@@ -239,7 +343,7 @@ export const useChat = (projectId?: string) => {
         refreshSubscription();
       }
     },
-    [user, projectId, canSendMessage, refreshSubscription]
+    [user, projectId, canSendMessage, refreshSubscription, executeCode]
   );
 
   const stopStreaming = useCallback(() => {

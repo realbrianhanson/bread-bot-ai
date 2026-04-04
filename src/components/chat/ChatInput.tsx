@@ -19,6 +19,7 @@ const SLASH_COMMANDS = [
   { cmd: "/scrape", label: "Scrape a webpage", icon: "📄" },
   { cmd: "/crawl", label: "Crawl a website", icon: "🕷️" },
   { cmd: "/search", label: "Web search", icon: "🔍" },
+  { cmd: "/code", label: "Execute Python code in a sandbox", icon: "💻" },
   { cmd: "/research", label: "Deep research with AI", icon: "🔬" },
   { cmd: "/deep", label: "Deep analysis", icon: "🧠" },
   { cmd: "/plan", label: "AI task planner", icon: "🧠" },
@@ -128,6 +129,7 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
 
   const isBrowseCmd = input.trimStart().startsWith('/browse');
   const isPlanCmd = input.trimStart().startsWith('/plan');
+  const isCodeCmd = input.trimStart().startsWith('/code');
 
   return (
     <div className="space-y-1 relative">
@@ -176,6 +178,12 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
           <div className="shrink-0 mb-1.5 flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 border border-primary/30">
             <span className="text-[10px]">🧠</span>
             <span className="text-[10px] font-medium text-primary">Planner</span>
+          </div>
+        )}
+        {isCodeCmd && (
+          <div className="shrink-0 mb-1.5 flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/10 border border-accent/30">
+            <span className="text-[10px]">💻</span>
+            <span className="text-[10px] font-medium text-accent">Sandbox</span>
           </div>
         )}
 

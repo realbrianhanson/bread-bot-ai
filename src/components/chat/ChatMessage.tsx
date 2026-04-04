@@ -8,6 +8,7 @@ import remarkGfm from 'remark-gfm';
 import { useState, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import CodeExecutionResult from './CodeExecutionResult';
 
 const MermaidDiagram = lazy(() => import('./MermaidDiagram'));
 
@@ -115,6 +116,21 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
               >
                 {message.content}
               </ReactMarkdown>
+            </div>
+          )}
+
+          {/* Code execution results */}
+          {message.metadata?.type === 'code_execution' && (
+            <div className="mt-3">
+              <CodeExecutionResult
+                code={message.metadata.code}
+                language={message.metadata.language}
+                stdout={message.metadata.stdout}
+                stderr={message.metadata.stderr}
+                result={message.metadata.result}
+                executionTime={message.metadata.executionTime}
+                files={message.metadata.files}
+              />
             </div>
           )}
 
