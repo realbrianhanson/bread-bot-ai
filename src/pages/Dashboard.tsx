@@ -1,7 +1,8 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+
 import { Button } from "@/components/ui/button";
-import { Settings, LogOut, MessageSquarePlus, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { Settings, LogOut, MessageSquarePlus, ChevronLeft, ChevronRight, Sparkles, Brain } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
   AlertDialog,
@@ -26,7 +27,7 @@ import { useConversations } from "@/hooks/useConversations";
 import { useBrowserTask } from "@/hooks/useBrowserTask";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { parseCodeFromMessages } from "@/lib/codeParser";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { PlanBadge } from "@/components/ui/plan-badge";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { TaskTemplatesPanel } from "@/components/templates/TaskTemplatesPanel";
@@ -37,6 +38,8 @@ import { TaskPlanViewer } from "@/components/workflow/TaskPlanViewer";
 import { useTaskPlanner } from "@/hooks/useTaskPlanner";
 import { WebhookManager } from "@/components/webhooks/WebhookManager";
 import { ResultsDashboard } from "@/components/results/ResultsDashboard";
+import { supabase } from "@/integrations/supabase/client";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const Dashboard = () => {
   const { signOut, user } = useAuth();
@@ -50,6 +53,14 @@ const Dashboard = () => {
   const { currentTask, isExecuting, executeTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask();
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const { plan, isPlanning, generatePlan, updateStep, removeStep, addStep, reorderSteps, clearPlan } = useTaskPlanner();
+
+  const [memoryActive, setMemoryActive] = useState(false);
+
+  useEffect(() => {
+    supabase.functions.invoke('honcho-proxy', { body: { action: 'status' } })
+      .then(({ data }) => setMemoryActive(data?.available ?? false))
+      .catch(() => setMemoryActive(false));
+  }, []);
 
   const handleSendWithPlanner = async (content: string, options?: { ghlMode?: boolean }) => {
     // If message starts with /plan, use the AI planner
@@ -202,6 +213,21 @@ const Dashboard = () => {
           <span className="text-xl">🧄</span>
           <span className="text-sm font-semibold tracking-tight text-foreground hidden sm:block">GarlicBread.ai</span>
           <PlanBadge size="sm" className="hidden sm:inline-flex" />
+          {memoryActive && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="relative hidden sm:flex items-center">
+                    <Brain className="h-4 w-4 text-purple-400" />
+                    <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-green-500 border border-background" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p className="text-xs">Memory Active — Agent is learning from your conversations</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
         <div className="flex items-center gap-1.5">
           <TaskTemplatesPanel onSelectTemplate={handleQuickStart} />

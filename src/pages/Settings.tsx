@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Save, Eye, EyeOff, Crown, RefreshCw, Settings2, BarChart3, Shield, FileUp, Book, Globe, Bot, CheckCircle2, Unlink } from 'lucide-react';
+import { ArrowLeft, Save, Eye, EyeOff, Crown, RefreshCw, Settings2, BarChart3, Shield, FileUp, Book, Globe, Bot, CheckCircle2, Unlink, Brain } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
@@ -18,6 +18,7 @@ import { DocumentationSearch } from '@/components/settings/DocumentationSearch';
 import { DocumentParser } from '@/components/settings/DocumentParser';
 import { WebScraper } from '@/components/settings/WebScraper';
 import WorkflowAgentPanel from '@/components/agents/WorkflowAgentPanel';
+import { AgentMemoryPanel } from '@/components/settings/AgentMemoryPanel';
 
 export default function Settings() {
   const { user, signOut } = useAuth();
@@ -221,7 +222,7 @@ export default function Settings() {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="account" className="space-y-6">
-          <TabsList className="glass-strong border-white/20 grid w-full max-w-4xl grid-cols-7">
+          <TabsList className="glass-strong border-white/20 grid w-full max-w-4xl grid-cols-8">
             <TabsTrigger value="account" className="flex items-center gap-2">
               <Settings2 className="h-4 w-4" />
               <span className="hidden sm:inline">Account</span>
@@ -229,6 +230,10 @@ export default function Settings() {
             <TabsTrigger value="agents" className="flex items-center gap-2">
               <Bot className="h-4 w-4" />
               <span className="hidden sm:inline">Agents</span>
+            </TabsTrigger>
+            <TabsTrigger value="memory" className="flex items-center gap-2">
+              <Brain className="h-4 w-4" />
+              <span className="hidden sm:inline">Memory</span>
             </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
@@ -488,6 +493,11 @@ export default function Settings() {
           {/* Agents Tab */}
           <TabsContent value="agents" className="max-w-5xl">
             <WorkflowAgentPanel />
+          </TabsContent>
+
+          {/* Memory Tab */}
+          <TabsContent value="memory" className="max-w-2xl">
+            <AgentMemoryPanel />
           </TabsContent>
 
           {/* Analytics Tab */}
