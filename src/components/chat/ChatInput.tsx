@@ -129,6 +129,7 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
 
   const isBrowseCmd = input.trimStart().startsWith('/browse');
   const isPlanCmd = input.trimStart().startsWith('/plan');
+  const isCodeCmd = input.trimStart().startsWith('/code');
 
   return (
     <div className="space-y-1 relative">
