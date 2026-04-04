@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
+import { fixContrastIssues } from '@/lib/contrastFixer';
 
 interface CodePreviewProps {
   files: Record<string, string>;
@@ -124,7 +125,7 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
       }
     }
 
-    return `<!DOCTYPE html>
+    const rawHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -148,6 +149,13 @@ ${bodyContent}
 ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n  <\/script>` : ''}
 </body>
 </html>`;
+
+    // Auto-fix contrast issues in the generated HTML
+    const { html: fixedHtml, issuesFound } = fixContrastIssues(rawHtml);
+    if (issuesFound > 0) {
+      console.log(`[ContrastFixer] Auto-fixed ${issuesFound} contrast issue(s) in generated HTML`);
+    }
+    return fixedHtml;
   }, [files, mainFile]);
 
   const handleRefresh = () => {
