@@ -33,6 +33,7 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
   const [input, setInput] = useState('');
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [selectedSlashIndex, setSelectedSlashIndex] = useState(0);
+  const [ghlMode, setGhlMode] = useState(() => localStorage.getItem('ghl-mode') === 'true');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleVoiceResult = useCallback((text: string) => {
