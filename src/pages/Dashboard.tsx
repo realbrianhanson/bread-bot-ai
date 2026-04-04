@@ -55,6 +55,11 @@ const Dashboard = () => {
   const { plan, isPlanning, generatePlan, updateStep, removeStep, addStep, reorderSteps, clearPlan } = useTaskPlanner();
 
   const [memoryActive, setMemoryActive] = useState(false);
+  const [mobileView, setMobileView] = useState<'chat' | 'preview'>('chat');
+
+  // Auto-switch to preview on mobile when new code is generated
+  const hasPreviewContent = parsedCode.files && Object.keys(parsedCode.files).length > 0 && 
+    !(Object.keys(parsedCode.files).length === 1 && parsedCode.files[parsedCode.mainFile]?.includes('Start chatting'));
 
   useEffect(() => {
     supabase.functions.invoke('honcho-proxy', { body: { action: 'status' } })
