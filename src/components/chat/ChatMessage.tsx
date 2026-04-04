@@ -171,6 +171,36 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
               ))}
             </div>
           )}
+
+          {/* Design validation badge */}
+          {message.metadata?.validation && (
+            <div className="mt-2 flex items-center gap-1.5">
+              {message.metadata.validation.passed && !message.metadata.validation.autoFixed && (
+                <Badge variant="outline" className="text-[10px] px-2 py-0.5 gap-1 border-green-500/30 text-green-600 dark:text-green-400 bg-green-500/5">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Design validated
+                </Badge>
+              )}
+              {message.metadata.validation.autoFixed && message.metadata.validation.retryPassed && (
+                <Badge variant="outline" className="text-[10px] px-2 py-0.5 gap-1 border-primary/30 text-primary bg-primary/5">
+                  <Sparkles className="h-3 w-3" />
+                  Auto-improved
+                </Badge>
+              )}
+              {message.metadata.validation.autoFixed && !message.metadata.validation.retryPassed && (
+                <Badge variant="outline" className="text-[10px] px-2 py-0.5 gap-1 border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/5">
+                  <AlertTriangle className="h-3 w-3" />
+                  Review contrast
+                </Badge>
+              )}
+              {!message.metadata.validation.passed && !message.metadata.validation.autoFixed && (
+                <Badge variant="outline" className="text-[10px] px-2 py-0.5 gap-1 border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/5">
+                  <AlertTriangle className="h-3 w-3" />
+                  Review contrast
+                </Badge>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Timestamp */}
