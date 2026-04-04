@@ -112,6 +112,18 @@ const toolDefinitions = [
       required: ['topic', 'content'],
     },
   },
+  {
+    name: 'create_google_doc',
+    description: 'Create a Google Doc with the provided content. Use this when the user wants their results saved to Google Docs. Requires the user to have connected their Google account.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        title: { type: 'string', description: 'The document title' },
+        content: { type: 'string', description: 'The document content in markdown format' },
+      },
+      required: ['title', 'content'],
+    },
+  },
 ];
 
 const SYSTEM_PROMPT = `You are an AI task orchestrator with access to powerful tools. Given a user's request, determine which tools to use and in what order.
