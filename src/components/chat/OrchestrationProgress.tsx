@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Check, X, Loader2, Search, Globe, FileText, Brain, Sparkles,
-  File, Download, Link2, FileSpreadsheet, FileCode, Cpu,
+  File, Download, Link2, FileSpreadsheet, FileCode, Cpu, Code2,
   Clock, ChevronDown, ChevronUp, RefreshCw, BookOpen, ArrowRight,
 } from 'lucide-react';
 import { OrchestrationStatus, ToolStep } from '@/hooks/useOrchestrator';
@@ -13,6 +13,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { toast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import SandboxComputerView from './SandboxComputerView';
 
 export interface GeneratedFile {
   fileUrl: string;
@@ -37,6 +38,7 @@ const TOOL_ICONS: Record<string, typeof Search> = {
   scrape_url: FileText,
   crawl_site: Globe,
   browse_web: Globe,
+  execute_code: Code2,
   synthesize: Cpu,
   generate_file: Download,
 };
@@ -215,6 +217,24 @@ const OrchestrationProgress = ({
 
                           {step.status === 'failed' && step.result && (
                             <p className="text-xs text-destructive/80 mt-0.5 ml-5">{step.result}</p>
+                          )}
+
+                          {/* Show SandboxComputerView for execute_code steps */}
+                          {step.tool === 'execute_code' && (step.status === 'running' || step.status === 'completed' || step.status === 'failed') && (step as any).metadata?.code && (
+                            <div className="mt-2 ml-0">
+                              <SandboxComputerView
+                                code={(step as any).metadata.code}
+                                language={(step as any).metadata.language || 'python'}
+                                status={step.status === 'running' ? 'running' : step.status === 'completed' ? 'completed' : 'failed'}
+                                output={{
+                                  stdout: (step as any).metadata?.stdout || '',
+                                  stderr: (step as any).metadata?.stderr || '',
+                                  result: (step as any).metadata?.result || '',
+                                }}
+                                executionTime={(step as any).metadata?.executionTime}
+                                files={(step as any).metadata?.files}
+                              />
+                            </div>
                           )}
                         </div>
                       </motion.div>
