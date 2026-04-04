@@ -339,7 +339,26 @@ export default function Settings() {
                     </div>
                   </div>
 
-                  <Button onClick={handleSaveApiKeys} disabled={isLoading} className="w-full">
+                  <div className="space-y-2">
+                    <Label htmlFor="e2b-key">E2B API Key (Code Sandbox)</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="e2b-key"
+                        type={showKeys.e2b ? 'text' : 'password'}
+                        value={apiKeys.e2b}
+                        onChange={(e) => setApiKeys({ ...apiKeys, e2b: e.target.value })}
+                        placeholder="Enter your E2B API key"
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setShowKeys({ ...showKeys, e2b: !showKeys.e2b })}
+                      >
+                        {showKeys.e2b ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+
                     <Save className="mr-2 h-4 w-4" />
                     Save API Keys
                   </Button>
