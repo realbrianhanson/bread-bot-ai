@@ -153,6 +153,8 @@ CHAINING STRATEGY:
 - Data analysis: scrape_url → execute_code (process + visualize) → synthesize
 - Comparison tasks: search_web → scrape_url (multiple) → execute_code (build comparison table + charts) → synthesize
 - Simple questions: search_web → scrape_url → synthesize (no code needed)
+- Presentation tasks: search_web (if research needed) → scrape_url → synthesize (outline) → generate_slides
+- When the user asks for slides/presentation/deck: ALWAYS use generate_slides as the final step
 
 Always end with synthesize to produce a polished final output. Include any generated charts or files in your synthesis.`;
 
