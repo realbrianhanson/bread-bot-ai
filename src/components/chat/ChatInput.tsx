@@ -74,9 +74,17 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
     textareaRef.current?.focus();
   };
 
+  const toggleGhlMode = () => {
+    setGhlMode((prev) => {
+      const next = !prev;
+      localStorage.setItem('ghl-mode', String(next));
+      return next;
+    });
+  };
+
   const handleSend = () => {
     if (input.trim() && !disabled) {
-      onSend(input.trim());
+      onSend(input.trim(), { ghlMode });
       setInput('');
     }
   };
