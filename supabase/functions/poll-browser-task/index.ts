@@ -123,6 +123,9 @@ serve(async (req) => {
 
     // Map Browser Use v3 status to our status
     // v3 statuses: created, idle, running, stopped, timed_out, error
+    // NOTE: Browser Use Cloud returns "stopped" when the agent naturally finishes
+    // (e.g. task complete, session timeout). This is NOT the same as user-initiated stop.
+    // We treat "stopped" with output as "completed".
     let mappedStatus = task.status;
     const buStatus = sessionData.status?.toLowerCase();
     if (buStatus === 'finished' || buStatus === 'completed' || buStatus === 'done' || buStatus === 'idle') {
@@ -133,7 +136,14 @@ serve(async (req) => {
     } else if (buStatus === 'failed' || buStatus === 'error' || buStatus === 'timed_out') {
       mappedStatus = 'failed';
     } else if (buStatus === 'stopped' || buStatus === 'cancelled') {
-      mappedStatus = 'stopped';
+      // If there's meaningful output, the agent finished its work — treat as completed
+      const hasOutput = sessionData.output && sessionData.output.trim().length > 0;
+      if (hasOutput && task.status === 'running') {
+        mappedStatus = 'completed';
+        console.log('[POLL-BROWSER-TASK] Session stopped with output — treating as completed');
+      } else {
+        mappedStatus = 'stopped';
+      }
     } else if (buStatus === 'paused') {
       mappedStatus = 'paused';
     } else if (buStatus === 'running' || buStatus === 'created') {

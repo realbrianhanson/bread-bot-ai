@@ -670,7 +670,13 @@ export const useBrowserTask = () => {
           } else if (freshRow.status === 'failed') {
             toast({ title: 'Task Failed', description: freshRow.error_message || 'Browser automation failed', variant: 'destructive' });
           } else if (freshRow.status === 'stopped') {
-            toast({ title: 'Task Stopped', description: 'Browser automation was stopped by user' });
+            const stoppedByUser = freshRow.error_message === 'Task stopped by user';
+            toast({ 
+              title: 'Task Stopped', 
+              description: stoppedByUser 
+                ? 'Browser automation was stopped by user' 
+                : 'Browser session ended — the agent may have completed or timed out'
+            });
           }
         }
       } catch (err) {
