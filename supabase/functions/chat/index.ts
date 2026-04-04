@@ -371,10 +371,16 @@ This app has browser automation. For browsing tasks, tell users: /browse [task d
 
     const basePrompt = ghlMode ? ghlSystemPrompt : standardSystemPrompt;
 
-    // If a custom design system was provided, prepend it as the highest-priority instruction
-    const systemPrompt = clientDesignMd
-      ? `CRITICAL: Follow this design system EXACTLY for all colors, typography, spacing, and components. Every visual decision must come from this system. Do not invent your own colors.\n\n${clientDesignMd}\n\n${basePrompt}`
-      : basePrompt;
+    // Build the final system prompt with optional design system and marketing purpose
+    const promptParts: string[] = [];
+    if (clientDesignMd) {
+      promptParts.push(`CRITICAL: Follow this design system EXACTLY for all colors, typography, spacing, and components. Every visual decision must come from this system. Do not invent your own colors.\n\n${clientDesignMd}`);
+    }
+    if (marketingMd) {
+      promptParts.push(`PAGE PURPOSE & CONVERSION RULES:\n${marketingMd}`);
+    }
+    promptParts.push(basePrompt);
+    const systemPrompt = promptParts.join('\n\n');
 
     // Fetch Honcho memory context (non-blocking on failure)
     let honchoContext = '';
