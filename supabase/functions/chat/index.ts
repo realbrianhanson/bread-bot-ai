@@ -350,6 +350,7 @@ CODE OUTPUT RULES:
 6. Make sure all event listeners, calculations, and logic are included in the JavaScript block
 7. Do NOT reference external script files — provide the actual code
 8. Always include proper meta viewport tag for mobile responsiveness
+9. Before finalizing any section, verify that text color has strong contrast against its background. Light text on light backgrounds is the #1 design failure — prevent it absolutely.
 
 BROWSER AUTOMATION:
 This application has browser automation built-in. When users ask to visit websites, search the web, scrape data, or perform any browsing task, tell them to use the /browse command:
