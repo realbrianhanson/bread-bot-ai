@@ -285,6 +285,8 @@ const Dashboard = () => {
                 isStopping={isStopping} isPausing={isPausing} isResuming={isResuming}
                 selectedProfileId={selectedProfileId} projectId={activeConversationId || undefined}
                 onSlashCommand={handleSlashCommand}
+                onInspire={sendInspirationMessage}
+                isInspirationLoading={isInspirationLoading}
               />
             </div>
           </>
