@@ -340,6 +340,20 @@ async function executeTool(
         return result;
       }
 
+      case 'create_google_doc': {
+        const res = await fetch(`${supabaseUrl}/functions/v1/create-google-doc`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({
+            title: toolInput.title,
+            content: toolInput.content,
+          }),
+        });
+        const data = await res.json();
+        if (data.error) return `Error creating Google Doc: ${data.error}`;
+        return `Google Doc created successfully!\nTitle: ${data.title}\nURL: ${data.url}\nDocument ID: ${data.documentId}`;
+      }
+
       default:
         return `Unknown tool: ${toolName}`;
     }
