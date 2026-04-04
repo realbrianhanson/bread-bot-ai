@@ -154,6 +154,11 @@ const Dashboard = () => {
 
   const parsedCode = useMemo(() => parseCodeFromMessages(messages), [messages]);
 
+  const hasPreviewContent = useMemo(() => {
+    const keys = Object.keys(parsedCode.files);
+    return keys.length > 0 && !(keys.length === 1 && parsedCode.files[parsedCode.mainFile]?.includes('Start chatting'));
+  }, [parsedCode]);
+
   if (!user) return null;
 
   const EmptyState = ({ mobile = false }: { mobile?: boolean }) => (
