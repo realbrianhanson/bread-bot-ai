@@ -83,7 +83,21 @@ const ChatContainer = ({
         onExecuteTask(task, projectId, selectedProfileId || undefined);
         return;
       }
-      if (!task) return; // Don't send empty /browse as chat
+      if (!task) return;
+    }
+
+    // Route /research and /deep commands to orchestrator
+    const researchMatch = trimmedContent.match(/^\/(research|deep)\s+(.+)/s);
+    if (researchMatch) {
+      const query = researchMatch[2].trim();
+      if (query) {
+        // Add the user message to chat for context
+        onSendMessage(content);
+        // Kick off orchestration
+        const history = messages.map((m) => ({ role: m.role, content: m.content }));
+        orchestrator.orchestrate(query, history);
+        return;
+      }
     }
     
     onSendMessage(content);
