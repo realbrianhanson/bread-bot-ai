@@ -126,7 +126,12 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
 
   const handleSend = () => {
     if ((input.trim() || attachedFiles.length > 0) && !disabled) {
-      onSend(input.trim(), { ghlMode, files: attachedFiles.length > 0 ? attachedFiles : undefined });
+      onSend(input.trim(), {
+        ghlMode,
+        files: attachedFiles.length > 0 ? attachedFiles : undefined,
+        designTemplateId: selectedDesignId,
+        customDesignMd: selectedDesignId === 'custom' ? customDesignMd : undefined,
+      });
       setInput('');
       setAttachedFiles([]);
     }
