@@ -8,6 +8,7 @@ import LiveBrowserView from './LiveBrowserView';
 import OrchestrationProgress from './OrchestrationProgress';
 import GHLTemplateGallery from './GHLTemplateGallery';
 import FirecrawlResults, { FirecrawlResult } from './FirecrawlResults';
+import { MessageFeedback, detectPositiveSentiment } from './MessageFeedback';
 import { Message } from '@/hooks/useChat';
 import { BrowserTask } from '@/hooks/useBrowserTask';
 import { useOrchestrator } from '@/hooks/useOrchestrator';
@@ -15,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ArrowDown, Sparkles, Terminal, Search, FileText, Loader2, LayoutGrid } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { hasCodeBlocks, extractCodeFromResponse } from '@/lib/validateWebsite';
 
 interface ChatContainerProps {
   messages: Message[];
@@ -70,6 +72,26 @@ const ChatContainer = ({
   const [inputPrefill, setInputPrefill] = useState('');
   const [showTemplateGallery, setShowTemplateGallery] = useState(false);
   const isGhlMode = typeof window !== 'undefined' && localStorage.getItem('ghl-mode') === 'true';
+  const [offeredTemplateIds, setOfferedTemplateIds] = useState<Set<string>>(new Set());
+
+  // Detect which assistant messages should show template suggestion due to positive follow-up
+  const sentimentTriggeredIds = new Set<string>();
+  for (let i = 1; i < messages.length; i++) {
+    const msg = messages[i];
+    if (msg.role === 'user' && detectPositiveSentiment(msg.content)) {
+      // Find the preceding assistant message with code
+      for (let j = i - 1; j >= 0; j--) {
+        if (messages[j].role === 'assistant' && hasCodeBlocks(messages[j].content)) {
+          sentimentTriggeredIds.add(messages[j].id);
+          break;
+        }
+      }
+    }
+  }
+
+  const handleOffered = useCallback((id: string) => {
+    setOfferedTemplateIds((prev) => new Set(prev).add(id));
+  }, []);
 
   const scrollToBottom = () => {
     if (scrollRef.current) {
@@ -282,9 +304,25 @@ const ChatContainer = ({
             )
           ) : (
             <>
-              {messages.map((message) => (
-                <ChatMessage key={message.id} message={message} />
-              ))}
+              {messages.map((message) => {
+                const msgHasCode = message.role === 'assistant' && hasCodeBlocks(message.content);
+                const codeFiles = msgHasCode ? extractCodeFromResponse(message.content) : {};
+                return (
+                  <div key={message.id}>
+                    <ChatMessage message={message} />
+                    <MessageFeedback
+                      messageId={message.id}
+                      messageContent={message.content}
+                      isAssistant={message.role === 'assistant'}
+                      hasCode={msgHasCode}
+                      codeFiles={codeFiles}
+                      sentimentTriggered={sentimentTriggeredIds.has(message.id)}
+                      offeredIds={offeredTemplateIds}
+                      onOffered={handleOffered}
+                    />
+                  </div>
+                );
+              })}
               <AnimatePresence>
                 {isLoading && messages[messages.length - 1]?.role !== 'assistant' && <TypingIndicator />}
               </AnimatePresence>
