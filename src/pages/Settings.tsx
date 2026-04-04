@@ -222,7 +222,7 @@ export default function Settings() {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="account" className="space-y-6">
-          <TabsList className="glass-strong border-white/20 grid w-full max-w-4xl grid-cols-7">
+          <TabsList className="glass-strong border-white/20 grid w-full max-w-4xl grid-cols-8">
             <TabsTrigger value="account" className="flex items-center gap-2">
               <Settings2 className="h-4 w-4" />
               <span className="hidden sm:inline">Account</span>
@@ -230,6 +230,10 @@ export default function Settings() {
             <TabsTrigger value="agents" className="flex items-center gap-2">
               <Bot className="h-4 w-4" />
               <span className="hidden sm:inline">Agents</span>
+            </TabsTrigger>
+            <TabsTrigger value="memory" className="flex items-center gap-2">
+              <Brain className="h-4 w-4" />
+              <span className="hidden sm:inline">Memory</span>
             </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
