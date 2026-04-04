@@ -89,6 +89,7 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
   const [key, setKey] = useState(0);
   const [copied, setCopied] = useState(false);
   const [useFallback, setUseFallback] = useState(false);
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const isStatic = template === 'static' || template === 'vanilla';
