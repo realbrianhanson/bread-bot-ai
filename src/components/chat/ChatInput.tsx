@@ -252,9 +252,13 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
         {/* Style picker */}
         <StylePicker
           selectedId={selectedDesignId}
-          onSelect={(id, md) => {
+          onSelect={(id, md, templateMarketingMd) => {
             setSelectedDesignId(id);
             if (md) setCustomDesignMd(md);
+            // If the design template has its own marketing_md, use it (unless user picks a separate purpose)
+            if (templateMarketingMd && !selectedPurposeId) {
+              setMarketingMd(templateMarketingMd);
+            }
           }}
           disabled={disabled}
         />
