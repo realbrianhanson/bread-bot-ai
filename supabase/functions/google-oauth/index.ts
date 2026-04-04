@@ -46,6 +46,7 @@ serve(async (req) => {
     const redirectUri = `${supabaseUrl}/functions/v1/google-oauth/callback`;
     const scopes = [
       'https://www.googleapis.com/auth/documents',
+      'https://www.googleapis.com/auth/spreadsheets',
       'https://www.googleapis.com/auth/drive.file',
       'https://www.googleapis.com/auth/userinfo.email',
     ].join(' ');
@@ -120,7 +121,7 @@ serve(async (req) => {
           access_token: tokenData.access_token,
           refresh_token: tokenData.refresh_token || null,
           token_expiry: tokenExpiry,
-          scopes: ['documents', 'drive.file', 'userinfo.email'],
+          scopes: ['documents', 'spreadsheets', 'drive.file', 'userinfo.email'],
           provider_email: userInfo.email || null,
         }, { onConflict: 'user_id,provider' });
 

@@ -228,6 +228,44 @@ const toolDefinitions = [
       required: ['query'],
     },
   },
+  {
+    name: 'create_google_sheet',
+    description: 'Create a Google Spreadsheet with structured data. Use when the user wants data organized in a spreadsheet, comparison tables, datasets, or any tabular output saved to Google Sheets. Requires the user to have connected their Google account.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        title: { type: 'string', description: 'The spreadsheet title' },
+        headers: { type: 'array', items: { type: 'string' }, description: 'Column headers' },
+        rows: { type: 'array', items: { type: 'array', items: { type: 'string' } }, description: 'Data rows as arrays of strings' },
+      },
+      required: ['title', 'headers', 'rows'],
+    },
+  },
+  {
+    name: 'send_email',
+    description: 'Send a formatted email to one or more recipients. Use when the user wants to email results, reports, summaries, or notifications to someone.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        to: { type: 'string', description: 'Recipient email address' },
+        subject: { type: 'string', description: 'Email subject line' },
+        html: { type: 'string', description: 'Email body as HTML content' },
+      },
+      required: ['to', 'subject', 'html'],
+    },
+  },
+  {
+    name: 'download_file',
+    description: 'Download a file from a URL and store it for the user. Use when you need to save PDFs, images, datasets, or other files from the web.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        url: { type: 'string', description: 'URL of the file to download' },
+        filename: { type: 'string', description: 'Name to save the file as' },
+      },
+      required: ['url', 'filename'],
+    },
+  },
 ];
 
 const SYSTEM_PROMPT = `You are an AI task orchestrator with access to powerful tools. Given a user's request, determine which tools to use and in what order.
@@ -273,12 +311,23 @@ CHAINING STRATEGY:
 - Simple questions: search_web → scrape_url → synthesize (no code needed)
 - Presentation tasks: search_web (if research needed) → scrape_url → synthesize (outline) → generate_slides
 - Google Docs tasks: research/synthesize → create_google_doc
+- Google Sheets tasks: research/scrape → execute_code (process data) → create_google_sheet
+- Email tasks: research/synthesize → send_email
+- File download: search_web → download_file (grab PDFs, datasets, images)
 - When the user asks for slides/presentation/deck: ALWAYS use generate_slides as the final step
 - When the user asks to save to Google Docs: use create_google_doc after synthesizing content
+- When the user asks to save data to a spreadsheet: use create_google_sheet with structured headers and rows
+- When the user asks to email results: use send_email with well-formatted HTML
 
 - recall_user_context: Query the memory system for information about the user. Use when you want to personalize results based on user's industry, past research, preferences, or history. Call early in the workflow if personalization would help.
 
-Always end with synthesize to produce a polished final output. Include any generated charts or files in your synthesis.`;
+- create_google_sheet: Create a Google Spreadsheet with structured tabular data. Pass headers and rows arrays.
+
+- send_email: Send a formatted HTML email. Always create professional, well-styled HTML content.
+
+- download_file: Download and store a file from a URL. Returns a signed download link.
+
+Always end with synthesize to produce a polished final output. Include any generated charts, files, or links in your synthesis.`;
 
 async function resolveAnthropicKey(
   supabaseClient: any,
@@ -465,6 +514,76 @@ async function executeTool(
         return await queryHonchoMemory(userId || 'unknown', toolInput.query);
       }
 
+      case 'create_google_sheet': {
+        const res = await fetch(`${supabaseUrl}/functions/v1/create-google-sheet`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({
+            title: toolInput.title,
+            headers: toolInput.headers,
+            rows: toolInput.rows,
+          }),
+        });
+        const data = await res.json();
+        if (data.error) return `Error creating Google Sheet: ${data.error}`;
+        return `Google Sheet created successfully!\nTitle: ${data.title}\nURL: ${data.url}\nRows: ${data.rowCount}`;
+      }
+
+      case 'send_email': {
+        const res = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({
+            to: toolInput.to,
+            subject: toolInput.subject,
+            html: toolInput.html,
+          }),
+        });
+        const data = await res.json();
+        if (data.error) return `Error sending email: ${data.error}`;
+        return `Email sent successfully to ${toolInput.to}! Message ID: ${data.messageId}`;
+      }
+
+      case 'download_file': {
+        try {
+          const fileRes = await fetch(toolInput.url);
+          if (!fileRes.ok) return `Error downloading file: HTTP ${fileRes.status}`;
+          const blob = await fileRes.blob();
+          const arrayBuffer = await blob.arrayBuffer();
+          const fileBytes = new Uint8Array(arrayBuffer);
+
+          const supabaseAdmin = createClient(
+            supabaseUrl,
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+            { auth: { persistSession: false } },
+          );
+
+          const storagePath = `${userId}/${Date.now()}_${toolInput.filename}`;
+          const { error: uploadError } = await supabaseAdmin.storage
+            .from('generated-files')
+            .upload(storagePath, fileBytes, {
+              contentType: blob.type || 'application/octet-stream',
+              upsert: true,
+            });
+
+          if (uploadError) return `Error storing file: ${uploadError.message}`;
+
+          const { data: urlData } = await supabaseAdmin.storage
+            .from('generated-files')
+            .createSignedUrl(storagePath, 60 * 60 * 24 * 7);
+
+          return JSON.stringify({
+            success: true,
+            filename: toolInput.filename,
+            fileUrl: urlData?.signedUrl || '',
+            size: fileBytes.length,
+            type: blob.type,
+          });
+        } catch (err) {
+          return `Error downloading file: ${err instanceof Error ? err.message : 'Unknown error'}`;
+        }
+      }
+
       default:
         return `Unknown tool: ${toolName}`;
     }
@@ -605,7 +724,6 @@ serve(async (req) => {
           system: enrichedSystemPrompt,
           tools: toolDefinitions,
           messages,
-        }),
         }),
       });
 
