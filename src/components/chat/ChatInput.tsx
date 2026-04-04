@@ -11,6 +11,7 @@ interface ChatInputProps {
   isStreaming?: boolean;
   onStop?: () => void;
   onSlashCommand?: (command: string) => void;
+  prefill?: string;
 }
 
 const SLASH_COMMANDS = [
@@ -29,12 +30,19 @@ const SLASH_COMMANDS = [
   { cmd: "/webhooks", label: "Open webhooks", icon: "🔗" },
 ];
 
-const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSlashCommand }: ChatInputProps) => {
+const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSlashCommand, prefill }: ChatInputProps) => {
   const [input, setInput] = useState('');
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [selectedSlashIndex, setSelectedSlashIndex] = useState(0);
   const [ghlMode, setGhlMode] = useState(() => localStorage.getItem('ghl-mode') === 'true');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (prefill !== undefined && prefill !== '') {
+      setInput(prefill);
+      setTimeout(() => textareaRef.current?.focus(), 50);
+    }
+  }, [prefill]);
 
   const handleVoiceResult = useCallback((text: string) => {
     setInput((prev) => (prev ? prev + ' ' + text : text));
