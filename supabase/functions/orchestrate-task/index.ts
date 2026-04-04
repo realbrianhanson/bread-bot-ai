@@ -352,6 +352,17 @@ CHAINING STRATEGY:
 
 - download_file: Download and store a file from a URL. Returns a signed download link.
 
+KNOWLEDGE BASE:
+- ALWAYS call knowledge_search before search_web to check if we already have relevant data
+- After completing any research task, ALWAYS call knowledge_store to save key findings
+- When storing knowledge, write clean summaries — not raw scraped content
+- Tag entries with relevant keywords for future searchability
+- If knowledge_search returns relevant results, use them and only search the web for gaps or updates
+
+CHAINING WITH KNOWLEDGE:
+- Research tasks: knowledge_search → (if gaps) search_web → scrape_url → synthesize → knowledge_store
+- Repeat research: knowledge_search → synthesize (if knowledge is sufficient)
+
 Always end with synthesize to produce a polished final output. Include any generated charts, files, or links in your synthesis.`;
 
 async function resolveAnthropicKey(
