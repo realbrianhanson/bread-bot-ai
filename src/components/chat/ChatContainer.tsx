@@ -298,6 +298,11 @@ const ChatContainer = ({
               finalResult={orchestrator.finalResult}
               error={orchestrator.error}
               generatedFiles={orchestrator.generatedFiles}
+              onFollowUp={(action) => {
+                if (action === 'refine') onSendMessage('Please refine and improve the previous research result.');
+                else if (action === 'save') handleSaveAsFile(orchestrator.finalResult, 'research-report');
+                else if (action === 'deeper') onSendMessage('/research Go deeper on the previous topic with more detail and sources.');
+              }}
             />
           )}
 
