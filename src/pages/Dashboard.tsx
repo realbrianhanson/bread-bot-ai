@@ -1,6 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Settings, LogOut, MessageSquarePlus, ChevronLeft, ChevronRight, Sparkles, Brain } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
