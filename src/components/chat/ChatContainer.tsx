@@ -386,6 +386,7 @@ const ChatContainer = ({
             onStop={onStopStreaming}
             onSlashCommand={onSlashCommand}
             prefill={inputPrefill}
+          />
         </div>
       </div>
     </div>
