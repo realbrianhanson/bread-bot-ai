@@ -497,8 +497,9 @@ export default function Settings() {
           </TabsContent>
 
           {/* Memory Tab */}
-          <TabsContent value="memory" className="max-w-2xl">
+          <TabsContent value="memory" className="max-w-2xl space-y-6">
             <AgentMemoryPanel />
+            <KnowledgeBasePanel />
           </TabsContent>
 
           {/* Analytics Tab */}
