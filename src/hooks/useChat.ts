@@ -364,7 +364,135 @@ export const useChat = (projectId?: string) => {
         }
       }
 
-      // Handle /code command
+      // Handle /audit command
+      if (content.trim().startsWith('/audit ')) {
+        const rest = content.trim().slice(7).trim();
+        const auditUrlMatch = rest.match(/^(https?:\/\/\S+)/i) || rest.match(/^(\S+\.\S+)/);
+        if (auditUrlMatch) {
+          const auditUrl = auditUrlMatch[1].startsWith('http') ? auditUrlMatch[1] : `https://${auditUrlMatch[1]}`;
+          setIsLoading(true);
+          setIsStreaming(true);
+
+          const statusId = crypto.randomUUID();
+          setMessages((prev) => [...prev, { id: statusId, role: 'assistant' as const, content: `📈 **Analyzing page for conversion optimization...**\nScraping \`${auditUrl}\``, created_at: new Date().toISOString() }]);
+
+          try {
+            await supabase.from('messages').insert({ user_id: user.id, project_id: projectId, role: 'user', content: content.trim() });
+
+            const { data: scrapeData, error: scrapeError } = await supabase.functions.invoke('firecrawl-scrape', {
+              body: { url: auditUrl, options: { formats: ['markdown', 'html'], onlyMainContent: false } },
+            });
+            if (scrapeError) throw new Error(`Failed to scrape page: ${scrapeError.message}`);
+
+            const html = scrapeData?.data?.html || scrapeData?.html || '';
+            const markdown = scrapeData?.data?.markdown || scrapeData?.markdown || '';
+            const trimmedHtml = trimHtmlIntelligently(html, 15000);
+            const trimmedMd = markdown.slice(0, 5000);
+
+            setMessages((prev) => prev.map((m) => m.id === statusId ? { ...m, content: '📈 **Page scraped.** Running CRO analysis...' } : m));
+
+            const auditPrompt = `You are a conversion rate optimization expert. Analyze the following marketing page and provide actionable recommendations to improve its conversion rate.
+
+PAGE URL: ${auditUrl}
+
+PAGE HTML:
+${trimmedHtml}
+
+PAGE CONTENT:
+${trimmedMd}
+
+Analyze across these 7 dimensions and score each 1-10:
+
+1. VALUE PROPOSITION CLARITY (Score: X/10): Is it immediately clear what this product/service does and who it's for? Can a visitor understand the offer within 5 seconds?
+
+2. HEADLINE EFFECTIVENESS (Score: X/10): Does the headline lead with a benefit? Is it specific? Does it speak to the target audience's desire or pain?
+
+3. CTA PLACEMENT & COPY (Score: X/10): Is there a clear primary CTA above the fold? Is the button text action-oriented? Is there a logical CTA hierarchy?
+
+4. VISUAL HIERARCHY (Score: X/10): Does the eye naturally flow from headline to supporting content to CTA? Are the most important elements the most visually prominent?
+
+5. TRUST SIGNALS (Score: X/10): Are there testimonials, logos, ratings, guarantees, or credentials? Are they positioned near decision points?
+
+6. OBJECTION HANDLING (Score: X/10): Does the page address common objections? Is there an FAQ section?
+
+7. FRICTION POINTS (Score: X/10): Are there unnecessary form fields? Confusing navigation? Competing CTAs? Elements that might cause hesitation?
+
+For each dimension provide:
+- Current score with brief justification
+- Specific recommendation to improve
+- Example copy or layout change
+
+Then provide:
+- OVERALL CONVERSION SCORE: X/70
+- TOP 3 QUICK WINS: Changes that can be implemented immediately with likely impact
+- TOP 3 HIGH-IMPACT CHANGES: Bigger changes that will significantly improve conversions
+- HEADLINE ALTERNATIVES: Write 3 alternative headlines that would likely convert better
+- CTA ALTERNATIVES: Write 3 alternative CTA button texts
+
+Format the output with clear headers, scores in bold, and specific actionable recommendations. Be direct and specific — avoid generic advice.`;
+
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) throw new Error('No active session');
+
+            abortControllerRef.current = new AbortController();
+            const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+              body: JSON.stringify({ messages: [{ role: 'user', content: auditPrompt }] }),
+              signal: abortControllerRef.current.signal,
+            });
+
+            if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'Failed to run audit'); }
+
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+            let auditContent = '';
+            setMessages((prev) => prev.filter((m) => m.id !== statusId));
+            const tempId = crypto.randomUUID();
+
+            if (reader) {
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value);
+                for (const line of chunk.split('\n')) {
+                  if (!line.startsWith('data: ')) continue;
+                  const d = line.slice(6);
+                  if (d === '[DONE]') continue;
+                  try {
+                    const parsed = JSON.parse(d);
+                    if (parsed.type === 'content_block_delta') {
+                      auditContent += parsed.delta?.text || '';
+                      setMessages((prev) => {
+                        const existing = prev.find((m) => m.id === tempId);
+                        if (existing) return prev.map((m) => m.id === tempId ? { ...m, content: auditContent } : m);
+                        return [...prev, { id: tempId, role: 'assistant' as const, content: auditContent, created_at: new Date().toISOString() }];
+                      });
+                    }
+                  } catch {}
+                }
+              }
+
+              if (auditContent) {
+                const { data: savedMsg } = await supabase.from('messages').insert({
+                  user_id: user.id, project_id: projectId, role: 'assistant', content: auditContent,
+                  metadata: { type: 'cro_audit', auditUrl },
+                }).select().single();
+                if (savedMsg) setMessages((prev) => prev.map((m) => m.id === tempId ? { ...savedMsg as Message } : m));
+              }
+            }
+          } catch (error: any) {
+            if (error.name !== 'AbortError') {
+              toast({ title: 'Audit Error', description: error.message || 'Failed to audit page', variant: 'destructive' });
+              setMessages((prev) => prev.filter((m) => m.id !== statusId));
+            }
+          } finally {
+            setIsLoading(false); setIsStreaming(false); abortControllerRef.current = null; refreshSubscription();
+          }
+          return;
+        }
+      }
+
       if (content.trim().startsWith('/code ')) {
         const code = content.trim().slice(6);
         setIsLoading(true);
