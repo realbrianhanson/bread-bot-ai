@@ -18,9 +18,8 @@ import { toast } from '@/hooks/use-toast';
 interface ChatContainerProps {
   messages: Message[];
   isLoading: boolean;
-  onSendMessage: (content: string, options?: { ghlMode?: boolean }) => void;
   isStreaming: boolean;
-  onSendMessage: (content: string) => void;
+  onSendMessage: (content: string, options?: { ghlMode?: boolean }) => void;
   onStopStreaming: () => void;
   currentTask?: BrowserTask | null;
   isExecutingTask?: boolean;
