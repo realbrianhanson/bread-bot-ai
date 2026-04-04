@@ -127,8 +127,10 @@ serve(async (req) => {
     const result = usageData?.[0] || {
       chat_messages_used: 0,
       browser_tasks_used: 0,
+      code_executions_used: 0,
       chat_messages_limit: 100,
-      browser_tasks_limit: 10
+      browser_tasks_limit: 10,
+      code_executions_limit: 5,
     };
 
     return new Response(JSON.stringify({
@@ -138,8 +140,10 @@ serve(async (req) => {
       can_use_own_keys: canUseOwnKeys,
       chat_messages_used: result.chat_messages_used,
       browser_tasks_used: result.browser_tasks_used,
+      code_executions_used: result.code_executions_used,
       chat_messages_limit: result.chat_messages_limit,
-      browser_tasks_limit: result.browser_tasks_limit
+      browser_tasks_limit: result.browser_tasks_limit,
+      code_executions_limit: result.code_executions_limit,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

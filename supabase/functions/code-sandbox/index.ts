@@ -43,8 +43,30 @@ serve(async (req) => {
     if (!usage) {
       return new Response(JSON.stringify({ error: 'Unable to fetch usage data' }), { status: 500, headers: jsonHeaders });
     }
-    if (usage.browser_tasks_used >= usage.browser_tasks_limit) {
-      return new Response(JSON.stringify({ error: 'Usage limit reached. Upgrade your plan for more executions.' }), { status: 429, headers: jsonHeaders });
+    if (usage.code_executions_used >= usage.code_executions_limit) {
+      return new Response(JSON.stringify({ error: 'Code execution limit reached. Upgrade your plan for more executions.' }), { status: 429, headers: jsonHeaders });
+    }
+
+    // ── Resolve E2B API key (user's own or env) ─────────
+    const canUseOwnKeys = usage.can_use_own_keys;
+    let e2bApiKey = Deno.env.get('E2B_API_KEY') ?? '';
+
+    if (canUseOwnKeys) {
+      const { data: apiKeyData } = await supabase
+        .from('api_keys')
+        .select('encrypted_key')
+        .eq('user_id', user.id)
+        .eq('provider', 'e2b')
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (apiKeyData?.encrypted_key) {
+        e2bApiKey = apiKeyData.encrypted_key;
+      }
+    }
+
+    if (!e2bApiKey) {
+      return new Response(JSON.stringify({ error: 'E2B API key is not configured. Please add the E2B_API_KEY secret.' }), { status: 500, headers: jsonHeaders });
     }
 
     // ── Parse body ───────────────────────────────────────
