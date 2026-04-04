@@ -18,6 +18,7 @@ import { DocumentationSearch } from '@/components/settings/DocumentationSearch';
 import { DocumentParser } from '@/components/settings/DocumentParser';
 import { WebScraper } from '@/components/settings/WebScraper';
 import WorkflowAgentPanel from '@/components/agents/WorkflowAgentPanel';
+import { AgentMemoryPanel } from '@/components/settings/AgentMemoryPanel';
 
 export default function Settings() {
   const { user, signOut } = useAuth();
