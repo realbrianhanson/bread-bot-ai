@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Save, Eye, EyeOff, Crown, RefreshCw, Settings2, BarChart3, Shield, FileUp, Book, Globe, Bot } from 'lucide-react';
+import { ArrowLeft, Save, Eye, EyeOff, Crown, RefreshCw, Settings2, BarChart3, Shield, FileUp, Book, Globe, Bot, CheckCircle2, Link2, Unlink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
@@ -44,6 +44,8 @@ export default function Settings() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [managingSubscription, setManagingSubscription] = useState(false);
+  const [googleIntegration, setGoogleIntegration] = useState<{ provider_email: string | null; connected: boolean } | null>(null);
+  const [connectingGoogle, setConnectingGoogle] = useState(false);
 
   useEffect(() => {
     if (canUseOwnKeys) {
