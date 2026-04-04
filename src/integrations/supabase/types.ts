@@ -480,6 +480,8 @@ export type Database = {
           can_use_own_keys: boolean
           chat_messages_limit: number
           chat_messages_used: number
+          code_executions_limit: number
+          code_executions_used: number
           tier: Database["public"]["Enums"]["subscription_tier"]
         }[]
       }
