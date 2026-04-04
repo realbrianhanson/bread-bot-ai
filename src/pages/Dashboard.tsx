@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
-import { Settings, LogOut, MessageSquarePlus, ChevronLeft, ChevronRight, Sparkles, Brain } from "lucide-react";
+import { Settings, LogOut, MessageSquarePlus, ChevronLeft, ChevronRight, Sparkles, Brain, MessageCircle, Eye } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
   AlertDialog,
@@ -55,6 +55,7 @@ const Dashboard = () => {
   const { plan, isPlanning, generatePlan, updateStep, removeStep, addStep, reorderSteps, clearPlan } = useTaskPlanner();
 
   const [memoryActive, setMemoryActive] = useState(false);
+  const [mobileView, setMobileView] = useState<'chat' | 'preview'>('chat');
 
   useEffect(() => {
     supabase.functions.invoke('honcho-proxy', { body: { action: 'status' } })
@@ -152,6 +153,11 @@ const Dashboard = () => {
   };
 
   const parsedCode = useMemo(() => parseCodeFromMessages(messages), [messages]);
+
+  const hasPreviewContent = useMemo(() => {
+    const keys = Object.keys(parsedCode.files);
+    return keys.length > 0 && !(keys.length === 1 && parsedCode.files[parsedCode.mainFile]?.includes('Start chatting'));
+  }, [parsedCode]);
 
   if (!user) return null;
 
@@ -276,19 +282,53 @@ const Dashboard = () => {
         )}
         {(activeConversationId || messages.length > 0) ? (
           <>
-            <div className="flex-1 min-h-0 flex flex-col">
-              <ChatContainer
-                messages={messages} isLoading={isLoading} isStreaming={isStreaming}
-                onSendMessage={handleSendWithPlanner} onStopStreaming={stopStreaming}
-                currentTask={currentTask} isExecutingTask={isExecuting}
-                onExecuteTask={executeTask} onStopTask={stopTask} onPauseTask={pauseTask} onResumeTask={resumeTask}
-                isStopping={isStopping} isPausing={isPausing} isResuming={isResuming}
-                selectedProfileId={selectedProfileId} projectId={activeConversationId || undefined}
-                onSlashCommand={handleSlashCommand}
-                onInspire={sendInspirationMessage}
-                isInspirationLoading={isInspirationLoading}
-              />
-            </div>
+            {/* Mobile tab bar for Chat / Preview */}
+            {hasPreviewContent && (
+              <div className="shrink-0 flex border-b border-border/50 bg-card/80">
+                <button
+                  onClick={() => setMobileView('chat')}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${
+                    mobileView === 'chat'
+                      ? 'text-primary border-b-2 border-primary'
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  Chat
+                </button>
+                <button
+                  onClick={() => setMobileView('preview')}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${
+                    mobileView === 'preview'
+                      ? 'text-primary border-b-2 border-primary'
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  Preview
+                </button>
+              </div>
+            )}
+
+            {mobileView === 'chat' || !hasPreviewContent ? (
+              <div className="flex-1 min-h-0 flex flex-col">
+                <ChatContainer
+                  messages={messages} isLoading={isLoading} isStreaming={isStreaming}
+                  onSendMessage={handleSendWithPlanner} onStopStreaming={stopStreaming}
+                  currentTask={currentTask} isExecutingTask={isExecuting}
+                  onExecuteTask={executeTask} onStopTask={stopTask} onPauseTask={pauseTask} onResumeTask={resumeTask}
+                  isStopping={isStopping} isPausing={isPausing} isResuming={isResuming}
+                  selectedProfileId={selectedProfileId} projectId={activeConversationId || undefined}
+                  onSlashCommand={handleSlashCommand}
+                  onInspire={sendInspirationMessage}
+                  isInspirationLoading={isInspirationLoading}
+                />
+              </div>
+            ) : (
+              <div className="flex-1 min-h-0 relative">
+                <CodePreview files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} />
+              </div>
+            )}
           </>
         ) : (
           <EmptyState mobile />
