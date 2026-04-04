@@ -228,6 +228,44 @@ const toolDefinitions = [
       required: ['query'],
     },
   },
+  {
+    name: 'create_google_sheet',
+    description: 'Create a Google Spreadsheet with structured data. Use when the user wants data organized in a spreadsheet, comparison tables, datasets, or any tabular output saved to Google Sheets. Requires the user to have connected their Google account.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        title: { type: 'string', description: 'The spreadsheet title' },
+        headers: { type: 'array', items: { type: 'string' }, description: 'Column headers' },
+        rows: { type: 'array', items: { type: 'array', items: { type: 'string' } }, description: 'Data rows as arrays of strings' },
+      },
+      required: ['title', 'headers', 'rows'],
+    },
+  },
+  {
+    name: 'send_email',
+    description: 'Send a formatted email to one or more recipients. Use when the user wants to email results, reports, summaries, or notifications to someone.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        to: { type: 'string', description: 'Recipient email address' },
+        subject: { type: 'string', description: 'Email subject line' },
+        html: { type: 'string', description: 'Email body as HTML content' },
+      },
+      required: ['to', 'subject', 'html'],
+    },
+  },
+  {
+    name: 'download_file',
+    description: 'Download a file from a URL and store it for the user. Use when you need to save PDFs, images, datasets, or other files from the web.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        url: { type: 'string', description: 'URL of the file to download' },
+        filename: { type: 'string', description: 'Name to save the file as' },
+      },
+      required: ['url', 'filename'],
+    },
+  },
 ];
 
 const SYSTEM_PROMPT = `You are an AI task orchestrator with access to powerful tools. Given a user's request, determine which tools to use and in what order.
