@@ -527,7 +527,7 @@ export const useChat = (projectId?: string) => {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${session.access_token}`,
             },
-            body: JSON.stringify({ messages: messagesForAPI, ghlMode: options?.ghlMode || false, designMd }),
+            body: JSON.stringify({ messages: messagesForAPI, ghlMode: options?.ghlMode || false, designMd, marketingMd: options?.marketingMd }),
             signal: abortControllerRef.current.signal,
           }
         );
