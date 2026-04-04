@@ -41,7 +41,7 @@ const SLASH_COMMANDS = [
   { cmd: "/inspire", label: "Build a page inspired by an existing website's design", icon: "✨" },
 ];
 
-const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSlashCommand, prefill }: ChatInputProps) => {
+const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSlashCommand, onInspire, isInspirationLoading, prefill }: ChatInputProps) => {
   const [input, setInput] = useState('');
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [selectedSlashIndex, setSelectedSlashIndex] = useState(0);
