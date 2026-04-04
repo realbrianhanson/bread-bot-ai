@@ -19,6 +19,7 @@ const SLASH_COMMANDS = [
   { cmd: "/scrape", label: "Scrape a webpage", icon: "📄" },
   { cmd: "/crawl", label: "Crawl a website", icon: "🕷️" },
   { cmd: "/search", label: "Web search", icon: "🔍" },
+  { cmd: "/code", label: "Execute Python code in a sandbox", icon: "💻" },
   { cmd: "/research", label: "Deep research with AI", icon: "🔬" },
   { cmd: "/deep", label: "Deep analysis", icon: "🧠" },
   { cmd: "/plan", label: "AI task planner", icon: "🧠" },
