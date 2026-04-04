@@ -99,6 +99,19 @@ const toolDefinitions = [
       required: ['code'],
     },
   },
+  {
+    name: 'generate_slides',
+    description: 'Generate a professional presentation/slide deck from content. Use this when the user asks for a presentation, deck, slides, or pitch deck. Provide detailed content for each slide including titles, bullet points, and speaker notes.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        topic: { type: 'string', description: 'The presentation title/topic' },
+        content: { type: 'string', description: 'Detailed content outline with slide-by-slide breakdown. Include main points, data, and key takeaways for each slide.' },
+        numSlides: { type: 'number', description: 'Number of slides (default 8-10)' },
+      },
+      required: ['topic', 'content'],
+    },
+  },
 ];
 
 const SYSTEM_PROMPT = `You are an AI task orchestrator with access to powerful tools. Given a user's request, determine which tools to use and in what order.
