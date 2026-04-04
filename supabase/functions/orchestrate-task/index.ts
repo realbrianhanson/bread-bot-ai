@@ -108,10 +108,12 @@ Guidelines:
 - For browser interaction tasks (login, form filling, clicking): use browse_web.
 - For extracting data from a known URL: use scrape_url.
 - For mapping an entire site: use crawl_site.
+- When you need to process data, generate charts, clean or transform files, or perform calculations, use the execute_code tool. Write clean Python code using pandas, matplotlib, numpy, or other standard libraries. Save output files to /home/user/ directory. Always print key results so the user can see them.
+- You can chain execute_code with other tools. For example: search_web → scrape_url → execute_code (process data + generate chart) → synthesize (summary with chart).
 - Always end with synthesize to produce a polished, well-formatted final output for the user.
 - Chain multiple tools when needed — you can call tools sequentially.
 - Be efficient: don't scrape more pages than necessary.
-- When synthesizing, produce rich markdown output with clear headings, bullet points, and structure.`;
+- When synthesizing, produce rich markdown output with clear headings, bullet points, and structure. If code execution produced files (charts, CSVs), reference them in the synthesis.`;
 
 async function resolveAnthropicKey(
   supabaseClient: any,
