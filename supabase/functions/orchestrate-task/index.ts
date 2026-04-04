@@ -460,6 +460,12 @@ async function executeTool(
         return `Google Doc created successfully!\nTitle: ${data.title}\nURL: ${data.url}\nDocument ID: ${data.documentId}`;
       }
 
+      case 'recall_user_context': {
+        // userId is passed via closure — we need to pass it through executeTool
+        // For now, extract from the authToken context
+        return await queryHonchoMemory(toolInput._userId || 'unknown', toolInput.query);
+      }
+
       default:
         return `Unknown tool: ${toolName}`;
     }
