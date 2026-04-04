@@ -37,6 +37,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [browserTasksUsed, setBrowserTasksUsed] = useState(0);
   const [chatMessagesLimit, setChatMessagesLimit] = useState(100);
   const [browserTasksLimit, setBrowserTasksLimit] = useState(10);
+  const [codeExecutionsUsed, setCodeExecutionsUsed] = useState(0);
+  const [codeExecutionsLimit, setCodeExecutionsLimit] = useState(5);
   const navigate = useNavigate();
 
   const refreshSubscription = async () => {
