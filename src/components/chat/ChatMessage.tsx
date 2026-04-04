@@ -119,6 +119,21 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
             </div>
           )}
 
+          {/* Code execution results */}
+          {message.metadata?.type === 'code_execution' && (
+            <div className="mt-3">
+              <CodeExecutionResult
+                code={message.metadata.code}
+                language={message.metadata.language}
+                stdout={message.metadata.stdout}
+                stderr={message.metadata.stderr}
+                result={message.metadata.result}
+                executionTime={message.metadata.executionTime}
+                files={message.metadata.files}
+              />
+            </div>
+          )}
+
           {/* Screenshots */}
           {message.metadata?.screenshots && message.metadata.screenshots.length > 0 && (
             <div className="mt-3 grid grid-cols-2 gap-2">
