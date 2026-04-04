@@ -242,6 +242,16 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
           onSubmit={(url, content, ghl) => onInspire?.(url, content, ghl)}
         />
 
+        {/* Style picker */}
+        <StylePicker
+          selectedId={selectedDesignId}
+          onSelect={(id, md) => {
+            setSelectedDesignId(id);
+            if (md) setCustomDesignMd(md);
+          }}
+          disabled={disabled}
+        />
+
         {/* Attachment button */}
         <button
           onClick={() => fileInputRef.current?.click()}
