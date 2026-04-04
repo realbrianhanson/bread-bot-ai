@@ -75,16 +75,28 @@ const toolDefinitions = [
     },
   },
   {
-    name: 'generate_file',
-    description: 'Generate a downloadable file (PDF, CSV, etc.) from the provided content. Currently a stub — returns a placeholder.',
+    name: 'execute_code',
+    description: 'Execute Python code in a secure sandbox. Use this when you need to: process or transform data (clean CSVs, merge datasets, calculate statistics), generate visualizations (charts, graphs using matplotlib/plotly), perform calculations or data analysis, convert between file formats, or run any computation that requires actual code execution. The sandbox has Python with pandas, numpy, matplotlib, plotly, openpyxl, and other common data science libraries pre-installed.',
     input_schema: {
       type: 'object' as const,
       properties: {
-        filename: { type: 'string', description: 'Desired filename with extension' },
-        content: { type: 'string', description: 'Content to put in the file' },
-        format: { type: 'string', enum: ['pdf', 'csv', 'json', 'txt', 'html'], description: 'File format' },
+        code: {
+          type: 'string',
+          description: "Python code to execute. Always print results you want to show the user. For charts, save them as files (e.g., plt.savefig('/home/user/chart.png')). For data output, save as CSV (e.g., df.to_csv('/home/user/output.csv')).",
+        },
+        files: {
+          type: 'array',
+          description: 'Optional files to upload to the sandbox before execution. Use this to pass scraped data or user-provided content.',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              content: { type: 'string' },
+            },
+          },
+        },
       },
-      required: ['filename', 'content', 'format'],
+      required: ['code'],
     },
   },
 ];
