@@ -252,6 +252,16 @@ export default function Settings() {
                     </div>
                     <Progress value={getUsagePercentage(browserTasksUsed, browserTasksLimit)} />
                   </div>
+
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <Label>Code Executions</Label>
+                      <span className="text-muted-foreground">
+                        {codeExecutionsUsed} / {codeExecutionsLimit}
+                      </span>
+                    </div>
+                    <Progress value={getUsagePercentage(codeExecutionsUsed, codeExecutionsLimit)} />
+                  </div>
                 </div>
 
                 <div className="flex gap-2">
