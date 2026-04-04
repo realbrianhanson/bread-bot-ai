@@ -30,6 +30,8 @@ export default function Settings() {
     chatMessagesLimit,
     browserTasksUsed,
     browserTasksLimit,
+    codeExecutionsUsed,
+    codeExecutionsLimit,
     getUsagePercentage,
     refreshSubscription
   } = useSubscription();
