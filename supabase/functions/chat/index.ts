@@ -310,6 +310,16 @@ Always output ONE single code block containing the complete, self-contained HTML
 <!-- GHL Custom Code Block — Paste this into a Custom Code element in your GHL funnel page -->
 <!-- To customize colors: edit the CSS variables in the :root section below -->
 
+MANDATORY SELF-CHECK (YOU MUST DO THIS BEFORE OUTPUTTING CODE):
+After writing your code, mentally scan EVERY text element and verify:
+□ Every heading on a white/light/gradient background uses color #0F172A, #1E293B, or #111827
+□ Every paragraph/subtitle on a light background uses at minimum #4B5563
+□ NO text-white, text-gray-100/200/300, or any pastel color appears unless the DIRECT PARENT has a solid dark background (bg-slate-800+, bg-gray-800+, #1F2937 or darker)
+□ Gradient backgrounds with ANY light color in them → all text is dark
+□ Accent-colored text in headings uses the -700 variant (purple-700, indigo-700), never -300/-400
+□ The hero section specifically: if bg is light or gradient-with-light → ALL text is dark (#0F172A range)
+If ANY check fails, fix it before outputting. Do NOT output code with contrast violations.
+
 Before finalizing any section, verify that text color has strong contrast against its background. Light text on light backgrounds is the #1 design failure — prevent it absolutely.
 
 USER-UPLOADED IMAGES:
