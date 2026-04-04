@@ -209,10 +209,19 @@ async function executeTool(
       }
 
       case 'generate_file': {
-        return JSON.stringify({
-          status: 'stub',
-          message: `File generation for "${toolInput.filename}" (${toolInput.format}) is not yet implemented. Content length: ${toolInput.content?.length || 0} chars.`,
+        const res = await fetch(`${supabaseUrl}/functions/v1/generate-file`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({
+            type: toolInput.format || 'docx',
+            content: toolInput.content,
+            title: toolInput.filename,
+            filename: toolInput.filename.replace(/\.[^.]+$/, '') || toolInput.filename,
+          }),
         });
+        const data = await res.json();
+        if (data.error) return `Error: ${data.error}`;
+        return JSON.stringify({ success: true, fileUrl: data.fileUrl, filename: data.filename, size: data.size });
       }
 
       default:
