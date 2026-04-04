@@ -69,6 +69,21 @@ export const useOrchestrator = () => {
       }));
 
       setToolChain(steps);
+
+      // Extract generated files from execution log
+      const files: GeneratedFile[] = [];
+      for (const entry of log) {
+        if (entry.tool === 'generate_file' && entry.output_preview) {
+          try {
+            const parsed = JSON.parse(entry.output_preview);
+            if (parsed.success && parsed.fileUrl) {
+              files.push({ fileUrl: parsed.fileUrl, filename: parsed.filename || 'file', size: parsed.size, type: parsed.type });
+            }
+          } catch { /* ignore parse errors */ }
+        }
+      }
+      setGeneratedFiles(files);
+
       setFinalResult(data?.result || 'No result returned.');
       setStatus('completed');
       setCurrentStep('Done');
