@@ -238,6 +238,31 @@ async function executeTool(
         return JSON.stringify({ success: true, fileUrl: data.fileUrl, filename: data.filename, size: data.size });
       }
 
+      case 'execute_code': {
+        const res = await fetch(`${supabaseUrl}/functions/v1/code-sandbox`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({
+            code: toolInput.code,
+            language: 'python',
+            files: toolInput.files || [],
+            timeout: 45000,
+          }),
+        });
+        const data = await res.json();
+        if (!data.success) return `Execution error: ${data.error || data.output?.stderr || 'Unknown'}`;
+        const out = data.output;
+        let result = '';
+        if (out.stdout) result += `STDOUT:\n${out.stdout}\n`;
+        if (out.stderr) result += `STDERR:\n${out.stderr}\n`;
+        if (out.result) result += `RESULT:\n${out.result}\n`;
+        if (out.files?.length) {
+          result += `GENERATED FILES:\n${out.files.map((f: any) => `- ${f.name}: ${f.url}`).join('\n')}\n`;
+        }
+        result += `Execution time: ${out.executionTime}ms`;
+        return result;
+      }
+
       default:
         return `Unknown tool: ${toolName}`;
     }
