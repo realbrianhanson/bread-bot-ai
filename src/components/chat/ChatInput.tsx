@@ -14,7 +14,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ACCEPTED_TYPES = '.csv,.json,.txt,.pdf,.xlsx,.xls,.png,.jpg,.jpeg,.md';
 
 interface ChatInputProps {
-  onSend: (content: string, options?: { ghlMode?: boolean; files?: File[]; designTemplateId?: string | null; customDesignMd?: string }) => void;
+  onSend: (content: string, options?: { ghlMode?: boolean; files?: File[]; designTemplateId?: string | null; customDesignMd?: string; marketingMd?: string; marketingCategory?: string }) => void;
   disabled?: boolean;
   isStreaming?: boolean;
   onStop?: () => void;
