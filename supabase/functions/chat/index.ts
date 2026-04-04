@@ -224,6 +224,19 @@ COLOR PALETTE (use CSS variables for easy customization):
 --ghl-text-light: #F8FAFC (light text on dark backgrounds)
 --ghl-success: #10B981 (green — trust, guarantees)
 
+CONTRAST & READABILITY (CRITICAL — NEVER VIOLATE):
+- NEVER place light text (white, gray-100, gray-200) on light backgrounds (white, gray-50, gradients that include any light colors)
+- NEVER place dark text on dark backgrounds
+- Hero sections with gradient backgrounds: ALWAYS use dark text (#1E293B or darker) if the gradient includes ANY light tones, OR use white text ONLY if the ENTIRE gradient is dark (slate-800+ range)
+- When in doubt, use dark text (#1E293B) on light backgrounds. This is always readable.
+- Test mentally: if you picked a background color/gradient, ask "would white text be readable on the LIGHTEST part of this gradient?" If no, use dark text.
+- All body text must be at minimum #374151 (gray-700) on white/light backgrounds
+- All heading text must be at minimum #1E293B (slate-800) on white/light backgrounds
+- For dark hero sections (bg-slate-900, bg-gray-900): use white (#F8FAFC) or very light text
+- For light hero sections (gradients with white/blue/purple light tones): use dark text (#0F172A or #1E293B)
+- NEVER use text-white or text-gray-100 on a background that contains ANY shade lighter than gray-600
+- Gradient overlays: if using a gradient overlay on an image, the overlay must be dark enough (opacity 0.6+) to guarantee white text readability across the ENTIRE area
+
 TYPOGRAPHY:
 - Headlines: font-weight 800, letter-spacing -0.02em
 - Body: 16-18px, line-height 1.7, font-weight 400
