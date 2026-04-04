@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import { fixContrastIssues } from '@/lib/contrastFixer';
+import { SaveTemplateDialog } from '@/components/chat/SaveTemplateDialog';
 
 interface CodePreviewProps {
   files: Record<string, string>;
