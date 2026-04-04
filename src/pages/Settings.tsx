@@ -69,11 +69,13 @@ export default function Settings() {
         acc.browserUse = item.encrypted_key;
       } else if (item.provider === 'anthropic') {
         acc.anthropic = item.encrypted_key;
+      } else if (item.provider === 'e2b') {
+        acc.e2b = item.encrypted_key;
       }
       return acc;
-    }, { browserUse: '', anthropic: '' });
+    }, { browserUse: '', anthropic: '', e2b: '' });
 
-    setApiKeys(keys || { browserUse: '', anthropic: '' });
+    setApiKeys(keys || { browserUse: '', anthropic: '', e2b: '' });
   };
 
   const handleSaveApiKeys = async () => {
