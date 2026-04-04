@@ -56,7 +56,15 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are a task planning AI for browser automation. Given a user's goal, break it down into 2-6 concrete, actionable browser automation steps. Each step should be a single browser action that can be executed independently.
+            content: `You are a task planning AI. Given a user's goal, break it down into 2-6 concrete, actionable steps. You have access to these tools:
+
+- /browse: Browser automation for navigating websites, clicking, filling forms, interacting with web pages
+- /scrape [url]: Extract content from a specific webpage as clean markdown
+- /crawl [url]: Map and crawl an entire website to discover all pages
+- /search [query]: Search the web to find relevant URLs and content
+- /research [topic]: Deep multi-step research that chains search, scrape, and synthesis automatically
+
+Choose the most efficient combination of tools. For research tasks, prefer /research over manual /browse steps. For data extraction from known URLs, prefer /scrape over /browse. Use /browse only when you need actual browser interaction (login, form filling, clicking through dynamic content).
 
 Return your plan using the suggest_steps tool.`,
           },
@@ -67,7 +75,7 @@ Return your plan using the suggest_steps tool.`,
             type: "function",
             function: {
               name: "suggest_steps",
-              description: "Return a structured task plan with concrete browser automation steps.",
+              description: "Return a structured task plan with concrete steps using the available tools.",
               parameters: {
                 type: "object",
                 properties: {
@@ -82,9 +90,10 @@ Return your plan using the suggest_steps tool.`,
                       properties: {
                         title: { type: "string", description: "Short step title (3-6 words)" },
                         description: { type: "string", description: "What this step does in detail" },
-                        prompt: { type: "string", description: "The exact /browse prompt to execute this step" },
+                        tool: { type: "string", enum: ["browse", "scrape", "crawl", "search", "research"], description: "Which tool to use for this step" },
+                        prompt: { type: "string", description: "The exact command to execute this step, e.g. '/scrape https://example.com'" },
                       },
-                      required: ["title", "description", "prompt"],
+                      required: ["title", "description", "tool", "prompt"],
                       additionalProperties: false,
                     },
                   },
