@@ -8,6 +8,7 @@ import LiveBrowserView from './LiveBrowserView';
 import OrchestrationProgress from './OrchestrationProgress';
 import GHLTemplateGallery from './GHLTemplateGallery';
 import FirecrawlResults, { FirecrawlResult } from './FirecrawlResults';
+import { MessageFeedback, detectPositiveSentiment } from './MessageFeedback';
 import { Message } from '@/hooks/useChat';
 import { BrowserTask } from '@/hooks/useBrowserTask';
 import { useOrchestrator } from '@/hooks/useOrchestrator';
@@ -15,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ArrowDown, Sparkles, Terminal, Search, FileText, Loader2, LayoutGrid } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { hasCodeBlocks, extractCodeFromResponse } from '@/lib/validateWebsite';
 
 interface ChatContainerProps {
   messages: Message[];
