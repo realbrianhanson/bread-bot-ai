@@ -9,6 +9,7 @@ import { useState, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import CodeExecutionResult from './CodeExecutionResult';
+import SandboxComputerView from './SandboxComputerView';
 
 const MermaidDiagram = lazy(() => import('./MermaidDiagram'));
 
