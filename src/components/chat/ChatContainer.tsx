@@ -63,6 +63,8 @@ const ChatContainer = ({
   const [firecrawlResults, setFirecrawlResults] = useState<FirecrawlResult[]>([]);
   const [isFirecrawling, setIsFirecrawling] = useState(false);
   const [firecrawlStatus, setFirecrawlStatus] = useState('');
+  const [inputPrefill, setInputPrefill] = useState('');
+  const isGhlMode = typeof window !== 'undefined' && localStorage.getItem('ghl-mode') === 'true';
 
   const scrollToBottom = () => {
     if (scrollRef.current) {
