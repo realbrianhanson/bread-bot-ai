@@ -324,6 +324,8 @@ const Dashboard = () => {
                     selectedProfileId={selectedProfileId} projectId={activeConversationId || undefined}
                     hideTaskPreview={true}
                     onSlashCommand={handleSlashCommand}
+                    onInspire={sendInspirationMessage}
+                    isInspirationLoading={isInspirationLoading}
                   />
                 </div>
               </div>
