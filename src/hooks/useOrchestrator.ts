@@ -104,6 +104,7 @@ export const useOrchestrator = () => {
     setCurrentStep('');
     setToolChain([]);
     setFinalResult('');
+    setGeneratedFiles([]);
     setError('');
     setIsOrchestrating(false);
   }, []);
@@ -115,6 +116,7 @@ export const useOrchestrator = () => {
     currentStep,
     toolChain,
     finalResult,
+    generatedFiles,
     error,
     isOrchestrating,
   };
