@@ -6,14 +6,14 @@ import TypingIndicator from './TypingIndicator';
 import TaskStatus from './TaskStatus';
 import LiveBrowserView from './LiveBrowserView';
 import OrchestrationProgress from './OrchestrationProgress';
-import GHLPageTypeSelector from './GHLPageTypeSelector';
+import GHLTemplateGallery from './GHLTemplateGallery';
 import FirecrawlResults, { FirecrawlResult } from './FirecrawlResults';
 import { Message } from '@/hooks/useChat';
 import { BrowserTask } from '@/hooks/useBrowserTask';
 import { useOrchestrator } from '@/hooks/useOrchestrator';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { ArrowDown, Sparkles, Terminal, Search, FileText, Globe, Loader2 } from 'lucide-react';
+import { ArrowDown, Sparkles, Terminal, Search, FileText, Loader2, LayoutGrid } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface ChatContainerProps {
@@ -64,6 +64,7 @@ const ChatContainer = ({
   const [isFirecrawling, setIsFirecrawling] = useState(false);
   const [firecrawlStatus, setFirecrawlStatus] = useState('');
   const [inputPrefill, setInputPrefill] = useState('');
+  const [showTemplateGallery, setShowTemplateGallery] = useState(false);
   const isGhlMode = typeof window !== 'undefined' && localStorage.getItem('ghl-mode') === 'true';
 
   const scrollToBottom = () => {
@@ -232,7 +233,16 @@ const ChatContainer = ({
         <div className="space-y-3.5 max-w-3xl mx-auto pb-4">
           {messages.length === 0 && firecrawlResults.length === 0 ? (
             isGhlMode ? (
-              <GHLPageTypeSelector onSelectPrompt={(prompt) => setInputPrefill(prompt)} />
+              <GHLTemplateGallery
+                inline
+                onSelectTemplate={(prompt) => {
+                  setInputPrefill(prompt);
+                  if (prompt) {
+                    // Auto-send template prompts
+                    handleSendMessage(prompt);
+                  }
+                }}
+              />
             ) : (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -376,9 +386,47 @@ const ChatContainer = ({
         )}
       </AnimatePresence>
 
+      {/* GHL Template gallery slide-up */}
+      <AnimatePresence>
+        {showTemplateGallery && isGhlMode && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="shrink-0 overflow-hidden border-t border-border/30 max-h-[50%] overflow-y-auto"
+          >
+            <GHLTemplateGallery
+              onSelectTemplate={(prompt) => {
+                setShowTemplateGallery(false);
+                if (prompt) {
+                  handleSendMessage(prompt);
+                } else {
+                  setInputPrefill('');
+                }
+              }}
+              onClose={() => setShowTemplateGallery(false)}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Input */}
       <div className="p-4 bg-gradient-to-t from-background/80 to-transparent backdrop-blur-sm">
         <div className="max-w-3xl mx-auto">
+          {isGhlMode && messages.length > 0 && (
+            <div className="flex justify-center mb-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-[10px] border-border/40 bg-card/60 hover:bg-card/80"
+                onClick={() => setShowTemplateGallery((s) => !s)}
+              >
+                <LayoutGrid className="h-3 w-3" />
+                {showTemplateGallery ? 'Hide Templates' : 'Browse Templates'}
+              </Button>
+            </div>
+          )}
           <ChatInput
             onSend={handleSendMessage}
             disabled={isLoading || isExecutingTask || isFirecrawling}
