@@ -652,6 +652,7 @@ serve(async (req) => {
           supabaseUrl,
           token,
           anthropicApiKey,
+          user.id,
         );
 
         executionLog.push({
