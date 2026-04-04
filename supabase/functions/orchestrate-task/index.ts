@@ -266,6 +266,31 @@ const toolDefinitions = [
       required: ['url', 'filename'],
     },
   },
+  {
+    name: 'knowledge_search',
+    description: "Search the user's personal knowledge base for information from previous research tasks. Use this BEFORE searching the web to check if we already have relevant data. Returns previously researched topics, findings, and source URLs.",
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        query: { type: 'string', description: 'What to search for in the knowledge base' },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'knowledge_store',
+    description: "Save research findings to the user's knowledge base for future reference. Use this after completing research to store key findings. Future tasks will be able to access this information without re-researching.",
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        topic: { type: 'string', description: 'Research topic category' },
+        title: { type: 'string', description: 'Entry title' },
+        content: { type: 'string', description: 'The findings in clean markdown format' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Searchable tags' },
+      },
+      required: ['topic', 'title', 'content'],
+    },
+  },
 ];
 
 const SYSTEM_PROMPT = `You are an AI task orchestrator with access to powerful tools. Given a user's request, determine which tools to use and in what order.
