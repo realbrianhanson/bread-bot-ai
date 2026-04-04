@@ -17,6 +17,7 @@ import {
 import ChatContainer from "@/components/chat/ChatContainer";
 import ConversationList from "@/components/chat/ConversationList";
 import CodePreview from "@/components/chat/CodePreview";
+import GHLCodeOutput from "@/components/chat/GHLCodeOutput";
 import TaskHistory from "@/components/chat/TaskHistory";
 import ProfileSelector from "@/components/chat/ProfileSelector";
 import LiveBrowserView from "@/components/chat/LiveBrowserView";
