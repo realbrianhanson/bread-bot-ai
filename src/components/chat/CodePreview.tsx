@@ -13,10 +13,9 @@ interface CodePreviewProps {
 
 const SandpackWithFallback = ({ files, template, onFallback }: {
   files: Record<string, string>;
-  mainFile: string;
   template: 'react-ts';
-  buildHTML: () => string;
   onFallback: () => void;
+}) => {
 }) => {
   const [timedOut, setTimedOut] = useState(false);
 
