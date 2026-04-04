@@ -185,6 +185,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       browserTasksUsed,
       chatMessagesLimit,
       browserTasksLimit,
+      codeExecutionsUsed,
+      codeExecutionsLimit,
       refreshSubscription
     }}>
       {children}
