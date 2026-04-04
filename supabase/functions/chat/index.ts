@@ -369,7 +369,12 @@ When the user uploads images, use the provided URLs in <img> tags. Do NOT use pl
 BROWSER AUTOMATION:
 This app has browser automation. For browsing tasks, tell users: /browse [task description]`;
 
-    const systemPrompt = ghlMode ? ghlSystemPrompt : standardSystemPrompt;
+    const basePrompt = ghlMode ? ghlSystemPrompt : standardSystemPrompt;
+
+    // If a custom design system was provided, prepend it as the highest-priority instruction
+    const systemPrompt = clientDesignMd
+      ? `CRITICAL: Follow this design system EXACTLY for all colors, typography, spacing, and components. Every visual decision must come from this system. Do not invent your own colors.\n\n${clientDesignMd}\n\n${basePrompt}`
+      : basePrompt;
 
     // Fetch Honcho memory context (non-blocking on failure)
     let honchoContext = '';
