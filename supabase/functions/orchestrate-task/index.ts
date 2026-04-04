@@ -402,14 +402,61 @@ async function executeTool(
       }
 
       case 'browse_web': {
-        const res = await fetch(`${supabaseUrl}/functions/v1/browser-task`, {
+        // Start the browser task
+        const startRes = await fetch(`${supabaseUrl}/functions/v1/browser-task`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
           body: JSON.stringify({ task: toolInput.task }),
         });
-        const data = await res.json();
-        if (data.error) return `Error: ${data.error}`;
-        return JSON.stringify({ taskId: data.taskId, status: data.status, liveUrl: data.liveUrl });
+        const startData = await startRes.json();
+        if (startData.error) return `Error: ${startData.error}`;
+        const taskId = startData.taskId;
+        if (!taskId) return `Error: No task ID returned`;
+        console.log(`[ORCHESTRATE] Browser task started: ${taskId}, polling for completion...`);
+
+        // Poll until completion (max 120 seconds, check every 5 seconds)
+        const maxPolls = 24;
+        let pollCount = 0;
+        let finalResult = '';
+        while (pollCount < maxPolls) {
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          pollCount++;
+          try {
+            const pollRes = await fetch(`${supabaseUrl}/functions/v1/poll-browser-task`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+              body: JSON.stringify({ taskId }),
+            });
+            const pollData = await pollRes.json();
+            const task = pollData?.task;
+            if (!task) continue;
+            const status = task.status;
+            console.log(`[ORCHESTRATE] Browser poll ${pollCount}: status=${status}`);
+            if (status === 'completed') {
+              const output = task.output_data?.output || '';
+              const screenshots = task.screenshots || [];
+              finalResult = `Browser task completed successfully.\n`;
+              if (output) finalResult += `Output: ${output}\n`;
+              if (screenshots.length > 0) finalResult += `Screenshots captured: ${screenshots.length}\n`;
+              break;
+            } else if (status === 'failed') {
+              finalResult = `Browser task failed: ${task.error_message || 'Unknown error'}`;
+              break;
+            } else if (status === 'stopped') {
+              const output = task.output_data?.output || '';
+              finalResult = output
+                ? `Browser task completed (stopped with output).\nOutput: ${output}`
+                : `Browser task was stopped without output.`;
+              break;
+            }
+          } catch (pollErr) {
+            console.error(`[ORCHESTRATE] Poll error:`, pollErr);
+          }
+        }
+        if (!finalResult) {
+          finalResult = 'Browser task timed out after 120 seconds. The task may still be running in the background.';
+        }
+        return finalResult;
       }
 
       case 'synthesize': {
