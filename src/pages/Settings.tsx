@@ -359,6 +359,7 @@ export default function Settings() {
                     </div>
                   </div>
 
+                  <Button onClick={handleSaveApiKeys} disabled={isLoading} className="w-full">
                     <Save className="mr-2 h-4 w-4" />
                     Save API Keys
                   </Button>
