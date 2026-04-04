@@ -437,6 +437,8 @@ const ChatContainer = ({
             isStreaming={isStreaming}
             onStop={onStopStreaming}
             onSlashCommand={onSlashCommand}
+            onInspire={onInspire}
+            isInspirationLoading={isInspirationLoading}
             prefill={inputPrefill}
           />
         </div>
