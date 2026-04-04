@@ -48,6 +48,8 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
   const [selectedSlashIndex, setSelectedSlashIndex] = useState(0);
   const [ghlMode, setGhlMode] = useState(() => localStorage.getItem('ghl-mode') === 'true');
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [selectedDesignId, setSelectedDesignId] = useState<string | null>(null);
+  const [customDesignMd, setCustomDesignMd] = useState<string | undefined>();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
