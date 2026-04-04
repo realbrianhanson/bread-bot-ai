@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { GeneratedFile } from '@/components/chat/OrchestrationProgress';
 import { toast } from '@/hooks/use-toast';
 
 export type OrchestrationStatus =
