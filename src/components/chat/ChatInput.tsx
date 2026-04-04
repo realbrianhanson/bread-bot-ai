@@ -38,6 +38,7 @@ const SLASH_COMMANDS = [
   { cmd: "/workflow", label: "Open workflows", icon: "🔀" },
   { cmd: "/results", label: "Open results", icon: "📊" },
   { cmd: "/webhooks", label: "Open webhooks", icon: "🔗" },
+  { cmd: "/inspire", label: "Build a page inspired by an existing website's design", icon: "✨" },
 ];
 
 const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSlashCommand, prefill }: ChatInputProps) => {
