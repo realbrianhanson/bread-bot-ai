@@ -32,3 +32,9 @@ verify_jwt = false
 
 [functions.ghl-contact-webhook]
 verify_jwt = false
+
+[functions.create-google-sheet]
+verify_jwt = false
+
+[functions.send-email]
+verify_jwt = false
