@@ -30,7 +30,7 @@ const SLASH_COMMANDS = [
   { cmd: "/webhooks", label: "Open webhooks", icon: "🔗" },
 ];
 
-const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSlashCommand }: ChatInputProps) => {
+const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSlashCommand, prefill }: ChatInputProps) => {
   const [input, setInput] = useState('');
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [selectedSlashIndex, setSelectedSlashIndex] = useState(0);
