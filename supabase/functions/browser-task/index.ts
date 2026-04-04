@@ -96,7 +96,7 @@ serve(async (req) => {
       });
     }
 
-    const { task, projectId, profileId } = await req.json();
+    const { task, projectId, profileId, outputSchema } = await req.json();
 
     // Get browser profile if provided
     let browserUseProfileId = null;
