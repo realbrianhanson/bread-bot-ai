@@ -11,7 +11,7 @@ interface CodePreviewProps {
   template?: 'react-ts' | 'vanilla' | 'static';
 }
 
-const SandpackWithFallback = ({ files, mainFile, template, buildHTML, onFallback }: {
+const SandpackWithFallback = ({ files, template, onFallback }: {
   files: Record<string, string>;
   mainFile: string;
   template: 'react-ts';
