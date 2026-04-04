@@ -180,6 +180,12 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
             <span className="text-[10px] font-medium text-primary">Planner</span>
           </div>
         )}
+        {isCodeCmd && (
+          <div className="shrink-0 mb-1.5 flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/10 border border-accent/30">
+            <span className="text-[10px]">💻</span>
+            <span className="text-[10px] font-medium text-accent">Sandbox</span>
+          </div>
+        )}
 
         <textarea
           ref={textareaRef}
