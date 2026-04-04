@@ -30,14 +30,17 @@ export default function Settings() {
     chatMessagesLimit,
     browserTasksUsed,
     browserTasksLimit,
+    codeExecutionsUsed,
+    codeExecutionsLimit,
     getUsagePercentage,
     refreshSubscription
   } = useSubscription();
   const navigate = useNavigate();
-  const [showKeys, setShowKeys] = useState({ browserUse: false, anthropic: false });
+  const [showKeys, setShowKeys] = useState({ browserUse: false, anthropic: false, e2b: false });
   const [apiKeys, setApiKeys] = useState({
     browserUse: '',
     anthropic: '',
+    e2b: '',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [managingSubscription, setManagingSubscription] = useState(false);
@@ -66,11 +69,13 @@ export default function Settings() {
         acc.browserUse = item.encrypted_key;
       } else if (item.provider === 'anthropic') {
         acc.anthropic = item.encrypted_key;
+      } else if (item.provider === 'e2b') {
+        acc.e2b = item.encrypted_key;
       }
       return acc;
-    }, { browserUse: '', anthropic: '' });
+    }, { browserUse: '', anthropic: '', e2b: '' });
 
-    setApiKeys(keys || { browserUse: '', anthropic: '' });
+    setApiKeys(keys || { browserUse: '', anthropic: '', e2b: '' });
   };
 
   const handleSaveApiKeys = async () => {
@@ -96,6 +101,17 @@ export default function Settings() {
             user_id: user.id,
             provider: 'anthropic',
             encrypted_key: apiKeys.anthropic,
+            is_active: true,
+          });
+      }
+
+      if (apiKeys.e2b) {
+        await supabase
+          .from('api_keys')
+          .upsert({
+            user_id: user.id,
+            provider: 'e2b',
+            encrypted_key: apiKeys.e2b,
             is_active: true,
           });
       }
@@ -236,6 +252,16 @@ export default function Settings() {
                     </div>
                     <Progress value={getUsagePercentage(browserTasksUsed, browserTasksLimit)} />
                   </div>
+
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <Label>Code Executions</Label>
+                      <span className="text-muted-foreground">
+                        {codeExecutionsUsed} / {codeExecutionsLimit}
+                      </span>
+                    </div>
+                    <Progress value={getUsagePercentage(codeExecutionsUsed, codeExecutionsLimit)} />
+                  </div>
                 </div>
 
                 <div className="flex gap-2">
@@ -309,6 +335,26 @@ export default function Settings() {
                         onClick={() => setShowKeys({ ...showKeys, anthropic: !showKeys.anthropic })}
                       >
                         {showKeys.anthropic ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="e2b-key">E2B API Key (Code Sandbox)</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="e2b-key"
+                        type={showKeys.e2b ? 'text' : 'password'}
+                        value={apiKeys.e2b}
+                        onChange={(e) => setApiKeys({ ...apiKeys, e2b: e.target.value })}
+                        placeholder="Enter your E2B API key"
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setShowKeys({ ...showKeys, e2b: !showKeys.e2b })}
+                      >
+                        {showKeys.e2b ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </Button>
                     </div>
                   </div>

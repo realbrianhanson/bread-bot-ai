@@ -11,6 +11,8 @@ export function useSubscription() {
     browserTasksUsed,
     chatMessagesLimit,
     browserTasksLimit,
+    codeExecutionsUsed,
+    codeExecutionsLimit,
     refreshSubscription
   } = useAuth();
 
@@ -38,8 +40,21 @@ export function useSubscription() {
     return true;
   };
 
+  const canRunCodeExecution = () => {
+    if (codeExecutionsUsed >= codeExecutionsLimit) {
+      toast({
+        title: "Code Execution Limit Reached",
+        description: `You've used all ${codeExecutionsLimit} code executions this month. Upgrade to continue.`,
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  };
+
   const getRemainingMessages = () => chatMessagesLimit - chatMessagesUsed;
   const getRemainingTasks = () => browserTasksLimit - browserTasksUsed;
+  const getRemainingCodeExecutions = () => codeExecutionsLimit - codeExecutionsUsed;
   
   const getUsagePercentage = (used: number, limit: number) => {
     return Math.round((used / limit) * 100);
@@ -54,10 +69,14 @@ export function useSubscription() {
     browserTasksUsed,
     chatMessagesLimit,
     browserTasksLimit,
+    codeExecutionsUsed,
+    codeExecutionsLimit,
     canSendMessage,
     canRunBrowserTask,
+    canRunCodeExecution,
     getRemainingMessages,
     getRemainingTasks,
+    getRemainingCodeExecutions,
     getUsagePercentage,
     refreshSubscription,
   };

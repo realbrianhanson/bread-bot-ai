@@ -18,6 +18,8 @@ interface AuthContextType {
   browserTasksUsed: number;
   chatMessagesLimit: number;
   browserTasksLimit: number;
+  codeExecutionsUsed: number;
+  codeExecutionsLimit: number;
   refreshSubscription: () => Promise<void>;
 }
 
@@ -35,6 +37,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [browserTasksUsed, setBrowserTasksUsed] = useState(0);
   const [chatMessagesLimit, setChatMessagesLimit] = useState(100);
   const [browserTasksLimit, setBrowserTasksLimit] = useState(10);
+  const [codeExecutionsUsed, setCodeExecutionsUsed] = useState(0);
+  const [codeExecutionsLimit, setCodeExecutionsLimit] = useState(5);
   const navigate = useNavigate();
 
   const refreshSubscription = async () => {
@@ -63,6 +67,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setBrowserTasksUsed(data.browser_tasks_used || 0);
         setChatMessagesLimit(data.chat_messages_limit || 100);
         setBrowserTasksLimit(data.browser_tasks_limit || 10);
+        setCodeExecutionsUsed(data.code_executions_used || 0);
+        setCodeExecutionsLimit(data.code_executions_limit || 5);
       }
     } catch (error) {
       console.error('Error refreshing subscription, using free tier defaults:', error);
@@ -179,6 +185,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       browserTasksUsed,
       chatMessagesLimit,
       browserTasksLimit,
+      codeExecutionsUsed,
+      codeExecutionsLimit,
       refreshSubscription
     }}>
       {children}
