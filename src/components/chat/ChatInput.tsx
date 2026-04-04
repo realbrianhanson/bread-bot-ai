@@ -44,6 +44,7 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
     }
   }, [prefill]);
 
+  const handleVoiceResult = useCallback((text: string) => {
     setInput((prev) => (prev ? prev + ' ' + text : text));
   }, []);
 
