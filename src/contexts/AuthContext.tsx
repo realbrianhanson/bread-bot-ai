@@ -18,6 +18,8 @@ interface AuthContextType {
   browserTasksUsed: number;
   chatMessagesLimit: number;
   browserTasksLimit: number;
+  codeExecutionsUsed: number;
+  codeExecutionsLimit: number;
   refreshSubscription: () => Promise<void>;
 }
 
