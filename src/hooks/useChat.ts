@@ -288,6 +288,25 @@ export const useChat = (projectId?: string) => {
         return;
       }
 
+      // Handle /inspire command
+      if (content.trim().startsWith('/inspire ')) {
+        const rest = content.trim().slice(9).trim();
+        const urlMatch = rest.match(/^(https?:\/\/\S+)\s*([\s\S]*)?$/i) || rest.match(/^(\S+\.\S+)\s*([\s\S]*)?$/);
+        if (urlMatch) {
+          const url = urlMatch[1].startsWith('http') ? urlMatch[1] : `https://${urlMatch[1]}`;
+          const userContent = (urlMatch[2] || '').trim();
+          if (userContent) {
+            // Direct generation: /inspire URL content
+            await sendInspirationMessage(url, userContent, options?.ghlMode || false);
+          } else {
+            // Just URL — user will be prompted via follow-up
+            toast({ title: '✨ Inspiration Mode', description: `Got it! Now describe what your page should be about.` });
+            // Store URL for next message (we'll handle via prefill or similar)
+          }
+          return;
+        }
+      }
+
       // Handle /code command
       if (content.trim().startsWith('/code ')) {
         const code = content.trim().slice(6);
