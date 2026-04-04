@@ -9,6 +9,99 @@ const corsHeaders = {
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
+// --- Honcho helpers ---
+const HONCHO_API_BASE = 'https://api.honcho.dev/v1';
+
+async function getHonchoContext(userId: string): Promise<string> {
+  const apiKey = Deno.env.get('HONCHO_API_KEY');
+  const workspaceId = Deno.env.get('HONCHO_WORKSPACE_ID');
+  if (!apiKey || !workspaceId) return '';
+
+  const headers = { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
+
+  try {
+    // Get or create user peer
+    await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ configuration: { observe_me: true } }),
+    });
+
+    // Ensure assistant peer exists
+    await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/assistant`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ configuration: { observe_me: false } }),
+    });
+
+    // Create a session for this orchestration
+    const sessionRes = await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ metadata: { source: 'orchestrator' } }),
+    });
+    const sessionData = await sessionRes.json();
+
+    // Get context
+    const contextRes = await fetch(
+      `${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions/${sessionData.id}/context`,
+      { method: 'POST', headers, body: JSON.stringify({ max_tokens: 2000 }) },
+    );
+    const contextData = await contextRes.json();
+    return contextData?.context || contextData?.content || '';
+  } catch (err) {
+    console.error('[ORCHESTRATE] Honcho context fetch failed:', err);
+    return '';
+  }
+}
+
+async function storeHonchoMessages(userId: string, userMessage: string, assistantMessage: string): Promise<void> {
+  const apiKey = Deno.env.get('HONCHO_API_KEY');
+  const workspaceId = Deno.env.get('HONCHO_WORKSPACE_ID');
+  if (!apiKey || !workspaceId) return;
+
+  const headers = { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
+
+  try {
+    const sessionRes = await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ metadata: { source: 'orchestrator_store' } }),
+    });
+    const session = await sessionRes.json();
+
+    await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions/${session.id}/messages`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify([
+        { peer_id: userId, content: userMessage },
+        { peer_id: 'assistant', content: assistantMessage },
+      ]),
+    });
+  } catch (err) {
+    console.error('[ORCHESTRATE] Honcho store failed:', err);
+  }
+}
+
+async function queryHonchoMemory(userId: string, query: string): Promise<string> {
+  const apiKey = Deno.env.get('HONCHO_API_KEY');
+  const workspaceId = Deno.env.get('HONCHO_WORKSPACE_ID');
+  if (!apiKey || !workspaceId) return 'Memory system unavailable.';
+
+  try {
+    const res = await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/chat`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query }),
+    });
+    const data = await res.json();
+    return data?.response || data?.content || 'No information found about this topic.';
+  } catch (err) {
+    console.error('[ORCHESTRATE] Honcho query failed:', err);
+    return 'Memory query failed.';
+  }
+}
+
 const toolDefinitions = [
   {
     name: 'browse_web',
@@ -124,6 +217,17 @@ const toolDefinitions = [
       required: ['title', 'content'],
     },
   },
+  {
+    name: 'recall_user_context',
+    description: "Query the memory system for specific information about the user. Use this when you need to know the user's preferences, past research topics, industry, company details, or any historical context. Ask natural language questions like 'What industry does the user work in?' or 'Has the user researched competitors before?'",
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        query: { type: 'string', description: 'Natural language question about the user' },
+      },
+      required: ['query'],
+    },
+  },
 ];
 
 const SYSTEM_PROMPT = `You are an AI task orchestrator with access to powerful tools. Given a user's request, determine which tools to use and in what order.
@@ -172,6 +276,8 @@ CHAINING STRATEGY:
 - When the user asks for slides/presentation/deck: ALWAYS use generate_slides as the final step
 - When the user asks to save to Google Docs: use create_google_doc after synthesizing content
 
+- recall_user_context: Query the memory system for information about the user. Use when you want to personalize results based on user's industry, past research, preferences, or history. Call early in the workflow if personalization would help.
+
 Always end with synthesize to produce a polished final output. Include any generated charts or files in your synthesis.`;
 
 async function resolveAnthropicKey(
@@ -199,6 +305,7 @@ async function executeTool(
   supabaseUrl: string,
   authToken: string,
   anthropicApiKey: string,
+  userId?: string,
 ): Promise<string> {
   console.log(`[ORCHESTRATE] Executing tool: ${toolName}`, JSON.stringify(toolInput).slice(0, 200));
 
@@ -354,6 +461,10 @@ async function executeTool(
         return `Google Doc created successfully!\nTitle: ${data.title}\nURL: ${data.url}\nDocument ID: ${data.documentId}`;
       }
 
+      case 'recall_user_context': {
+        return await queryHonchoMemory(userId || 'unknown', toolInput.query);
+      }
+
       default:
         return `Unknown tool: ${toolName}`;
     }
@@ -447,6 +558,21 @@ serve(async (req) => {
       });
     }
 
+    // --- Fetch Honcho memory context ---
+    let honchoContext = '';
+    try {
+      honchoContext = await getHonchoContext(user.id);
+      if (honchoContext) {
+        console.log('[ORCHESTRATE] Honcho context loaded:', honchoContext.slice(0, 100));
+      }
+    } catch (err) {
+      console.error('[ORCHESTRATE] Honcho context error (proceeding without):', err);
+    }
+
+    const enrichedSystemPrompt = honchoContext
+      ? SYSTEM_PROMPT + `\n\nUSER CONTEXT (personalization from memory):\nUse this context to personalize your approach. If the user works in a specific industry, frame research in that context. If they have preferences for output format, follow them.\n${honchoContext}`
+      : SYSTEM_PROMPT;
+
     // --- Orchestration loop ---
     const messages: any[] = [];
 
@@ -476,9 +602,10 @@ serve(async (req) => {
         body: JSON.stringify({
           model: 'claude-opus-4-6',
           max_tokens: 8192,
-          system: SYSTEM_PROMPT,
+          system: enrichedSystemPrompt,
           tools: toolDefinitions,
           messages,
+        }),
         }),
       });
 
@@ -525,6 +652,7 @@ serve(async (req) => {
           supabaseUrl,
           token,
           anthropicApiKey,
+          user.id,
         );
 
         executionLog.push({
@@ -563,6 +691,12 @@ serve(async (req) => {
       quantity: 1,
       task_id: taskRecord.id,
     });
+
+    // Store interaction in Honcho (fire-and-forget)
+    const assistantSummary = `Orchestrated task using tools: ${executionLog.map((e: any) => e.tool).join(', ')}.\n\nResult summary: ${finalResult.slice(0, 1000)}`;
+    storeHonchoMessages(user.id, message, assistantSummary).catch(err =>
+      console.error('[ORCHESTRATE] Honcho background store error:', err)
+    );
 
     return new Response(JSON.stringify({
       taskId: taskRecord.id,
