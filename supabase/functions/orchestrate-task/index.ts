@@ -514,6 +514,76 @@ async function executeTool(
         return await queryHonchoMemory(userId || 'unknown', toolInput.query);
       }
 
+      case 'create_google_sheet': {
+        const res = await fetch(`${supabaseUrl}/functions/v1/create-google-sheet`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({
+            title: toolInput.title,
+            headers: toolInput.headers,
+            rows: toolInput.rows,
+          }),
+        });
+        const data = await res.json();
+        if (data.error) return `Error creating Google Sheet: ${data.error}`;
+        return `Google Sheet created successfully!\nTitle: ${data.title}\nURL: ${data.url}\nRows: ${data.rowCount}`;
+      }
+
+      case 'send_email': {
+        const res = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({
+            to: toolInput.to,
+            subject: toolInput.subject,
+            html: toolInput.html,
+          }),
+        });
+        const data = await res.json();
+        if (data.error) return `Error sending email: ${data.error}`;
+        return `Email sent successfully to ${toolInput.to}! Message ID: ${data.messageId}`;
+      }
+
+      case 'download_file': {
+        try {
+          const fileRes = await fetch(toolInput.url);
+          if (!fileRes.ok) return `Error downloading file: HTTP ${fileRes.status}`;
+          const blob = await fileRes.blob();
+          const arrayBuffer = await blob.arrayBuffer();
+          const fileBytes = new Uint8Array(arrayBuffer);
+
+          const supabaseAdmin = createClient(
+            supabaseUrl,
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+            { auth: { persistSession: false } },
+          );
+
+          const storagePath = `${userId}/${Date.now()}_${toolInput.filename}`;
+          const { error: uploadError } = await supabaseAdmin.storage
+            .from('generated-files')
+            .upload(storagePath, fileBytes, {
+              contentType: blob.type || 'application/octet-stream',
+              upsert: true,
+            });
+
+          if (uploadError) return `Error storing file: ${uploadError.message}`;
+
+          const { data: urlData } = await supabaseAdmin.storage
+            .from('generated-files')
+            .createSignedUrl(storagePath, 60 * 60 * 24 * 7);
+
+          return JSON.stringify({
+            success: true,
+            filename: toolInput.filename,
+            fileUrl: urlData?.signedUrl || '',
+            size: fileBytes.length,
+            type: blob.type,
+          });
+        } catch (err) {
+          return `Error downloading file: ${err instanceof Error ? err.message : 'Unknown error'}`;
+        }
+      }
+
       default:
         return `Unknown tool: ${toolName}`;
     }
