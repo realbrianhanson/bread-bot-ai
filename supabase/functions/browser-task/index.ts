@@ -1,6 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.84.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -96,7 +96,7 @@ serve(async (req) => {
       });
     }
 
-    const { task, projectId, profileId } = await req.json();
+    const { task, projectId, profileId, outputSchema } = await req.json();
 
     // Get browser profile if provided
     let browserUseProfileId = null;
@@ -125,7 +125,7 @@ serve(async (req) => {
         project_id: projectId,
         task_type: 'browser_automation',
         status: 'pending',
-        input_data: { task },
+        input_data: { task, ...(outputSchema ? { output_schema: outputSchema } : {}) },
       })
       .select()
       .single();
@@ -148,7 +148,9 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           task,
-          ...(browserUseProfileId ? { profileId: browserUseProfileId } : {})
+          model: 'bu-ultra',
+          ...(browserUseProfileId ? { profileId: browserUseProfileId } : {}),
+          ...(outputSchema ? { output_schema: outputSchema } : {})
         }),
       });
 
