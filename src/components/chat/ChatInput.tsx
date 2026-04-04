@@ -17,6 +17,8 @@ interface ChatInputProps {
   isStreaming?: boolean;
   onStop?: () => void;
   onSlashCommand?: (command: string) => void;
+  onInspire?: (url: string, content: string, ghlMode: boolean) => void;
+  isInspirationLoading?: boolean;
   prefill?: string;
 }
 
