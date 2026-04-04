@@ -306,6 +306,24 @@ async function executeTool(
         return result;
       }
 
+      case 'generate_slides': {
+        const res = await fetch(`${supabaseUrl}/functions/v1/generate-slides`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({
+            topic: toolInput.topic,
+            content: toolInput.content,
+            numSlides: toolInput.numSlides || 10,
+          }),
+        });
+        const data = await res.json();
+        if (data.error) return `Error generating slides: ${data.error}`;
+        let result = `Presentation generated successfully!\n`;
+        if (data.gammaUrl) result += `URL: ${data.gammaUrl}\n`;
+        result += `Title: ${data.title}\nSlides: ${data.numSlides}`;
+        return result;
+      }
+
       default:
         return `Unknown tool: ${toolName}`;
     }
