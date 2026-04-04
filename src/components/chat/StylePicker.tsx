@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Palette, Check } from 'lucide-react';
+import { Palette, Check, Trash2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 interface DesignTemplate {
   id: string;
@@ -13,11 +14,13 @@ interface DesignTemplate {
   category: string | null;
   preview_colors: string[] | null;
   is_default: boolean | null;
+  source: string | null;
+  marketing_md: string | null;
 }
 
 interface StylePickerProps {
   selectedId: string | null;
-  onSelect: (id: string | null, customMd?: string) => void;
+  onSelect: (id: string | null, customMd?: string, marketingMd?: string) => void;
   disabled?: boolean;
 }
 
@@ -26,24 +29,120 @@ export function StylePicker({ selectedId, onSelect, disabled }: StylePickerProps
   const [open, setOpen] = useState(false);
   const [showCustom, setShowCustom] = useState(false);
   const [customMd, setCustomMd] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchTemplates = () => {
     supabase
       .from('design_templates')
-      .select('id, name, description, category, preview_colors, is_default')
+      .select('id, name, description, category, preview_colors, is_default, source, marketing_md')
       .eq('is_active', true)
       .then(({ data }) => {
         if (data) setTemplates(data as DesignTemplate[]);
       });
+  };
+
+  useEffect(() => {
+    fetchTemplates();
   }, []);
+
+  const userTemplates = templates.filter((t) => t.source === 'user_created');
+  const globalTemplates = templates.filter((t) => t.source !== 'user_created');
 
   const selected = templates.find((t) => t.id === selectedId);
   const defaultTemplate = templates.find((t) => t.is_default);
-
   const displayName = selected?.name || defaultTemplate?.name || null;
 
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('design_templates').delete().eq('id', id);
+    if (error) {
+      toast.error('Failed to delete template');
+    } else {
+      toast.success('Template deleted');
+      setTemplates((prev) => prev.filter((t) => t.id !== id));
+      if (selectedId === id) onSelect(null);
+    }
+    setConfirmDelete(null);
+  };
+
+  const TemplateCard = ({ t }: { t: DesignTemplate }) => {
+    const isSelected = selectedId === t.id || (!selectedId && t.is_default);
+    const isUserCreated = t.source === 'user_created';
+
+    return (
+      <div className="relative group">
+        <button
+          onClick={() => {
+            onSelect(
+              t.is_default ? null : t.id,
+              undefined,
+              t.marketing_md || undefined
+            );
+            setOpen(false);
+          }}
+          className={cn(
+            'text-left w-full p-3 rounded-lg border transition-all',
+            isSelected
+              ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
+              : 'border-border/50 hover:border-primary/30 hover:bg-muted/30'
+          )}
+        >
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-foreground truncate pr-4">
+              {t.name}
+            </span>
+            {isSelected && <Check className="h-3 w-3 text-primary shrink-0" />}
+          </div>
+          {t.preview_colors && (
+            <div className="flex gap-1 mb-1.5">
+              {t.preview_colors.map((color, i) => (
+                <div
+                  key={i}
+                  className="h-3 w-3 rounded-full border border-border/30"
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-1.5">
+            {isUserCreated && (
+              <span className="text-[9px] px-1 py-0.5 rounded bg-primary/10 text-primary font-medium">Custom</span>
+            )}
+            {t.category && (
+              <span className="text-[10px] text-muted-foreground">{t.category}</span>
+            )}
+          </div>
+        </button>
+        {isUserCreated && (
+          confirmDelete === t.id ? (
+            <div className="absolute -top-1 -right-1 flex gap-0.5 z-10">
+              <button
+                onClick={() => handleDelete(t.id)}
+                className="p-1 rounded bg-destructive text-destructive-foreground text-[10px] font-medium"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="p-1 rounded bg-muted text-muted-foreground text-[10px]"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={(e) => { e.stopPropagation(); setConfirmDelete(t.id); }}
+              className="absolute top-1.5 right-1.5 p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 transition-opacity"
+            >
+              <Trash2 className="h-3 w-3 text-destructive" />
+            </button>
+          )
+        )}
+      </div>
+    );
+  };
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setConfirmDelete(null); }}>
       <PopoverTrigger asChild>
         <button
           disabled={disabled}
@@ -70,46 +169,28 @@ export function StylePicker({ selectedId, onSelect, disabled }: StylePickerProps
 
         {!showCustom ? (
           <>
+            {/* My Templates Section */}
+            {userTemplates.length > 0 ? (
+              <div className="mb-3">
+                <h5 className="text-xs font-medium text-foreground mb-1">My Templates</h5>
+                <p className="text-[10px] text-muted-foreground mb-2">(from your saved pages)</p>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  {userTemplates.map((t) => (
+                    <TemplateCard key={t.id} t={t} />
+                  ))}
+                </div>
+                <div className="border-b border-border/30 mb-2" />
+              </div>
+            ) : (
+              <div className="mb-3 p-2 rounded-lg bg-muted/30 text-[10px] text-muted-foreground">
+                💡 Save any page as a template using the bookmark icon in the preview
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-2">
-              {templates.map((t) => {
-                const isSelected = selectedId === t.id || (!selectedId && t.is_default);
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => {
-                      onSelect(t.is_default ? null : t.id);
-                      setOpen(false);
-                    }}
-                    className={cn(
-                      'text-left p-3 rounded-lg border transition-all',
-                      isSelected
-                        ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
-                        : 'border-border/50 hover:border-primary/30 hover:bg-muted/30'
-                    )}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs font-medium text-foreground truncate">
-                        {t.name}
-                      </span>
-                      {isSelected && <Check className="h-3 w-3 text-primary shrink-0" />}
-                    </div>
-                    {t.preview_colors && (
-                      <div className="flex gap-1 mb-1.5">
-                        {t.preview_colors.map((color, i) => (
-                          <div
-                            key={i}
-                            className="h-3 w-3 rounded-full border border-border/30"
-                            style={{ backgroundColor: color }}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    {t.category && (
-                      <span className="text-[10px] text-muted-foreground">{t.category}</span>
-                    )}
-                  </button>
-                );
-              })}
+              {globalTemplates.map((t) => (
+                <TemplateCard key={t.id} t={t} />
+              ))}
             </div>
             <button
               onClick={() => setShowCustom(true)}
