@@ -11,6 +11,7 @@ interface ChatInputProps {
   isStreaming?: boolean;
   onStop?: () => void;
   onSlashCommand?: (command: string) => void;
+  prefill?: string;
 }
 
 const SLASH_COMMANDS = [
