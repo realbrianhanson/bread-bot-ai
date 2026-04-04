@@ -2,7 +2,7 @@ import { SandpackProvider, SandpackLayout, SandpackPreview, useSandpack } from '
 import { Maximize2, RefreshCw, Loader2, Copy, Download, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 
 interface CodePreviewProps {
@@ -11,26 +11,66 @@ interface CodePreviewProps {
   template?: 'react-ts' | 'vanilla' | 'static';
 }
 
-const PreviewContent = () => {
-  const { sandpack } = useSandpack();
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
-  const isLoading = (sandpack.status === 'initial' || sandpack.status === 'idle') && !loadingTimeout;
+const SandpackWithFallback = ({ files, mainFile, template, buildHTML, onFallback }: {
+  files: Record<string, string>;
+  mainFile: string;
+  template: 'react-ts';
+  buildHTML: () => string;
+  onFallback: () => void;
+}) => {
+  const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoadingTimeout(true), 5000);
+    const timer = setTimeout(() => {
+      setTimedOut(true);
+      onFallback();
+    }, 8000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [onFallback]);
+
+  if (timedOut) return null;
 
   return (
-    <div className="h-full w-full">
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
-          <div className="flex flex-col items-center gap-2">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Initializing preview...</p>
-          </div>
-        </div>
-      )}
+    <SandpackProvider
+      files={files}
+      template={template}
+      style={{ height: '100%' }}
+      theme={{
+        colors: {
+          surface1: '#ffffff', surface2: '#f6f6f6', surface3: '#e4e4e4',
+          clickable: '#999999', base: '#323232', disabled: '#C5C5C5',
+          hover: '#4D4D4D', accent: '#0971f1', error: '#ff453a', errorSurface: '#ffeceb',
+        },
+        syntax: {
+          plain: '#24292e', comment: '#6a737d', keyword: '#d73a49', tag: '#22863a',
+          punctuation: '#24292e', definition: '#6f42c1', property: '#005cc5',
+          static: '#032f62', string: '#032f62',
+        },
+        font: {
+          body: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+          mono: '"Fira Mono", "DejaVu Sans Mono", Menlo, Consolas, monospace',
+          size: '13px', lineHeight: '20px',
+        },
+      }}
+      customSetup={{
+        dependencies: {
+          'react': '^18.2.0',
+          'react-dom': '^18.2.0',
+          'lucide-react': 'latest',
+        }
+      }}
+      options={{
+        externalResources: [
+          'https://cdn.tailwindcss.com',
+          'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
+        ],
+        recompileMode: 'delayed',
+        recompileDelay: 300,
+        autorun: true,
+        autoReload: true,
+        initMode: 'immediate',
+      }}
+    >
       <SandpackLayout style={{ height: '100%', border: 'none' }}>
         <SandpackPreview
           showNavigator={false}
@@ -41,34 +81,19 @@ const PreviewContent = () => {
           style={{ height: '100%', width: '100%', border: 'none' }}
         />
       </SandpackLayout>
-    </div>
+    </SandpackProvider>
   );
 };
 
 const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProps) => {
   const [key, setKey] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [useFallback, setUseFallback] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  console.log('CodePreview rendering:', { 
-    filesCount: Object.keys(files).length, 
-    files: Object.keys(files),
-    mainFile, 
-    template 
-  });
+  const isStatic = template === 'static' || template === 'vanilla';
 
-  const handleRefresh = () => {
-    setKey(prev => prev + 1);
-  };
-
-  const handleFullscreen = () => {
-    const previewFrame = document.querySelector('iframe[title="Sandpack Preview"]');
-    if (previewFrame && previewFrame.requestFullscreen) {
-      previewFrame.requestFullscreen();
-    }
-  };
-
-  const buildCombinedHTML = (): string => {
-    // Extract CSS, JS, and HTML from files
+  const buildCombinedHTML = useCallback((): string => {
     let css = '';
     let js = '';
     let html = '';
@@ -77,7 +102,6 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
       if (path.endsWith('.css')) {
         css += content + '\n';
       } else if (path.endsWith('.js') || path.endsWith('.ts')) {
-        // Skip React entry files — only include vanilla JS
         if (!content.includes('createRoot') && !content.includes('ReactDOM')) {
           js += content + '\n';
         }
@@ -86,14 +110,12 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
       }
     }
 
-    // If we have a main HTML file, extract its body content
     let bodyContent = html;
     const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
     if (bodyMatch) {
       bodyContent = bodyMatch[1].trim();
     }
 
-    // If no HTML body found, try to extract JSX-like content from the main file
     if (!bodyContent && files[mainFile]) {
       const mainContent = files[mainFile];
       const returnMatch = mainContent.match(/return\s*\(\s*([\s\S]*?)\s*\);?\s*}/);
@@ -128,6 +150,18 @@ ${bodyContent}
 ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n  <\/script>` : ''}
 </body>
 </html>`;
+  }, [files, mainFile]);
+
+  const handleRefresh = () => {
+    setKey(prev => prev + 1);
+    setUseFallback(false);
+  };
+
+  const handleFullscreen = () => {
+    const el = iframeRef.current || document.querySelector('iframe[title="Sandpack Preview"]');
+    if (el && el.requestFullscreen) {
+      el.requestFullscreen();
+    }
   };
 
   const handleCopyForGHL = async () => {
@@ -151,7 +185,7 @@ ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n
     toast.success('HTML file downloaded.');
   };
 
-  // Show message if no valid code files
+  // Empty state
   if (Object.keys(files).length === 0 || (Object.keys(files).length === 1 && files[mainFile]?.includes('Start chatting'))) {
     return (
       <div className="absolute inset-0 flex flex-col bg-background">
@@ -170,113 +204,65 @@ ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n
     );
   }
 
-  return (
-    <div className="absolute inset-0 flex flex-col bg-background">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 bg-background/50 shrink-0 z-20">
-        <span className="text-xs font-medium">Live Preview</span>
-        <div className="flex gap-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleCopyForGHL}
-                className="h-6 w-6"
-              >
-                {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="max-w-[220px] text-xs">
-              Copies self-contained HTML ready to paste into GoHighLevel's Custom Code block. Works with any website builder that supports custom HTML.
-            </TooltipContent>
-          </Tooltip>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleDownloadHTML}
-            className="h-6 w-6"
-          >
-            <Download className="h-3 w-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleRefresh}
-            className="h-6 w-6"
-          >
-            <RefreshCw className="h-3 w-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleFullscreen}
-            className="h-6 w-6"
-          >
-            <Maximize2 className="h-3 w-3" />
-          </Button>
+  const Toolbar = () => (
+    <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 bg-background/50 shrink-0 z-20">
+      <span className="text-xs font-medium">Live Preview</span>
+      <div className="flex gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={handleCopyForGHL} className="h-6 w-6">
+              {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-[220px] text-xs">
+            Copies self-contained HTML ready to paste into GoHighLevel's Custom Code block.
+          </TooltipContent>
+        </Tooltip>
+        <Button variant="ghost" size="icon" onClick={handleDownloadHTML} className="h-6 w-6">
+          <Download className="h-3 w-3" />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={handleRefresh} className="h-6 w-6">
+          <RefreshCw className="h-3 w-3" />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={handleFullscreen} className="h-6 w-6">
+          <Maximize2 className="h-3 w-3" />
+        </Button>
+      </div>
+    </div>
+  );
+
+  // Static/vanilla: use iframe srcdoc directly (no Sandpack)
+  if (isStatic || useFallback) {
+    return (
+      <div className="absolute inset-0 flex flex-col bg-background">
+        <Toolbar />
+        <div className="flex-1 relative">
+          <iframe
+            key={key}
+            ref={iframeRef}
+            srcDoc={buildCombinedHTML()}
+            className="w-full h-full border-0"
+            sandbox="allow-scripts allow-same-origin"
+            title="Preview"
+          />
         </div>
       </div>
+    );
+  }
 
-      {/* Sandpack Preview - Full height container */}
+  // React template: try Sandpack with fallback
+  return (
+    <div className="absolute inset-0 flex flex-col bg-background">
+      <Toolbar />
       <div className="flex-1 relative">
-        <SandpackProvider
+        <SandpackWithFallback
           key={key}
           files={files}
-          template={template}
-          style={{ height: '100%' }}
-          theme={{
-            colors: {
-              surface1: '#ffffff',
-              surface2: '#f6f6f6',
-              surface3: '#e4e4e4',
-              clickable: '#999999',
-              base: '#323232',
-              disabled: '#C5C5C5',
-              hover: '#4D4D4D',
-              accent: '#0971f1',
-              error: '#ff453a',
-              errorSurface: '#ffeceb',
-            },
-            syntax: {
-              plain: '#24292e',
-              comment: '#6a737d',
-              keyword: '#d73a49',
-              tag: '#22863a',
-              punctuation: '#24292e',
-              definition: '#6f42c1',
-              property: '#005cc5',
-              static: '#032f62',
-              string: '#032f62',
-            },
-            font: {
-              body: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-              mono: '"Fira Mono", "DejaVu Sans Mono", Menlo, Consolas, "Liberation Mono", Monaco, "Lucida Console", monospace',
-              size: '13px',
-              lineHeight: '20px',
-            },
-          }}
-          customSetup={template === 'react-ts' ? {
-            dependencies: {
-              'react': '^18.2.0',
-              'react-dom': '^18.2.0',
-              'lucide-react': 'latest',
-            }
-          } : undefined}
-          options={{
-            externalResources: [
-              'https://cdn.tailwindcss.com',
-              'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
-            ],
-            recompileMode: 'delayed',
-            recompileDelay: 300,
-            autorun: true,
-            autoReload: true,
-            initMode: 'immediate',
-          }}
-        >
-          <PreviewContent />
-        </SandpackProvider>
+          mainFile={mainFile}
+          template="react-ts"
+          buildHTML={buildCombinedHTML}
+          onFallback={() => setUseFallback(true)}
+        />
       </div>
     </div>
   );
