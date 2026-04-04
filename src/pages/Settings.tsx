@@ -495,6 +495,11 @@ export default function Settings() {
             <WorkflowAgentPanel />
           </TabsContent>
 
+          {/* Memory Tab */}
+          <TabsContent value="memory" className="max-w-2xl">
+            <AgentMemoryPanel />
+          </TabsContent>
+
           {/* Analytics Tab */}
           <TabsContent value="analytics" className="max-w-4xl">
             <AnalyticsDashboard />
