@@ -227,6 +227,13 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
           </div>
         )}
 
+        {/* Inspiration button */}
+        <InspirationPopover
+          disabled={disabled}
+          isLoading={isInspirationLoading}
+          onSubmit={(url, content, ghl) => onInspire?.(url, content, ghl)}
+        />
+
         {/* Attachment button */}
         <button
           onClick={() => fileInputRef.current?.click()}
