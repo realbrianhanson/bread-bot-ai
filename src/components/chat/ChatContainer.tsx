@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
@@ -6,11 +6,14 @@ import TypingIndicator from './TypingIndicator';
 import TaskStatus from './TaskStatus';
 import LiveBrowserView from './LiveBrowserView';
 import OrchestrationProgress from './OrchestrationProgress';
+import FirecrawlResults, { FirecrawlResult } from './FirecrawlResults';
 import { Message } from '@/hooks/useChat';
 import { BrowserTask } from '@/hooks/useBrowserTask';
 import { useOrchestrator } from '@/hooks/useOrchestrator';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { ArrowDown, Sparkles, Terminal, Search } from 'lucide-react';
+import { ArrowDown, Sparkles, Terminal, Search, FileText, Globe, Loader2 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 interface ChatContainerProps {
   messages: Message[];
@@ -56,6 +59,9 @@ const ChatContainer = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const orchestrator = useOrchestrator();
+  const [firecrawlResults, setFirecrawlResults] = useState<FirecrawlResult[]>([]);
+  const [isFirecrawling, setIsFirecrawling] = useState(false);
+  const [firecrawlStatus, setFirecrawlStatus] = useState('');
 
   const scrollToBottom = () => {
     if (scrollRef.current) {
@@ -65,7 +71,7 @@ const ChatContainer = ({
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, currentTask]);
+  }, [messages, currentTask, firecrawlResults]);
 
   const handleScroll = () => {
     if (!scrollRef.current) return;
@@ -73,6 +79,96 @@ const ChatContainer = ({
     const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
     setShowScrollButton(!isNearBottom);
   };
+
+  /* ---- Firecrawl helpers ---- */
+  const handleScrape = useCallback(async (url: string) => {
+    setIsFirecrawling(true);
+    setFirecrawlStatus(`Scraping ${url}…`);
+    try {
+      const { data, error } = await supabase.functions.invoke('firecrawl-scrape', {
+        body: { url, options: { formats: ['markdown'] } },
+      });
+      if (error) throw error;
+
+      const md = data?.data?.markdown || data?.markdown || '';
+      const title = data?.data?.metadata?.title || data?.metadata?.title || '';
+      const wordCount = md ? md.split(/\s+/).length : 0;
+
+      const result: FirecrawlResult = { type: 'scrape', url, title, markdown: md, wordCount };
+      setFirecrawlResults((prev) => [...prev, result]);
+    } catch (err: any) {
+      toast({ title: 'Scrape failed', description: err.message || 'Unknown error', variant: 'destructive' });
+    } finally {
+      setIsFirecrawling(false);
+      setFirecrawlStatus('');
+    }
+  }, []);
+
+  const handleCrawl = useCallback(async (url: string) => {
+    setIsFirecrawling(true);
+    setFirecrawlStatus(`Crawling ${url}…`);
+    try {
+      const { data, error } = await supabase.functions.invoke('firecrawl-crawl', {
+        body: { url },
+      });
+      if (error) throw error;
+
+      const pages = (data?.data || []).map((p: any) => ({
+        url: p.metadata?.sourceURL || p.url || '',
+        title: p.metadata?.title || '',
+      }));
+      const result: FirecrawlResult = { type: 'crawl', url, pages, total: data?.total || pages.length };
+      setFirecrawlResults((prev) => [...prev, result]);
+    } catch (err: any) {
+      toast({ title: 'Crawl failed', description: err.message || 'Unknown error', variant: 'destructive' });
+    } finally {
+      setIsFirecrawling(false);
+      setFirecrawlStatus('');
+    }
+  }, []);
+
+  const handleSearch = useCallback(async (query: string) => {
+    setIsFirecrawling(true);
+    setFirecrawlStatus(`Searching "${query}"…`);
+    try {
+      const { data, error } = await supabase.functions.invoke('firecrawl-search', {
+        body: { query },
+      });
+      if (error) throw error;
+
+      const results = (data?.data || []).map((r: any) => ({
+        url: r.url || '',
+        title: r.title || r.metadata?.title || '',
+        description: r.description || '',
+      }));
+      const result: FirecrawlResult = { type: 'search', query, results };
+      setFirecrawlResults((prev) => [...prev, result]);
+    } catch (err: any) {
+      toast({ title: 'Search failed', description: err.message || 'Unknown error', variant: 'destructive' });
+    } finally {
+      setIsFirecrawling(false);
+      setFirecrawlStatus('');
+    }
+  }, []);
+
+  const handleSendToAI = useCallback((content: string) => {
+    onSendMessage(content);
+  }, [onSendMessage]);
+
+  const handleSaveAsFile = useCallback(async (content: string, title: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-file', {
+        body: { type: 'markdown', content, title, filename: title.replace(/\s+/g, '-').toLowerCase() },
+      });
+      if (error) throw error;
+      if (data?.fileUrl) {
+        window.open(data.fileUrl, '_blank');
+        toast({ title: 'File created', description: data.filename });
+      }
+    } catch (err: any) {
+      toast({ title: 'File generation failed', description: err.message || 'Unknown error', variant: 'destructive' });
+    }
+  }, []);
 
   const handleSendMessage = (content: string) => {
     const trimmedContent = content.trim();
@@ -86,14 +182,29 @@ const ChatContainer = ({
       if (!task) return;
     }
 
+    // Firecrawl commands
+    const scrapeMatch = trimmedContent.match(/^\/scrape\s+(.+)/i);
+    if (scrapeMatch) {
+      handleScrape(scrapeMatch[1].trim());
+      return;
+    }
+    const crawlMatch = trimmedContent.match(/^\/crawl\s+(.+)/i);
+    if (crawlMatch) {
+      handleCrawl(crawlMatch[1].trim());
+      return;
+    }
+    const searchMatch = trimmedContent.match(/^\/search\s+(.+)/i);
+    if (searchMatch) {
+      handleSearch(searchMatch[1].trim());
+      return;
+    }
+
     // Route /research and /deep commands to orchestrator
     const researchMatch = trimmedContent.match(/^\/(research|deep)\s+(.+)/s);
     if (researchMatch) {
       const query = researchMatch[2].trim();
       if (query) {
-        // Add the user message to chat for context
         onSendMessage(content);
-        // Kick off orchestration
         const history = messages.map((m) => ({ role: m.role, content: m.content }));
         orchestrator.orchestrate(query, history);
         return;
@@ -106,6 +217,8 @@ const ChatContainer = ({
   const quickCommands = [
     { label: 'Chat with AI', hint: 'Ask me anything', icon: Sparkles },
     { label: '/browse', hint: 'Automate a website', icon: Terminal },
+    { label: '/scrape', hint: 'Scrape a webpage', icon: FileText },
+    { label: '/search', hint: 'Web search', icon: Search },
     { label: '/research', hint: 'Deep research with AI', icon: Search },
   ];
 
@@ -114,7 +227,7 @@ const ChatContainer = ({
       {/* Messages */}
       <div ref={scrollRef} onScroll={handleScroll} className="flex-1 p-4 overflow-y-auto scroll-smooth">
         <div className="space-y-3.5 max-w-3xl mx-auto pb-4">
-          {messages.length === 0 ? (
+          {messages.length === 0 && firecrawlResults.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -155,6 +268,25 @@ const ChatContainer = ({
                 {isLoading && messages[messages.length - 1]?.role !== 'assistant' && <TypingIndicator />}
               </AnimatePresence>
             </>
+          )}
+
+          {/* Firecrawl results */}
+          {firecrawlResults.map((result, i) => (
+            <FirecrawlResults
+              key={`fc-${i}`}
+              result={result}
+              onSendToAI={handleSendToAI}
+              onScrapeUrl={handleScrape}
+              onSaveAsFile={handleSaveAsFile}
+            />
+          ))}
+
+          {/* Firecrawl loading */}
+          {isFirecrawling && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-3xl mx-auto flex items-center gap-2 px-4 py-3 rounded-xl border border-border/40 bg-card/60">
+              <Loader2 className="h-4 w-4 text-primary animate-spin" />
+              <span className="text-sm text-muted-foreground">{firecrawlStatus}</span>
+            </motion.div>
           )}
 
           {/* Orchestration progress */}
@@ -237,7 +369,7 @@ const ChatContainer = ({
         <div className="max-w-3xl mx-auto">
           <ChatInput
             onSend={handleSendMessage}
-            disabled={isLoading || isExecutingTask}
+            disabled={isLoading || isExecutingTask || isFirecrawling}
             isStreaming={isStreaming}
             onStop={onStopStreaming}
             onSlashCommand={onSlashCommand}
