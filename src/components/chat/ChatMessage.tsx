@@ -152,6 +152,16 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
             </div>
           )}
 
+          {/* Slides generation preview */}
+          {message.metadata?.type === 'slides_generation' && (
+            <SlidePreview
+              title={message.metadata.title || 'Presentation'}
+              numSlides={message.metadata.numSlides}
+              gammaUrl={message.metadata.gammaUrl}
+              status="completed"
+            />
+          )}
+
           {/* Screenshots */}
           {message.metadata?.screenshots && message.metadata.screenshots.length > 0 && (
             <div className="mt-3 grid grid-cols-2 gap-2">
