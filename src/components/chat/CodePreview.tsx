@@ -125,7 +125,7 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
       }
     }
 
-    return `<!DOCTYPE html>
+    const rawHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
