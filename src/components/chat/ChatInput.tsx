@@ -51,6 +51,9 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [selectedDesignId, setSelectedDesignId] = useState<string | null>(null);
   const [customDesignMd, setCustomDesignMd] = useState<string | undefined>();
+  const [selectedPurposeId, setSelectedPurposeId] = useState<string | null>(null);
+  const [marketingMd, setMarketingMd] = useState<string | undefined>();
+  const [marketingCategory, setMarketingCategory] = useState<string | undefined>();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
