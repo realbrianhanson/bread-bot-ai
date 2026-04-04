@@ -27,7 +27,8 @@ import { useConversations } from "@/hooks/useConversations";
 import { useBrowserTask } from "@/hooks/useBrowserTask";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { parseCodeFromMessages } from "@/lib/codeParser";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { hasCodeBlocks } from "@/lib/validateWebsite";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { PlanBadge } from "@/components/ui/plan-badge";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { TaskTemplatesPanel } from "@/components/templates/TaskTemplatesPanel";
@@ -40,6 +41,7 @@ import { WebhookManager } from "@/components/webhooks/WebhookManager";
 import { ResultsDashboard } from "@/components/results/ResultsDashboard";
 import { supabase } from "@/integrations/supabase/client";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Dashboard = () => {
   const { signOut, user } = useAuth();
@@ -56,6 +58,9 @@ const Dashboard = () => {
 
   const [memoryActive, setMemoryActive] = useState(false);
   const [mobileView, setMobileView] = useState<'chat' | 'preview'>('chat');
+  const [queuedPrompt, setQueuedPrompt] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  const lastAutoOpenedPreviewMessageId = useRef<string | null>(null);
 
   useEffect(() => {
     supabase.functions.invoke('honcho-proxy', { body: { action: 'status' } })
@@ -124,7 +129,14 @@ const Dashboard = () => {
 
   const handleNewConversation = async () => {
     const newConv = await createConversation();
-    if (newConv) setActiveConversationId(newConv.id);
+    if (newConv) {
+      setQueuedPrompt(null);
+      setActiveConversationId(newConv.id);
+      setMobileView('chat');
+      if (isMobile) {
+        setSidebarCollapsed(true);
+      }
+    }
   };
 
   const quickStartExamples = [
@@ -137,7 +149,11 @@ const Dashboard = () => {
     const newConv = await createConversation();
     if (newConv) {
       setActiveConversationId(newConv.id);
-      setTimeout(() => sendMessage(prompt), 300);
+      setQueuedPrompt(prompt);
+      setMobileView('chat');
+      if (isMobile) {
+        setSidebarCollapsed(true);
+      }
     }
   };
 
@@ -158,6 +174,37 @@ const Dashboard = () => {
     const keys = Object.keys(parsedCode.files);
     return keys.length > 0 && !(keys.length === 1 && parsedCode.files[parsedCode.mainFile]?.includes('Start chatting'));
   }, [parsedCode]);
+
+  const latestGeneratedMessageId = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const message = messages[i];
+      if (message.role === 'assistant' && hasCodeBlocks(message.content)) {
+        return message.id;
+      }
+    }
+
+    return null;
+  }, [messages]);
+
+  useEffect(() => {
+    if (!queuedPrompt || !activeConversationId) return;
+
+    sendMessage(queuedPrompt);
+    setQueuedPrompt(null);
+  }, [queuedPrompt, activeConversationId, sendMessage]);
+
+  useEffect(() => {
+    if (!hasPreviewContent) {
+      setMobileView('chat');
+      return;
+    }
+
+    if (!isMobile || !latestGeneratedMessageId) return;
+    if (lastAutoOpenedPreviewMessageId.current === latestGeneratedMessageId) return;
+
+    setMobileView('preview');
+    lastAutoOpenedPreviewMessageId.current = latestGeneratedMessageId;
+  }, [hasPreviewContent, isMobile, latestGeneratedMessageId]);
 
   if (!user) return null;
 
