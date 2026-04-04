@@ -55,6 +55,7 @@ const ChatContainer = ({
 }: ChatContainerProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const orchestrator = useOrchestrator();
 
   const scrollToBottom = () => {
     if (scrollRef.current) {
