@@ -1,6 +1,7 @@
 import { useState, KeyboardEvent, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Send, Square, Zap, ToggleLeft, ToggleRight, Paperclip } from 'lucide-react';
+import { StylePicker } from '@/components/chat/StylePicker';
 import { cn } from '@/lib/utils';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { VoiceInputButton } from '@/components/chat/VoiceInputButton';
@@ -12,7 +13,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ACCEPTED_TYPES = '.csv,.json,.txt,.pdf,.xlsx,.xls,.png,.jpg,.jpeg,.md';
 
 interface ChatInputProps {
-  onSend: (content: string, options?: { ghlMode?: boolean; files?: File[] }) => void;
+  onSend: (content: string, options?: { ghlMode?: boolean; files?: File[]; designTemplateId?: string | null; customDesignMd?: string }) => void;
   disabled?: boolean;
   isStreaming?: boolean;
   onStop?: () => void;
@@ -47,6 +48,8 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
   const [selectedSlashIndex, setSelectedSlashIndex] = useState(0);
   const [ghlMode, setGhlMode] = useState(() => localStorage.getItem('ghl-mode') === 'true');
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [selectedDesignId, setSelectedDesignId] = useState<string | null>(null);
+  const [customDesignMd, setCustomDesignMd] = useState<string | undefined>();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -123,7 +126,12 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
 
   const handleSend = () => {
     if ((input.trim() || attachedFiles.length > 0) && !disabled) {
-      onSend(input.trim(), { ghlMode, files: attachedFiles.length > 0 ? attachedFiles : undefined });
+      onSend(input.trim(), {
+        ghlMode,
+        files: attachedFiles.length > 0 ? attachedFiles : undefined,
+        designTemplateId: selectedDesignId,
+        customDesignMd: selectedDesignId === 'custom' ? customDesignMd : undefined,
+      });
       setInput('');
       setAttachedFiles([]);
     }
@@ -232,6 +240,16 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
           disabled={disabled}
           isLoading={isInspirationLoading}
           onSubmit={(url, content, ghl) => onInspire?.(url, content, ghl)}
+        />
+
+        {/* Style picker */}
+        <StylePicker
+          selectedId={selectedDesignId}
+          onSelect={(id, md) => {
+            setSelectedDesignId(id);
+            if (md) setCustomDesignMd(md);
+          }}
+          disabled={disabled}
         />
 
         {/* Attachment button */}

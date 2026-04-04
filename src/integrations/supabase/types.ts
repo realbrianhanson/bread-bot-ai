@@ -77,6 +77,45 @@ export type Database = {
         }
         Relationships: []
       }
+      design_templates: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          design_md: string
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          name: string
+          preview_colors: string[] | null
+          user_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          design_md: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name: string
+          preview_colors?: string[] | null
+          user_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          design_md?: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name?: string
+          preview_colors?: string[] | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
