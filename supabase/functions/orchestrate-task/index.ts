@@ -558,6 +558,21 @@ serve(async (req) => {
       });
     }
 
+    // --- Fetch Honcho memory context ---
+    let honchoContext = '';
+    try {
+      honchoContext = await getHonchoContext(user.id);
+      if (honchoContext) {
+        console.log('[ORCHESTRATE] Honcho context loaded:', honchoContext.slice(0, 100));
+      }
+    } catch (err) {
+      console.error('[ORCHESTRATE] Honcho context error (proceeding without):', err);
+    }
+
+    const enrichedSystemPrompt = honchoContext
+      ? SYSTEM_PROMPT + `\n\nUSER CONTEXT (personalization from memory):\nUse this context to personalize your approach. If the user works in a specific industry, frame research in that context. If they have preferences for output format, follow them.\n${honchoContext}`
+      : SYSTEM_PROMPT;
+
     // --- Orchestration loop ---
     const messages: any[] = [];
 
@@ -587,9 +602,10 @@ serve(async (req) => {
         body: JSON.stringify({
           model: 'claude-opus-4-6',
           max_tokens: 8192,
-          system: SYSTEM_PROMPT,
+          system: enrichedSystemPrompt,
           tools: toolDefinitions,
           messages,
+        }),
         }),
       });
 
