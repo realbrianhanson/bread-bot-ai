@@ -1,6 +1,6 @@
 import { Message } from '@/hooks/useChat';
 import { Button } from '@/components/ui/button';
-import { Copy, Check, Bot, User } from 'lucide-react';
+import { Copy, Check, Bot, User, CheckCircle2, Sparkles, AlertTriangle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -8,6 +8,7 @@ import remarkGfm from 'remark-gfm';
 import { useState, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 import CodeExecutionResult from './CodeExecutionResult';
 import SandboxComputerView from './SandboxComputerView';
 import FileAttachment from './FileAttachment';
