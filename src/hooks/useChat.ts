@@ -111,6 +111,9 @@ async function buildFileContext(files: File[], userId: string, conversationId: s
       const text = await readFileAsText(file);
       parts.push(`The user has uploaded a file called ${file.name} (${file.type || 'text'}, ${sizeStr}). Here is the content:\n\n${text.slice(0, 10000)}`);
       preview = text.slice(0, 200);
+    } else if (file.type.startsWith('image/') || /\.(png|jpe?g|webp|svg|gif)$/i.test(file.name)) {
+      parts.push(`The user has uploaded an image called ${file.name} (${file.type}, ${sizeStr}).\n\nIMAGE URL FOR USE IN GENERATED CODE: ${url}\n\nWhen generating HTML, use this exact URL in <img> tags wherever this image should appear. Example: <img src="${url}" alt="${file.name}" class="..." />`);
+      preview = url;
     } else {
       parts.push(`The user has uploaded a file called ${file.name} (${file.type}, ${sizeStr}). The file is available at ${url}`);
     }
