@@ -105,6 +105,17 @@ export default function Settings() {
           });
       }
 
+      if (apiKeys.e2b) {
+        await supabase
+          .from('api_keys')
+          .upsert({
+            user_id: user.id,
+            provider: 'e2b',
+            encrypted_key: apiKeys.e2b,
+            is_active: true,
+          });
+      }
+
       toast.success('API keys saved successfully');
     } catch (error) {
       toast.error('Failed to save API keys');
