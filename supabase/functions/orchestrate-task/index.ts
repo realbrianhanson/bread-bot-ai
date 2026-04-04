@@ -822,6 +822,11 @@ serve(async (req) => {
     const MAX_ITERATIONS = 10;
     let finalResult = '';
 
+    // Initial progress update
+    await supabaseClient.from('tasks').update({
+      output_data: { current_step: 'Planning approach...', tools_completed: 0, execution_log: [] },
+    }).eq('id', taskRecord.id);
+
     for (let i = 0; i < MAX_ITERATIONS; i++) {
       console.log(`[ORCHESTRATE] Iteration ${i + 1}`);
 
