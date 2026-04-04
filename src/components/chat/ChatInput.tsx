@@ -2,6 +2,7 @@ import { useState, KeyboardEvent, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Send, Square, Zap, ToggleLeft, ToggleRight, Paperclip } from 'lucide-react';
 import { StylePicker } from '@/components/chat/StylePicker';
+import { PurposePicker } from '@/components/chat/PurposePicker';
 import { cn } from '@/lib/utils';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { VoiceInputButton } from '@/components/chat/VoiceInputButton';
