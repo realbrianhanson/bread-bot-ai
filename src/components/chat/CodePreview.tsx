@@ -1,10 +1,10 @@
 import { SandpackProvider, SandpackLayout, SandpackPreview } from '@codesandbox/sandpack-react';
-import { Maximize2, RefreshCw, Copy, Download, Check, AlertTriangle } from 'lucide-react';
+import { Maximize2, RefreshCw, Copy, Download, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
-import { fixContrastIssues, auditContrast } from '@/lib/contrastFixer';
+import { fixContrastIssues } from '@/lib/contrastFixer';
 
 interface CodePreviewProps {
   files: Record<string, string>;
