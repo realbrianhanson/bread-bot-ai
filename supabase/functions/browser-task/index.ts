@@ -125,7 +125,7 @@ serve(async (req) => {
         project_id: projectId,
         task_type: 'browser_automation',
         status: 'pending',
-        input_data: { task },
+        input_data: { task, ...(outputSchema ? { output_schema: outputSchema } : {}) },
       })
       .select()
       .single();
