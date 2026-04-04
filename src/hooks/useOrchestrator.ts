@@ -32,6 +32,7 @@ export const useOrchestrator = () => {
   const [currentStep, setCurrentStep] = useState('');
   const [toolChain, setToolChain] = useState<ToolStep[]>([]);
   const [finalResult, setFinalResult] = useState('');
+  const [generatedFiles, setGeneratedFiles] = useState<GeneratedFile[]>([]);
   const [error, setError] = useState('');
   const [isOrchestrating, setIsOrchestrating] = useState(false);
 
