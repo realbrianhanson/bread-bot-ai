@@ -218,6 +218,24 @@ const OrchestrationProgress = ({
                           {step.status === 'failed' && step.result && (
                             <p className="text-xs text-destructive/80 mt-0.5 ml-5">{step.result}</p>
                           )}
+
+                          {/* Show SandboxComputerView for execute_code steps */}
+                          {step.tool === 'execute_code' && (step.status === 'running' || step.status === 'completed' || step.status === 'failed') && (step as any).metadata?.code && (
+                            <div className="mt-2 ml-0">
+                              <SandboxComputerView
+                                code={(step as any).metadata.code}
+                                language={(step as any).metadata.language || 'python'}
+                                status={step.status === 'running' ? 'running' : step.status === 'completed' ? 'completed' : 'failed'}
+                                output={{
+                                  stdout: (step as any).metadata?.stdout || '',
+                                  stderr: (step as any).metadata?.stderr || '',
+                                  result: (step as any).metadata?.result || '',
+                                }}
+                                executionTime={(step as any).metadata?.executionTime}
+                                files={(step as any).metadata?.files}
+                              />
+                            </div>
+                          )}
                         </div>
                       </motion.div>
                     );
