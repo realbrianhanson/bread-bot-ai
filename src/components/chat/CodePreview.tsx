@@ -262,6 +262,7 @@ ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n
             title="Preview"
           />
         </div>
+        <SaveTemplateDialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate} files={files} />
       </div>
     );
   }
