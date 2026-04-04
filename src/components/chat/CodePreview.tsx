@@ -154,7 +154,10 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
             }
           } : undefined}
           options={{
-            externalResources: [],
+            externalResources: [
+              'https://cdn.tailwindcss.com',
+              'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
+            ],
             recompileMode: 'delayed',
             recompileDelay: 300,
             autorun: true,
