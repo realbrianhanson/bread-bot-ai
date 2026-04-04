@@ -81,11 +81,11 @@ async function buildFileContext(files: File[], userId: string, conversationId: s
       continue;
     }
 
-    const { data: urlData } = await supabase.storage
+    const { data: urlData } = supabase.storage
       .from('chat-uploads')
-      .createSignedUrl(storagePath, 60 * 60 * 24);
+      .getPublicUrl(storagePath);
 
-    const url = urlData?.signedUrl || '';
+    const url = urlData?.publicUrl || '';
     const sizeStr = formatSize(file.size);
     let preview: string | undefined;
 
