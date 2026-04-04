@@ -164,6 +164,14 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
             />
           )}
 
+          {/* CRO Audit results */}
+          {message.metadata?.type === 'cro_audit' && (
+            <AuditResults
+              content={message.content}
+              url={message.metadata.auditUrl || ''}
+            />
+          )}
+
           {/* Screenshots */}
           {message.metadata?.screenshots && message.metadata.screenshots.length > 0 && (
             <div className="mt-3 grid grid-cols-2 gap-2">
