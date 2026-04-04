@@ -343,6 +343,7 @@ export type Database = {
         Row: {
           browser_tasks_per_month: number
           chat_messages_per_month: number
+          code_executions_per_month: number
           features: Json | null
           price_monthly_cents: number
           stripe_price_id: string | null
@@ -351,6 +352,7 @@ export type Database = {
         Insert: {
           browser_tasks_per_month: number
           chat_messages_per_month: number
+          code_executions_per_month?: number
           features?: Json | null
           price_monthly_cents: number
           stripe_price_id?: string | null
@@ -359,6 +361,7 @@ export type Database = {
         Update: {
           browser_tasks_per_month?: number
           chat_messages_per_month?: number
+          code_executions_per_month?: number
           features?: Json | null
           price_monthly_cents?: number
           stripe_price_id?: string | null
