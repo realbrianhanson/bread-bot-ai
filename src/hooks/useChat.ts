@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
+import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 
 export interface Message {
   id: string;
@@ -10,6 +12,113 @@ export interface Message {
   content: string;
   metadata?: any;
   created_at: string;
+}
+
+const TEXT_TYPES = ['text/csv', 'application/json', 'text/plain', 'text/markdown'];
+
+async function readFileAsText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+async function parseCSVPreview(file: File): Promise<{ preview: string; totalRows: number; totalColumns: number }> {
+  const text = await readFileAsText(file);
+  const result = Papa.parse(text, { header: true, skipEmptyLines: true });
+  const rows = result.data as Record<string, unknown>[];
+  const columns = result.meta.fields || [];
+  const previewRows = rows.slice(0, 20);
+  const header = columns.join(' | ');
+  const separator = columns.map(() => '---').join(' | ');
+  const body = previewRows.map((r) => columns.map((c) => String(r[c] ?? '')).join(' | ')).join('\n');
+  return {
+    preview: `${header}\n${separator}\n${body}`,
+    totalRows: rows.length,
+    totalColumns: columns.length,
+  };
+}
+
+async function parseXLSXPreview(file: File): Promise<{ preview: string; totalRows: number; totalColumns: number }> {
+  const buffer = await file.arrayBuffer();
+  const wb = XLSX.read(buffer, { type: 'array' });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const data = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1 }) as string[][];
+  if (data.length === 0) return { preview: '(empty spreadsheet)', totalRows: 0, totalColumns: 0 };
+  const columns = data[0].map(String);
+  const rows = data.slice(1);
+  const previewRows = rows.slice(0, 20);
+  const header = columns.join(' | ');
+  const separator = columns.map(() => '---').join(' | ');
+  const body = previewRows.map((r) => columns.map((_, i) => String(r[i] ?? '')).join(' | ')).join('\n');
+  return {
+    preview: `${header}\n${separator}\n${body}`,
+    totalRows: rows.length,
+    totalColumns: columns.length,
+  };
+}
+
+async function buildFileContext(files: File[], userId: string, conversationId: string): Promise<{ context: string; uploadedFiles: Array<{ name: string; size: number; type: string; url: string; preview?: string }> }> {
+  const parts: string[] = [];
+  const uploadedFiles: Array<{ name: string; size: number; type: string; url: string; preview?: string }> = [];
+
+  for (const file of files) {
+    const storagePath = `${userId}/${conversationId}/${file.name}`;
+    const { error: uploadError } = await supabase.storage
+      .from('chat-uploads')
+      .upload(storagePath, file, { upsert: true });
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      continue;
+    }
+
+    const { data: urlData } = await supabase.storage
+      .from('chat-uploads')
+      .createSignedUrl(storagePath, 60 * 60 * 24);
+
+    const url = urlData?.signedUrl || '';
+    const sizeStr = formatSize(file.size);
+    let preview: string | undefined;
+
+    if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
+      try {
+        const csv = await parseCSVPreview(file);
+        parts.push(`The user has uploaded a file called ${file.name} (CSV, ${sizeStr}). Here are the first 20 rows of the data:\n\n${csv.preview}\n\nThe full file has ${csv.totalRows} rows and ${csv.totalColumns} columns. The full file is available at ${url}`);
+        preview = csv.preview;
+      } catch {
+        const text = await readFileAsText(file);
+        parts.push(`The user has uploaded a file called ${file.name} (CSV, ${sizeStr}). Here is the content:\n\n${text.slice(0, 5000)}`);
+        preview = text.slice(0, 200);
+      }
+    } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+      try {
+        const xlsx = await parseXLSXPreview(file);
+        parts.push(`The user has uploaded a file called ${file.name} (XLSX, ${sizeStr}). Here are the first 20 rows of the data:\n\n${xlsx.preview}\n\nThe full file has ${xlsx.totalRows} rows and ${xlsx.totalColumns} columns. The full file is available at ${url}`);
+        preview = xlsx.preview;
+      } catch {
+        parts.push(`The user has uploaded a file called ${file.name} (XLSX, ${sizeStr}). The file is available at ${url}`);
+      }
+    } else if (TEXT_TYPES.includes(file.type) || file.name.endsWith('.md') || file.name.endsWith('.json') || file.name.endsWith('.txt')) {
+      const text = await readFileAsText(file);
+      parts.push(`The user has uploaded a file called ${file.name} (${file.type || 'text'}, ${sizeStr}). Here is the content:\n\n${text.slice(0, 10000)}`);
+      preview = text.slice(0, 200);
+    } else {
+      parts.push(`The user has uploaded a file called ${file.name} (${file.type}, ${sizeStr}). The file is available at ${url}`);
+    }
+
+    uploadedFiles.push({ name: file.name, size: file.size, type: file.type, url, preview });
+  }
+
+  return { context: parts.join('\n\n---\n\n'), uploadedFiles };
 }
 
 export const useChat = (projectId?: string) => {
@@ -65,7 +174,6 @@ export const useChat = (projectId?: string) => {
         },
         (payload) => {
           const msg = payload.new as Message;
-          // Guard: ignore messages from other users
           if (payload.eventType !== 'DELETE' && (payload.new as any).user_id !== user.id) return;
 
           if (payload.eventType === 'INSERT') {
@@ -96,7 +204,6 @@ export const useChat = (projectId?: string) => {
     async (code: string, userContent: string) => {
       if (!user) return;
 
-      // Save user message
       await supabase.from('messages').insert({
         user_id: user.id,
         project_id: projectId,
@@ -170,10 +277,9 @@ export const useChat = (projectId?: string) => {
   );
 
   const sendMessage = useCallback(
-    async (content: string, options?: { ghlMode?: boolean }) => {
-      if (!user || !content.trim()) return;
+    async (content: string, options?: { ghlMode?: boolean; files?: File[] }) => {
+      if (!user || (!content.trim() && !(options?.files?.length))) return;
 
-      // Check if user can send message
       if (!canSendMessage()) {
         return;
       }
@@ -209,6 +315,21 @@ export const useChat = (projectId?: string) => {
       setIsStreaming(true);
 
       try {
+        // Process file attachments
+        let fileContext = '';
+        let fileMetadata: any[] | undefined;
+        if (options?.files && options.files.length > 0) {
+          const { context, uploadedFiles } = await buildFileContext(
+            options.files,
+            user.id,
+            projectId || 'general'
+          );
+          fileContext = context;
+          fileMetadata = uploadedFiles;
+        }
+
+        const displayContent = content.trim() || (fileMetadata ? `Uploaded ${fileMetadata.length} file(s)` : '');
+
         // Save user message
         const { data: userMessage, error: userMessageError } = await supabase
           .from('messages')
@@ -216,7 +337,8 @@ export const useChat = (projectId?: string) => {
             user_id: user.id,
             project_id: projectId,
             role: 'user',
-            content: content.trim(),
+            content: displayContent,
+            metadata: fileMetadata ? { files: fileMetadata } : undefined,
           })
           .select()
           .single();
@@ -226,17 +348,20 @@ export const useChat = (projectId?: string) => {
           throw new Error('Failed to save message');
         }
 
-        // Get current session for authorization
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           throw new Error('No active session');
         }
 
-        // Call edge function for streaming response
         abortControllerRef.current = new AbortController();
-        
+
+        // Build the enriched content for the API
+        const enrichedContent = fileContext
+          ? `${fileContext}\n\nUser's message: ${content.trim()}`
+          : content.trim();
+
         const messagesForAPI = messagesRef.current
-          .concat([userMessage as Message])
+          .concat([{ ...(userMessage as Message), content: enrichedContent }])
           .map((msg) => ({
             role: msg.role,
             content: msg.content,
@@ -260,7 +385,6 @@ export const useChat = (projectId?: string) => {
           throw new Error(errorData.error || 'Failed to get response');
         }
 
-        // Handle streaming response
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
         let assistantContent = '';
@@ -277,17 +401,16 @@ export const useChat = (projectId?: string) => {
             for (const line of lines) {
               if (line.startsWith('data: ')) {
                 const data = line.slice(6);
-                
+
                 if (data === '[DONE]') continue;
 
                 try {
                   const parsed = JSON.parse(data);
-                  
+
                   if (parsed.type === 'content_block_delta') {
                     const delta = parsed.delta?.text || '';
                     assistantContent += delta;
 
-                    // Update local state only for smooth streaming UI
                     setMessages((prev) => {
                       const existing = prev.find((m) => m.id === tempId);
                       if (existing) {
@@ -303,7 +426,6 @@ export const useChat = (projectId?: string) => {
             }
           }
 
-          // Write to database ONCE after stream completes
           if (assistantContent) {
             const { data: savedMessage } = await supabase
               .from('messages')
@@ -316,7 +438,6 @@ export const useChat = (projectId?: string) => {
               .select()
               .single();
 
-            // Replace temp message with real DB message
             if (savedMessage) {
               setMessages((prev) =>
                 prev.map((m) => m.id === tempId ? { ...savedMessage as Message } : m)
@@ -339,7 +460,6 @@ export const useChat = (projectId?: string) => {
         setIsLoading(false);
         setIsStreaming(false);
         abortControllerRef.current = null;
-        // Refresh subscription to update usage
         refreshSubscription();
       }
     },
