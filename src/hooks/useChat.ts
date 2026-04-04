@@ -545,7 +545,7 @@ export const useChat = (projectId?: string) => {
         refreshSubscription();
       }
     },
-    [user, projectId, canSendMessage, refreshSubscription, executeCode]
+    [user, projectId, canSendMessage, refreshSubscription, executeCode, sendInspirationMessage]
   );
 
   const stopStreaming = useCallback(() => {
