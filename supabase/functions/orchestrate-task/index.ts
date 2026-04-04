@@ -305,6 +305,7 @@ async function executeTool(
   supabaseUrl: string,
   authToken: string,
   anthropicApiKey: string,
+  userId?: string,
 ): Promise<string> {
   console.log(`[ORCHESTRATE] Executing tool: ${toolName}`, JSON.stringify(toolInput).slice(0, 200));
 
