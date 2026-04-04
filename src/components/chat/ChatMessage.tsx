@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import CodeExecutionResult from './CodeExecutionResult';
 import SandboxComputerView from './SandboxComputerView';
 import FileAttachment from './FileAttachment';
+import SlidePreview from './SlidePreview';
 
 const MermaidDiagram = lazy(() => import('./MermaidDiagram'));
 
