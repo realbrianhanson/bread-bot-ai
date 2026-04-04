@@ -822,6 +822,11 @@ serve(async (req) => {
     const MAX_ITERATIONS = 10;
     let finalResult = '';
 
+    // Initial progress update
+    await supabaseClient.from('tasks').update({
+      output_data: { current_step: 'Planning approach...', tools_completed: 0, execution_log: [] },
+    }).eq('id', taskRecord.id);
+
     for (let i = 0; i < MAX_ITERATIONS; i++) {
       console.log(`[ORCHESTRATE] Iteration ${i + 1}`);
 
@@ -894,12 +899,31 @@ serve(async (req) => {
           timestamp: new Date().toISOString(),
         });
 
+        // Update task with progress
+        await supabaseClient.from('tasks').update({
+          output_data: {
+            execution_log: executionLog,
+            current_step: `Completed ${block.name}`,
+            tools_completed: executionLog.length,
+            status_message: `Step ${executionLog.length}: ${block.name} completed`,
+          },
+        }).eq('id', taskRecord.id);
+
         toolResults.push({
           type: 'tool_result',
           tool_use_id: block.id,
           content: toolResult,
         });
       }
+
+      // Update progress: synthesizing if this is the last iteration
+      await supabaseClient.from('tasks').update({
+        output_data: {
+          execution_log: executionLog,
+          current_step: 'Synthesizing results...',
+          tools_completed: executionLog.length,
+        },
+      }).eq('id', taskRecord.id);
 
       // Feed tool results back to Claude
       messages.push({ role: 'user', content: toolResults });

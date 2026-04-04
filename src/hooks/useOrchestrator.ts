@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { GeneratedFile } from '@/components/chat/OrchestrationProgress';
 import { toast } from '@/hooks/use-toast';
@@ -17,6 +17,7 @@ export interface ToolStep {
   label: string;
   result?: string;
   duration?: number;
+  metadata?: any;
 }
 
 const TOOL_LABELS: Record<string, string> = {
@@ -26,6 +27,15 @@ const TOOL_LABELS: Record<string, string> = {
   browse_web: 'Running browser automation',
   synthesize: 'Synthesizing results',
   generate_file: 'Generating file',
+  execute_code: 'Running code',
+  generate_slides: 'Creating presentation',
+  create_google_doc: 'Creating Google Doc',
+  create_google_sheet: 'Creating spreadsheet',
+  send_email: 'Sending email',
+  download_file: 'Downloading file',
+  knowledge_search: 'Searching knowledge base',
+  knowledge_store: 'Saving to knowledge base',
+  recall_user_context: 'Recalling context',
 };
 
 export const useOrchestrator = () => {
@@ -36,6 +46,50 @@ export const useOrchestrator = () => {
   const [generatedFiles, setGeneratedFiles] = useState<GeneratedFile[]>([]);
   const [error, setError] = useState('');
   const [isOrchestrating, setIsOrchestrating] = useState(false);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  const cleanupChannel = useCallback(() => {
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+  }, []);
+
+  const subscribeToTask = useCallback((taskId: string) => {
+    cleanupChannel();
+    const channel = supabase
+      .channel(`task-progress-${taskId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'tasks',
+        filter: `id=eq.${taskId}`,
+      }, (payload) => {
+        const outputData = payload.new?.output_data as any;
+        if (!outputData) return;
+
+        if (outputData.current_step) {
+          setCurrentStep(outputData.current_step);
+          if (outputData.current_step.includes('Synthesizing')) {
+            setStatus('synthesizing');
+          }
+        }
+
+        const log: any[] = outputData.execution_log || [];
+        if (log.length > 0) {
+          const steps: ToolStep[] = log.map((entry: any) => ({
+            tool: entry.tool,
+            status: 'completed' as const,
+            label: TOOL_LABELS[entry.tool] || entry.tool,
+            result: entry.output_preview,
+          }));
+          setToolChain(steps);
+        }
+      })
+      .subscribe();
+
+    channelRef.current = channel;
+  }, [cleanupChannel]);
 
   const orchestrate = useCallback(async (message: string, conversationHistory?: { role: string; content: string }[]) => {
     setStatus('planning');
@@ -45,22 +99,63 @@ export const useOrchestrator = () => {
     setGeneratedFiles([]);
     setError('');
     setIsOrchestrating(true);
+    cleanupChannel();
 
     try {
-      setStatus('executing');
-      setCurrentStep('Orchestrating tools…');
+      // First, create the task record ourselves to get the ID early
+      // so we can subscribe before the long-running function starts
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
 
+      setStatus('executing');
+      setCurrentStep('Starting orchestration…');
+
+      // Subscribe to ALL task updates for this user to catch the new task
+      // We'll refine to the specific task once we get the ID back
+      const tempChannel = supabase
+        .channel('task-progress-temp')
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'tasks',
+          filter: `user_id=eq.${user.id}`,
+        }, (payload) => {
+          const row = payload.new as any;
+          if (row.task_type !== 'orchestrated' || row.status === 'completed') return;
+          const outputData = row.output_data;
+          if (!outputData) return;
+
+          if (outputData.current_step) {
+            setCurrentStep(outputData.current_step);
+            if (outputData.current_step.includes('Synthesizing')) {
+              setStatus('synthesizing');
+            }
+          }
+
+          const log: any[] = outputData.execution_log || [];
+          if (log.length > 0) {
+            const steps: ToolStep[] = log.map((entry: any) => ({
+              tool: entry.tool,
+              status: 'completed' as const,
+              label: TOOL_LABELS[entry.tool] || entry.tool,
+              result: entry.output_preview,
+            }));
+            setToolChain(steps);
+          }
+        })
+        .subscribe();
+
+      channelRef.current = tempChannel;
+
+      // Now invoke the long-running function
       const { data, error: fnError } = await supabase.functions.invoke('orchestrate-task', {
         body: { message, conversationHistory },
       });
 
       if (fnError) throw fnError;
+      if (data?.error) throw new Error(data.error);
 
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-
-      // Build tool chain from execution log
+      // Function returned — set final state from the response
       const log: any[] = data?.executionLog || [];
       const steps: ToolStep[] = log.map((entry: any) => ({
         tool: entry.tool,
@@ -68,10 +163,8 @@ export const useOrchestrator = () => {
         label: TOOL_LABELS[entry.tool] || entry.tool,
         result: entry.output_preview,
       }));
-
       setToolChain(steps);
 
-      // Extract generated files from execution log
       const files: GeneratedFile[] = [];
       for (const entry of log) {
         if (entry.tool === 'generate_file' && entry.output_preview) {
@@ -80,7 +173,7 @@ export const useOrchestrator = () => {
             if (parsed.success && parsed.fileUrl) {
               files.push({ fileUrl: parsed.fileUrl, filename: parsed.filename || 'file', size: parsed.size, type: parsed.type });
             }
-          } catch { /* ignore parse errors */ }
+          } catch { /* ignore */ }
         }
       }
       setGeneratedFiles(files);
@@ -88,6 +181,7 @@ export const useOrchestrator = () => {
       setFinalResult(data?.result || 'No result returned.');
       setStatus('completed');
       setCurrentStep('Done');
+      cleanupChannel();
     } catch (err: any) {
       console.error('[useOrchestrator] Error:', err);
       const msg = err?.message || 'Orchestration failed';
@@ -95,12 +189,14 @@ export const useOrchestrator = () => {
       setStatus('failed');
       setCurrentStep('Failed');
       toast({ title: 'Orchestration Error', description: msg, variant: 'destructive' });
+      cleanupChannel();
     } finally {
       setIsOrchestrating(false);
     }
-  }, []);
+  }, [cleanupChannel, subscribeToTask]);
 
   const reset = useCallback(() => {
+    cleanupChannel();
     setStatus('idle');
     setCurrentStep('');
     setToolChain([]);
@@ -108,7 +204,7 @@ export const useOrchestrator = () => {
     setGeneratedFiles([]);
     setError('');
     setIsOrchestrating(false);
-  }, []);
+  }, [cleanupChannel]);
 
   return {
     orchestrate,
