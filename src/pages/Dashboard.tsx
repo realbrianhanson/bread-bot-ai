@@ -38,6 +38,8 @@ import { TaskPlanViewer } from "@/components/workflow/TaskPlanViewer";
 import { useTaskPlanner } from "@/hooks/useTaskPlanner";
 import { WebhookManager } from "@/components/webhooks/WebhookManager";
 import { ResultsDashboard } from "@/components/results/ResultsDashboard";
+import { supabase } from "@/integrations/supabase/client";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const Dashboard = () => {
   const { signOut, user } = useAuth();
