@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { VoiceInputButton } from '@/components/chat/VoiceInputButton';
 import { FileChip } from '@/components/chat/FileAttachment';
+import InspirationPopover from '@/components/chat/InspirationPopover';
 
 const MAX_FILES = 5;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
