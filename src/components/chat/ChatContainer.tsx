@@ -106,6 +106,7 @@ const ChatContainer = ({
   const quickCommands = [
     { label: 'Chat with AI', hint: 'Ask me anything', icon: Sparkles },
     { label: '/browse', hint: 'Automate a website', icon: Terminal },
+    { label: '/research', hint: 'Deep research with AI', icon: Search },
   ];
 
   return (
