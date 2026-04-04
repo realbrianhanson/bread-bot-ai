@@ -46,6 +46,7 @@ serve(async (req) => {
     const redirectUri = `${supabaseUrl}/functions/v1/google-oauth/callback`;
     const scopes = [
       'https://www.googleapis.com/auth/documents',
+      'https://www.googleapis.com/auth/spreadsheets',
       'https://www.googleapis.com/auth/drive.file',
       'https://www.googleapis.com/auth/userinfo.email',
     ].join(' ');
