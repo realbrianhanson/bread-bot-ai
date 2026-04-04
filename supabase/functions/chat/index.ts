@@ -1,11 +1,80 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.84.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
+
+const HONCHO_API_BASE = 'https://api.honcho.dev/v1';
+
+async function getHonchoContext(userId: string): Promise<string> {
+  const apiKey = Deno.env.get('HONCHO_API_KEY');
+  const workspaceId = Deno.env.get('HONCHO_WORKSPACE_ID');
+  if (!apiKey || !workspaceId) return '';
+
+  const headers = { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
+
+  try {
+    await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ configuration: { observe_me: true } }),
+    });
+
+    await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/assistant`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ configuration: { observe_me: false } }),
+    });
+
+    const sessionRes = await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ metadata: { source: 'chat' } }),
+    });
+    const session = await sessionRes.json();
+
+    const contextRes = await fetch(
+      `${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions/${session.id}/context`,
+      { method: 'POST', headers, body: JSON.stringify({ max_tokens: 2000 }) },
+    );
+    const contextData = await contextRes.json();
+    return contextData?.context || contextData?.content || '';
+  } catch (err) {
+    console.error('[CHAT] Honcho context error:', err);
+    return '';
+  }
+}
+
+async function storeHonchoMessages(userId: string, userMessage: string, assistantMessage: string): Promise<void> {
+  const apiKey = Deno.env.get('HONCHO_API_KEY');
+  const workspaceId = Deno.env.get('HONCHO_WORKSPACE_ID');
+  if (!apiKey || !workspaceId) return;
+
+  const headers = { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
+
+  try {
+    const sessionRes = await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ metadata: { source: 'chat_store' } }),
+    });
+    const session = await sessionRes.json();
+
+    await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions/${session.id}/messages`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify([
+        { peer_id: userId, content: userMessage },
+        { peer_id: 'assistant', content: assistantMessage },
+      ]),
+    });
+  } catch (err) {
+    console.error('[CHAT] Honcho store error:', err);
+  }
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -276,6 +345,22 @@ Do NOT say you cannot browse — the app has this feature via the /browse comman
 
     const systemPrompt = ghlMode ? ghlSystemPrompt : standardSystemPrompt;
 
+    // Fetch Honcho memory context (non-blocking on failure)
+    let honchoContext = '';
+    try {
+      honchoContext = await getHonchoContext(user.id);
+      if (honchoContext) {
+        console.log('[CHAT] Honcho context loaded, length:', honchoContext.length);
+      }
+    } catch (err) {
+      console.error('[CHAT] Honcho context failed (proceeding without):', err);
+    }
+
+    // Enrich the system prompt with memory context
+    const enrichedPrompt = honchoContext
+      ? systemPrompt + '\n\nUSER CONTEXT (from memory — use this to personalize your responses):\n' + honchoContext
+      : systemPrompt;
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -286,7 +371,7 @@ Do NOT say you cannot browse — the app has this feature via the /browse comman
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 32000,
-        system: systemPrompt,
+        system: enrichedPrompt,
         messages,
         stream: true,
       }),
@@ -317,6 +402,13 @@ Do NOT say you cannot browse — the app has this feature via the /browse comman
         usage_type: 'chat_message',
         quantity: 1
       });
+
+    // Store user message in Honcho (fire-and-forget)
+    const latestUserMessage = messages[messages.length - 1]?.content || '';
+    if (latestUserMessage) {
+      storeHonchoMessages(user.id, latestUserMessage, '(streaming response — captured on next turn)')
+        .catch(err => console.error('[CHAT] Honcho background store error:', err));
+    }
 
     // Stream the response
     return new Response(response.body, {
