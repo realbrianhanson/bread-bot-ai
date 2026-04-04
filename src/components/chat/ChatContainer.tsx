@@ -35,6 +35,8 @@ interface ChatContainerProps {
   selectedProfileId?: string | null;
   hideTaskPreview?: boolean;
   onSlashCommand?: (command: string) => void;
+  onInspire?: (url: string, content: string, ghlMode: boolean) => void;
+  isInspirationLoading?: boolean;
 }
 
 const ChatContainer = ({
