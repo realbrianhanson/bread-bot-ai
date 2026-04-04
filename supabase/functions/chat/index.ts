@@ -163,9 +163,9 @@ serve(async (req) => {
       });
     }
 
-    const { messages, ghlMode } = await req.json();
+    const { messages, ghlMode, designMd: clientDesignMd } = await req.json();
 
-    console.log('Calling Anthropic API with', messages.length, 'messages, ghlMode:', !!ghlMode);
+    console.log('Calling Anthropic API with', messages.length, 'messages, ghlMode:', !!ghlMode, 'hasDesignMd:', !!clientDesignMd);
 
     const DESIGN_TOKENS = `  :root {
     --background: #FFFFFF;
