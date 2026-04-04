@@ -186,6 +186,21 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
           )}
         />
 
+        {/* GHL Mode toggle */}
+        <button
+          onClick={toggleGhlMode}
+          className={cn(
+            'shrink-0 mb-0.5 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold transition-all duration-200 border',
+            ghlMode
+              ? 'bg-accent/15 border-accent/40 text-accent shadow-[0_0_8px_hsl(var(--accent)/0.3)]'
+              : 'bg-muted/30 border-border/40 text-muted-foreground hover:border-border/60'
+          )}
+          title={ghlMode ? 'GHL Mode ON — code optimized for GoHighLevel' : 'GHL Mode OFF — standard Tailwind output'}
+        >
+          {ghlMode ? <ToggleRight className="h-3 w-3" /> : <ToggleLeft className="h-3 w-3" />}
+          GHL
+        </button>
+
         <VoiceInputButton isListening={isListening} isSupported={isSupported} onToggle={toggle} />
 
         {isStreaming ? (
