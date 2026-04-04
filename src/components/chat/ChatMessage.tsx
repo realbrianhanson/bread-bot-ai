@@ -1,6 +1,6 @@
 import { Message } from '@/hooks/useChat';
 import { Button } from '@/components/ui/button';
-import { Copy, Check, Bot, User } from 'lucide-react';
+import { Copy, Check, Bot, User, CheckCircle2, Sparkles, AlertTriangle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -8,6 +8,7 @@ import remarkGfm from 'remark-gfm';
 import { useState, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 import CodeExecutionResult from './CodeExecutionResult';
 import SandboxComputerView from './SandboxComputerView';
 import FileAttachment from './FileAttachment';
@@ -168,6 +169,36 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
               {message.metadata.screenshots.map((screenshot: string, idx: number) => (
                 <img key={idx} src={screenshot} alt={`Screenshot ${idx + 1}`} className="rounded-lg border border-border/50 w-full" />
               ))}
+            </div>
+          )}
+
+          {/* Design validation badge */}
+          {message.metadata?.validation && (
+            <div className="mt-2 flex items-center gap-1.5">
+              {message.metadata.validation.passed && !message.metadata.validation.autoFixed && (
+                <Badge variant="outline" className="text-[10px] px-2 py-0.5 gap-1 border-green-500/30 text-green-600 dark:text-green-400 bg-green-500/5">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Design validated
+                </Badge>
+              )}
+              {message.metadata.validation.autoFixed && message.metadata.validation.retryPassed && (
+                <Badge variant="outline" className="text-[10px] px-2 py-0.5 gap-1 border-primary/30 text-primary bg-primary/5">
+                  <Sparkles className="h-3 w-3" />
+                  Auto-improved
+                </Badge>
+              )}
+              {message.metadata.validation.autoFixed && !message.metadata.validation.retryPassed && (
+                <Badge variant="outline" className="text-[10px] px-2 py-0.5 gap-1 border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/5">
+                  <AlertTriangle className="h-3 w-3" />
+                  Review contrast
+                </Badge>
+              )}
+              {!message.metadata.validation.passed && !message.metadata.validation.autoFixed && (
+                <Badge variant="outline" className="text-[10px] px-2 py-0.5 gap-1 border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/5">
+                  <AlertTriangle className="h-3 w-3" />
+                  Review contrast
+                </Badge>
+              )}
             </div>
           )}
         </div>

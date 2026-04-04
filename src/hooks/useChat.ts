@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
+import { validateWebsite, hasCodeBlocks, extractCodeFromResponse } from '@/lib/validateWebsite';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
@@ -578,13 +579,105 @@ export const useChat = (projectId?: string) => {
           }
 
           if (assistantContent) {
+            let finalContent = assistantContent;
+            let validationMeta: any = undefined;
+
+            // Run validation if the response contains code blocks
+            if (hasCodeBlocks(assistantContent)) {
+              const { html, css, js } = extractCodeFromResponse(assistantContent);
+              if (html) {
+                const result = validateWebsite(html, css, js);
+                const criticalIssues = result.issues.filter(i => i.severity === 'critical');
+
+                if (criticalIssues.length > 0) {
+                  // Auto-retry: ask Claude to fix critical issues
+                  setMessages((prev) =>
+                    prev.map((m) => m.id === tempId
+                      ? { ...m, content: '✨ Auto-improving design quality...' }
+                      : m)
+                  );
+
+                  const fixPrompt = `The website you just generated has these design quality issues that MUST be fixed:\n\n${criticalIssues.map(i => `- [${i.severity.toUpperCase()}] ${i.category}: ${i.message}\nFix: ${i.fix}`).join('\n\n')}\n\nPlease regenerate the COMPLETE website code with ALL of these issues fixed. Keep everything else the same, just fix the flagged problems.`;
+
+                  try {
+                    const retryResp = await fetch(
+                      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
+                      {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+                        body: JSON.stringify({
+                          messages: [...messagesForAPI, { role: 'assistant', content: assistantContent }, { role: 'user', content: fixPrompt }],
+                          ghlMode: options?.ghlMode || false,
+                          designMd,
+                        }),
+                      }
+                    );
+
+                    if (retryResp.ok) {
+                      const retryReader = retryResp.body?.getReader();
+                      if (retryReader) {
+                        let retryContent = '';
+                        while (true) {
+                          const { done: rd, value: rv } = await retryReader.read();
+                          if (rd) break;
+                          const rc = decoder.decode(rv);
+                          for (const rl of rc.split('\n')) {
+                            if (!rl.startsWith('data: ')) continue;
+                            const rd2 = rl.slice(6);
+                            if (rd2 === '[DONE]') continue;
+                            try {
+                              const rp = JSON.parse(rd2);
+                              if (rp.type === 'content_block_delta') {
+                                retryContent += rp.delta?.text || '';
+                                setMessages((prev) => prev.map((m) => m.id === tempId ? { ...m, content: retryContent } : m));
+                              }
+                            } catch {}
+                          }
+                        }
+                        if (retryContent) {
+                          finalContent = retryContent;
+                          const retryResult = validateWebsite(
+                            ...Object.values(extractCodeFromResponse(retryContent)) as [string, string, string]
+                          );
+                          validationMeta = {
+                            passed: retryResult.passed,
+                            score: retryResult.score,
+                            issues: retryResult.issues,
+                            autoFixed: true,
+                            retryPassed: retryResult.passed,
+                          };
+                        }
+                      }
+                    }
+                  } catch (retryErr) {
+                    console.error('Validation retry failed:', retryErr);
+                    // Show original content with warning
+                    validationMeta = {
+                      passed: false,
+                      score: result.score,
+                      issues: result.issues,
+                      autoFixed: false,
+                    };
+                  }
+                } else {
+                  validationMeta = {
+                    passed: true,
+                    score: result.score,
+                    issues: result.issues,
+                    autoFixed: false,
+                  };
+                }
+              }
+            }
+
             const { data: savedMessage } = await supabase
               .from('messages')
               .insert({
                 user_id: user.id,
                 project_id: projectId,
                 role: 'assistant',
-                content: assistantContent,
+                content: finalContent,
+                metadata: validationMeta ? { validation: validationMeta, codeType: 'website' } : undefined,
               })
               .select()
               .single();
