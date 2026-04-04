@@ -75,8 +75,10 @@ serve(async (req) => {
         can_use_own_keys: false,
         chat_messages_used: 0,
         browser_tasks_used: 0,
+        code_executions_used: 0,
         chat_messages_limit: tierData?.chat_messages_per_month || 100,
-        browser_tasks_limit: tierData?.browser_tasks_per_month || 10
+        browser_tasks_limit: tierData?.browser_tasks_per_month || 10,
+        code_executions_limit: tierData?.code_executions_per_month || 5,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
