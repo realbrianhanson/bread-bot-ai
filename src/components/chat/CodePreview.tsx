@@ -1,7 +1,9 @@
 import { SandpackProvider, SandpackLayout, SandpackPreview, useSandpack } from '@codesandbox/sandpack-react';
-import { Maximize2, RefreshCw, Loader2 } from 'lucide-react';
+import { Maximize2, RefreshCw, Loader2, Copy, Download, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 
 interface CodePreviewProps {
   files: Record<string, string>;
@@ -45,6 +47,7 @@ const PreviewContent = () => {
 
 const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProps) => {
   const [key, setKey] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   console.log('CodePreview rendering:', { 
     filesCount: Object.keys(files).length, 
@@ -62,6 +65,90 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
     if (previewFrame && previewFrame.requestFullscreen) {
       previewFrame.requestFullscreen();
     }
+  };
+
+  const buildCombinedHTML = (): string => {
+    // Extract CSS, JS, and HTML from files
+    let css = '';
+    let js = '';
+    let html = '';
+
+    for (const [path, content] of Object.entries(files)) {
+      if (path.endsWith('.css')) {
+        css += content + '\n';
+      } else if (path.endsWith('.js') || path.endsWith('.ts')) {
+        // Skip React entry files — only include vanilla JS
+        if (!content.includes('createRoot') && !content.includes('ReactDOM')) {
+          js += content + '\n';
+        }
+      } else if (path.endsWith('.html')) {
+        html = content;
+      }
+    }
+
+    // If we have a main HTML file, extract its body content
+    let bodyContent = html;
+    const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+    if (bodyMatch) {
+      bodyContent = bodyMatch[1].trim();
+    }
+
+    // If no HTML body found, try to extract JSX-like content from the main file
+    if (!bodyContent && files[mainFile]) {
+      const mainContent = files[mainFile];
+      const returnMatch = mainContent.match(/return\s*\(\s*([\s\S]*?)\s*\);?\s*}/);
+      if (returnMatch) {
+        bodyContent = `<!-- Generated from React component — may need manual adjustment -->\n${returnMatch[1]}`;
+      } else {
+        bodyContent = `<div id="app">\n  <!-- Paste your content here -->\n</div>`;
+      }
+    }
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generated Page</title>
+  <script src="https://cdn.tailwindcss.com"><\/script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+${css.split('\n').map(l => '    ' + l).join('\n')}
+  </style>
+</head>
+<body>
+${bodyContent}
+${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n  <\/script>` : ''}
+</body>
+</html>`;
+  };
+
+  const handleCopyForGHL = async () => {
+    const html = buildCombinedHTML();
+    await navigator.clipboard.writeText(html);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast.success('HTML copied! Paste into a GHL Custom Code element on a blank page.');
+  };
+
+  const handleDownloadHTML = () => {
+    const html = buildCombinedHTML();
+    const date = new Date().toISOString().slice(0, 10);
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `website-${date}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('HTML file downloaded.');
   };
 
   // Show message if no valid code files
@@ -89,6 +176,29 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 bg-background/50 shrink-0 z-20">
         <span className="text-xs font-medium">Live Preview</span>
         <div className="flex gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleCopyForGHL}
+                className="h-6 w-6"
+              >
+                {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[220px] text-xs">
+              Copies self-contained HTML ready to paste into GoHighLevel's Custom Code block. Works with any website builder that supports custom HTML.
+            </TooltipContent>
+          </Tooltip>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleDownloadHTML}
+            className="h-6 w-6"
+          >
+            <Download className="h-3 w-3" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
