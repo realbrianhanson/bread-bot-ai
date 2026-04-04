@@ -135,6 +135,8 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
         files: attachedFiles.length > 0 ? attachedFiles : undefined,
         designTemplateId: selectedDesignId,
         customDesignMd: selectedDesignId === 'custom' ? customDesignMd : undefined,
+        marketingMd,
+        marketingCategory,
       });
       setInput('');
       setAttachedFiles([]);
