@@ -725,7 +725,6 @@ serve(async (req) => {
           tools: toolDefinitions,
           messages,
         }),
-        }),
       });
 
       if (!anthropicResponse.ok) {
