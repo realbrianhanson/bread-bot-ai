@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import CodeExecutionResult from './CodeExecutionResult';
 import SandboxComputerView from './SandboxComputerView';
+import FileAttachment from './FileAttachment';
 
 const MermaidDiagram = lazy(() => import('./MermaidDiagram'));
 
@@ -59,7 +60,19 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
           )}
         >
           {isUser ? (
-            <div className="whitespace-pre-wrap break-words">{message.content}</div>
+            <div>
+              <div className="whitespace-pre-wrap break-words">{message.content}</div>
+              {message.metadata?.files && (
+                <div className="mt-2 space-y-1">
+                  {(message.metadata.files as Array<{ name: string; size: number; type: string; url?: string; preview?: string }>).map((f, i) => (
+                    <FileAttachment
+                      key={i}
+                      file={{ ...f, thumbnailUrl: f.type?.startsWith('image/') ? f.url : undefined }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           ) : (
             <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-pre:my-2 prose-headings:mt-3 prose-headings:mb-1">
               <ReactMarkdown

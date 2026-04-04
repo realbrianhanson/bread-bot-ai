@@ -1,12 +1,17 @@
 import { useState, KeyboardEvent, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Square, Zap, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Send, Square, Zap, ToggleLeft, ToggleRight, Paperclip } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { VoiceInputButton } from '@/components/chat/VoiceInputButton';
+import { FileChip } from '@/components/chat/FileAttachment';
+
+const MAX_FILES = 5;
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ACCEPTED_TYPES = '.csv,.json,.txt,.pdf,.xlsx,.xls,.png,.jpg,.jpeg,.md';
 
 interface ChatInputProps {
-  onSend: (content: string, options?: { ghlMode?: boolean }) => void;
+  onSend: (content: string, options?: { ghlMode?: boolean; files?: File[] }) => void;
   disabled?: boolean;
   isStreaming?: boolean;
   onStop?: () => void;
@@ -36,7 +41,9 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [selectedSlashIndex, setSelectedSlashIndex] = useState(0);
   const [ghlMode, setGhlMode] = useState(() => localStorage.getItem('ghl-mode') === 'true');
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (prefill !== undefined && prefill !== '') {
@@ -91,10 +98,29 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
     });
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const remaining = MAX_FILES - attachedFiles.length;
+    const valid = files.slice(0, remaining).filter((f) => {
+      if (f.size > MAX_FILE_SIZE) {
+        console.warn(`File ${f.name} exceeds 10MB limit`);
+        return false;
+      }
+      return true;
+    });
+    setAttachedFiles((prev) => [...prev, ...valid]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeFile = (index: number) => {
+    setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSend = () => {
-    if (input.trim() && !disabled) {
-      onSend(input.trim(), { ghlMode });
+    if ((input.trim() || attachedFiles.length > 0) && !disabled) {
+      onSend(input.trim(), { ghlMode, files: attachedFiles.length > 0 ? attachedFiles : undefined });
       setInput('');
+      setAttachedFiles([]);
     }
   };
 
@@ -162,6 +188,15 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
         </div>
       )}
 
+      {/* Attached files chips */}
+      {attachedFiles.length > 0 && (
+        <div className="flex flex-wrap gap-2 px-3 pt-2">
+          {attachedFiles.map((file, i) => (
+            <FileChip key={`${file.name}-${i}`} file={file} onRemove={() => removeFile(i)} />
+          ))}
+        </div>
+      )}
+
       <div className={cn(
         'flex items-end gap-3 p-3 rounded-2xl border transition-all duration-200',
         'bg-card/80 backdrop-blur-sm',
@@ -186,6 +221,28 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
             <span className="text-[10px] font-medium text-accent">Sandbox</span>
           </div>
         )}
+
+        {/* Attachment button */}
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={disabled || attachedFiles.length >= MAX_FILES}
+          className={cn(
+            'shrink-0 mb-0.5 p-1.5 rounded-lg transition-colors',
+            'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+            (disabled || attachedFiles.length >= MAX_FILES) && 'opacity-30 pointer-events-none'
+          )}
+          title="Attach files (CSV, PDF, images, JSON, TXT, XLSX)"
+        >
+          <Paperclip className="h-4 w-4" />
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPTED_TYPES}
+          multiple
+          className="hidden"
+          onChange={handleFileSelect}
+        />
 
         <textarea
           ref={textareaRef}
@@ -231,11 +288,11 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
         ) : (
           <Button
             onClick={handleSend}
-            disabled={disabled || !input.trim()}
+            disabled={disabled || (!input.trim() && attachedFiles.length === 0)}
             size="icon"
             className={cn(
               'h-8 w-8 shrink-0 rounded-xl transition-all duration-200',
-              input.trim() && !disabled ? 'shadow-glow' : 'opacity-40'
+              (input.trim() || attachedFiles.length > 0) && !disabled ? 'shadow-glow' : 'opacity-40'
             )}
           >
             <Send className="h-3.5 w-3.5" />
