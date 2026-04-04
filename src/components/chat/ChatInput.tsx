@@ -258,6 +258,17 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
           disabled={disabled}
         />
 
+        {/* Purpose picker */}
+        <PurposePicker
+          selectedId={selectedPurposeId}
+          onSelect={(id, md, cat) => {
+            setSelectedPurposeId(id);
+            setMarketingMd(md);
+            setMarketingCategory(cat);
+          }}
+          disabled={disabled}
+        />
+
         {/* Attachment button */}
         <button
           onClick={() => fileInputRef.current?.click()}
