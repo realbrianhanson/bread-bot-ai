@@ -233,7 +233,16 @@ const ChatContainer = ({
         <div className="space-y-3.5 max-w-3xl mx-auto pb-4">
           {messages.length === 0 && firecrawlResults.length === 0 ? (
             isGhlMode ? (
-              <GHLPageTypeSelector onSelectPrompt={(prompt) => setInputPrefill(prompt)} />
+              <GHLTemplateGallery
+                inline
+                onSelectTemplate={(prompt) => {
+                  setInputPrefill(prompt);
+                  if (prompt) {
+                    // Auto-send template prompts
+                    handleSendMessage(prompt);
+                  }
+                }}
+              />
             ) : (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
