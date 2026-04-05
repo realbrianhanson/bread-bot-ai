@@ -108,6 +108,45 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
   const previewTemplate = resolvedPreview.template;
   const isStatic = previewTemplate === 'static' || previewTemplate === 'vanilla';
 
+  const enforceScrollableIframe = useCallback((node: HTMLIFrameElement | null) => {
+    iframeRef.current = node;
+
+    if (!node) return;
+
+    node.setAttribute('scrolling', 'yes');
+    node.style.setProperty('display', 'block');
+    node.style.setProperty('width', '100%');
+    node.style.setProperty('height', '100%');
+    node.style.setProperty('border', '0');
+    node.style.setProperty('overflow', 'auto', 'important');
+    node.style.setProperty('overflow-x', 'hidden', 'important');
+    node.style.setProperty('overflow-y', 'auto', 'important');
+    node.style.setProperty('-webkit-overflow-scrolling', 'touch');
+
+    const doc = node.contentDocument;
+    doc?.documentElement?.style.setProperty('overflow', 'auto', 'important');
+    doc?.documentElement?.style.setProperty('overflow-x', 'hidden', 'important');
+    doc?.documentElement?.style.setProperty('overflow-y', 'auto', 'important');
+    doc?.body?.style.setProperty('overflow', 'auto', 'important');
+    doc?.body?.style.setProperty('overflow-x', 'hidden', 'important');
+    doc?.body?.style.setProperty('overflow-y', 'auto', 'important');
+    doc?.body?.style.setProperty('min-height', '100%', 'important');
+  }, []);
+
+  useEffect(() => {
+    if (!isStatic && !useFallback) return;
+
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    const applyScrollableStyles = () => enforceScrollableIframe(iframe);
+
+    applyScrollableStyles();
+    iframe.addEventListener('load', applyScrollableStyles);
+
+    return () => iframe.removeEventListener('load', applyScrollableStyles);
+  }, [enforceScrollableIframe, isStatic, useFallback, key]);
+
   const buildCombinedHTML = useCallback((): string => {
     let css = '';
     let js = '';
@@ -149,6 +188,13 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
 
       // Cap section spacing for complete docs too
       const sectionSpacingFix = `  <style>
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      min-height: 100% !important;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+    }
     section, [class*="section"], .hero, .pricing, .features, .cta, .testimonials, .faq, .footer {
       padding-top: clamp(40px, 5vw, 80px) !important;
       padding-bottom: clamp(40px, 5vw, 80px) !important;
@@ -203,10 +249,15 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    body {
-      font-family: 'Inter', sans-serif;
+    html, body {
       margin: 0;
       padding: 0;
+      min-height: 100%;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
     }
     section, [class*="section"], .hero, .pricing, .features, .cta, .testimonials, .faq, .footer {
       padding-top: clamp(40px, 5vw, 80px) !important;
@@ -325,11 +376,12 @@ ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n
         <div className="flex-1 relative overflow-auto">
           <iframe
             key={key}
-            ref={iframeRef}
+            ref={enforceScrollableIframe}
             srcDoc={buildCombinedHTML()}
-            className="w-full h-full border-0"
-            style={{ overflowY: 'auto' }}
+            className="block"
+            style={{ width: '100%', height: '100%', border: '0', overflow: 'auto', overflowX: 'hidden', overflowY: 'auto' }}
             sandbox="allow-scripts allow-same-origin"
+            scrolling="yes"
             title="Preview"
           />
         </div>
