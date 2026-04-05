@@ -223,7 +223,7 @@ export default function Settings() {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="account" className="space-y-6">
-          <TabsList className="glass-strong border-white/20 grid w-full max-w-4xl grid-cols-8">
+          <TabsList className="glass-strong border-white/20 flex w-full max-w-4xl overflow-x-auto no-scrollbar md:grid md:grid-cols-8">
             <TabsTrigger value="account" className="flex items-center gap-2">
               <Settings2 className="h-4 w-4" />
               <span className="hidden sm:inline">Account</span>
