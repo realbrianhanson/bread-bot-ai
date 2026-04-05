@@ -2,15 +2,17 @@ import { SandpackProvider, SandpackLayout, SandpackPreview } from '@codesandbox/
 import { Maximize2, RefreshCw, Copy, Download, Check, BookmarkPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { fixContrastIssues } from '@/lib/contrastFixer';
 import { SaveTemplateDialog } from '@/components/chat/SaveTemplateDialog';
+import { extractPreviewFromContent, isPreviewPlaceholder } from '@/lib/previewContent';
 
 interface CodePreviewProps {
   files: Record<string, string>;
   mainFile: string;
   template?: 'react-ts' | 'vanilla' | 'static';
+  responseContent?: string;
 }
 
 const SandpackWithFallback = ({ files, template, onFallback }: {
@@ -85,21 +87,33 @@ const SandpackWithFallback = ({ files, template, onFallback }: {
   );
 };
 
-const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProps) => {
+const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent = '' }: CodePreviewProps) => {
   const [key, setKey] = useState(0);
   const [copied, setCopied] = useState(false);
   const [useFallback, setUseFallback] = useState(false);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  const isStatic = template === 'static' || template === 'vanilla';
+  const resolvedPreview = useMemo(() => {
+    if (!isPreviewPlaceholder(files, mainFile)) {
+      return { files, mainFile, template };
+    }
+
+    const extractedPreview = responseContent ? extractPreviewFromContent(responseContent) : null;
+    return extractedPreview ?? { files, mainFile, template };
+  }, [files, mainFile, responseContent, template]);
+
+  const previewFiles = resolvedPreview.files;
+  const previewMainFile = resolvedPreview.mainFile;
+  const previewTemplate = resolvedPreview.template;
+  const isStatic = previewTemplate === 'static' || previewTemplate === 'vanilla';
 
   const buildCombinedHTML = useCallback((): string => {
     let css = '';
     let js = '';
     let html = '';
 
-    for (const [path, content] of Object.entries(files)) {
+    for (const [path, content] of Object.entries(previewFiles)) {
       if (path.endsWith('.css')) {
         css += content + '\n';
       } else if (path.endsWith('.js') || path.endsWith('.ts')) {
@@ -157,8 +171,8 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
       bodyContent = bodyMatch[1].trim();
     }
 
-    if (!bodyContent && files[mainFile]) {
-      const mainContent = files[mainFile];
+    if (!bodyContent && previewFiles[previewMainFile]) {
+      const mainContent = previewFiles[previewMainFile];
       const returnMatch = mainContent.match(/return\s*\(\s*([\s\S]*?)\s*\);?\s*}/);
       if (returnMatch) {
         bodyContent = `<!-- Generated from React component — may need manual adjustment -->\n${returnMatch[1]}`;
@@ -197,7 +211,7 @@ ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n
       console.log(`[ContrastFixer] Auto-fixed ${issuesFound} contrast issue(s) in generated HTML`);
     }
     return fixedHtml;
-  }, [files, mainFile]);
+  }, [previewFiles, previewMainFile]);
 
   const handleRefresh = () => {
     setKey(prev => prev + 1);
@@ -233,7 +247,7 @@ ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n
   };
 
   // Empty state
-  if (Object.keys(files).length === 0 || (Object.keys(files).length === 1 && files[mainFile]?.includes('Start chatting'))) {
+  if (isPreviewPlaceholder(previewFiles, previewMainFile)) {
     return (
       <div className="absolute inset-0 flex flex-col bg-background">
         <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-background/50 shrink-0">
@@ -301,7 +315,7 @@ ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n
             title="Preview"
           />
         </div>
-        <SaveTemplateDialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate} files={files} />
+        <SaveTemplateDialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate} files={previewFiles} />
       </div>
     );
   }
@@ -313,12 +327,12 @@ ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n
       <div className="flex-1 relative">
         <SandpackWithFallback
           key={key}
-          files={files}
+          files={previewFiles}
           template="react-ts"
           onFallback={() => setUseFallback(true)}
         />
       </div>
-      <SaveTemplateDialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate} files={files} />
+      <SaveTemplateDialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate} files={previewFiles} />
     </div>
   );
 };

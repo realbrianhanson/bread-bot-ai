@@ -27,7 +27,7 @@ import { useConversations } from "@/hooks/useConversations";
 import { useBrowserTask } from "@/hooks/useBrowserTask";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { parseCodeFromMessages } from "@/lib/codeParser";
-import { hasCodeBlocks } from "@/lib/validateWebsite";
+import { hasRenderablePreviewContent } from "@/lib/previewContent";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { PlanBadge } from "@/components/ui/plan-badge";
 import { CommandPalette } from "@/components/ui/command-palette";
@@ -183,28 +183,33 @@ const Dashboard = () => {
 
   const parsedCode = useMemo(() => parseCodeFromMessages(messages), [messages]);
 
-  const hasPreviewContent = useMemo(() => {
-    const keys = Object.keys(parsedCode.files);
-    return keys.length > 0 && !(keys.length === 1 && parsedCode.files[parsedCode.mainFile]?.includes('Start chatting'));
-  }, [parsedCode]);
-
-  const latestGeneratedMessageId = useMemo(() => {
+  const latestPreviewMessage = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
       const message = messages[i];
-      if (message.role === 'assistant' && hasCodeBlocks(message.content)) {
-        return message.id;
+      if (message.role === 'assistant' && hasRenderablePreviewContent(message.content)) {
+        return message;
       }
     }
 
     return null;
   }, [messages]);
 
+  const hasPreviewContent = useMemo(() => {
+    const keys = Object.keys(parsedCode.files);
+    return latestPreviewMessage !== null || (keys.length > 0 && !(keys.length === 1 && parsedCode.files[parsedCode.mainFile]?.includes('Start chatting')));
+  }, [latestPreviewMessage, parsedCode]);
+
+  const latestGeneratedMessageId = latestPreviewMessage?.id ?? null;
+
   useEffect(() => {
     if (!queuedPrompt || !activeConversationId) return;
 
+    if (messages.filter((message) => message.role === 'user').length === 0) {
+      autoTitleConversation(activeConversationId, queuedPrompt);
+    }
     sendMessage(queuedPrompt);
     setQueuedPrompt(null);
-  }, [queuedPrompt, activeConversationId, sendMessage]);
+  }, [queuedPrompt, activeConversationId, messages, autoTitleConversation, sendMessage]);
 
   useEffect(() => {
     if (!hasPreviewContent) {
@@ -397,6 +402,7 @@ const Dashboard = () => {
             ) : (
               <div className="flex-1 min-h-0 relative">
                 <CodePreview key={`${activeConversationId || 'mobile-preview'}-${mobilePreviewKey}`} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} />
+                <CodePreview key={`${activeConversationId || 'mobile-preview'}-${mobilePreviewKey}`} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} />
               </div>
             )}
           </>
@@ -500,7 +506,7 @@ const Dashboard = () => {
                   projectId={activeConversationId || undefined}
                 />
               ) : (
-                <CodePreview key={activeConversationId || 'desktop-preview'} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} />
+                <CodePreview key={activeConversationId || 'desktop-preview'} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} />
               )}
             </ResizablePanel>
           </ResizablePanelGroup>
