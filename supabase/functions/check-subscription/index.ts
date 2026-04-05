@@ -35,13 +35,42 @@ serve(async (req) => {
     );
 
     const token = authHeader.replace("Bearer ", "");
+    // Try getClaims first, fall back to getUser for stale tokens
+    let userId: string | null = null;
     const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      throw new Error("Authentication error: Invalid token");
+    if (!claimsError && claimsData?.claims?.sub) {
+      userId = claimsData.claims.sub;
+    } else {
+      logStep("getClaims failed, trying getUser", { error: claimsError?.message });
+      const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+      if (userError || !userData?.user) {
+        logStep("Auth failed, returning free tier defaults");
+        return new Response(JSON.stringify({
+          subscribed: false,
+          tier: 'free',
+          can_use_own_keys: false,
+          chat_messages_used: 0,
+          browser_tasks_used: 0,
+          code_executions_used: 0,
+          chat_messages_limit: 100,
+          browser_tasks_limit: 10,
+          code_executions_limit: 5,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+      userId = userData.user.id;
     }
 
-    const userId = claimsData.claims.sub;
-    if (!userId) throw new Error("Authentication error: No user ID in token");
+    if (!userId) {
+      logStep("No user ID found, returning free tier defaults");
+      return new Response(JSON.stringify({
+        subscribed: false, tier: 'free', can_use_own_keys: false,
+        chat_messages_used: 0, browser_tasks_used: 0, code_executions_used: 0,
+        chat_messages_limit: 100, browser_tasks_limit: 10, code_executions_limit: 5,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
+    }
 
     const { data: profile, error: profileError } = await supabaseClient
       .from("profiles")
