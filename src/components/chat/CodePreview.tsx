@@ -111,6 +111,46 @@ const CodePreview = ({ files, mainFile, template = 'react-ts' }: CodePreviewProp
       }
     }
 
+    // If the HTML is already a complete document (has doctype/head/body),
+    // use it directly — just ensure Tailwind CDN and fonts are present,
+    // and append any extra CSS/JS files.
+    const isCompleteDoc = html.toLowerCase().includes('<!doctype') && /<html[\s>]/i.test(html) && /<body[\s>]/i.test(html);
+
+    if (isCompleteDoc) {
+      let finalHtml = html;
+
+      // Ensure Tailwind CDN is loaded
+      if (!finalHtml.includes('cdn.tailwindcss.com')) {
+        finalHtml = finalHtml.replace('</head>', '  <script src="https://cdn.tailwindcss.com"><\/script>\n</head>');
+      }
+
+      // Ensure Inter font is loaded
+      if (!finalHtml.includes('fonts.googleapis.com') || !finalHtml.includes('Inter')) {
+        finalHtml = finalHtml.replace('</head>',
+          '  <link rel="preconnect" href="https://fonts.googleapis.com">\n' +
+          '  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n' +
+          '  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">\n</head>'
+        );
+      }
+
+      // Append any separate CSS files as inline <style>
+      if (css.trim()) {
+        finalHtml = finalHtml.replace('</head>', `  <style>\n${css}  </style>\n</head>`);
+      }
+
+      // Append any separate JS files as inline <script>
+      if (js.trim()) {
+        finalHtml = finalHtml.replace('</body>', `  <script>\n${js}  <\/script>\n</body>`);
+      }
+
+      const { html: fixedHtml, issuesFound } = fixContrastIssues(finalHtml);
+      if (issuesFound > 0) {
+        console.log(`[ContrastFixer] Auto-fixed ${issuesFound} contrast issue(s) in generated HTML`);
+      }
+      return fixedHtml;
+    }
+
+    // Otherwise, build a new document from fragments
     let bodyContent = html;
     const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
     if (bodyMatch) {
@@ -152,7 +192,6 @@ ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n
 </body>
 </html>`;
 
-    // Auto-fix contrast issues in the generated HTML
     const { html: fixedHtml, issuesFound } = fixContrastIssues(rawHtml);
     if (issuesFound > 0) {
       console.log(`[ContrastFixer] Auto-fixed ${issuesFound} contrast issue(s) in generated HTML`);
