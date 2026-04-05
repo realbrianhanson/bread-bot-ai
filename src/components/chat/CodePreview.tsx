@@ -305,12 +305,13 @@ ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n
     return (
       <div className="absolute inset-0 flex flex-col bg-background">
         <Toolbar />
-        <div className="flex-1 relative">
+        <div className="flex-1 relative overflow-auto">
           <iframe
             key={key}
             ref={iframeRef}
             srcDoc={buildCombinedHTML()}
             className="w-full h-full border-0"
+            style={{ overflowY: 'auto' }}
             sandbox="allow-scripts allow-same-origin"
             title="Preview"
           />
