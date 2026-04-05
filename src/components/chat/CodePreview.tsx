@@ -93,6 +93,7 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
   const [useFallback, setUseFallback] = useState(false);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const previewViewportRef = useRef<HTMLDivElement>(null);
 
   const resolvedPreview = useMemo(() => {
     if (!isPreviewPlaceholder(files, mainFile)) {
@@ -119,32 +120,48 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
     node.style.setProperty('height', '100%');
     node.style.setProperty('border', '0');
     node.style.setProperty('overflow', 'auto', 'important');
-    node.style.setProperty('overflow-x', 'hidden', 'important');
+    node.style.setProperty('overflow-x', 'auto', 'important');
     node.style.setProperty('overflow-y', 'auto', 'important');
     node.style.setProperty('-webkit-overflow-scrolling', 'touch');
 
     const doc = node.contentDocument;
     doc?.documentElement?.style.setProperty('overflow', 'auto', 'important');
-    doc?.documentElement?.style.setProperty('overflow-x', 'hidden', 'important');
+    doc?.documentElement?.style.setProperty('overflow-x', 'auto', 'important');
     doc?.documentElement?.style.setProperty('overflow-y', 'auto', 'important');
     doc?.body?.style.setProperty('overflow', 'auto', 'important');
-    doc?.body?.style.setProperty('overflow-x', 'hidden', 'important');
+    doc?.body?.style.setProperty('overflow-x', 'auto', 'important');
     doc?.body?.style.setProperty('overflow-y', 'auto', 'important');
     doc?.body?.style.setProperty('min-height', '100%', 'important');
   }, []);
 
   useEffect(() => {
-    if (!isStatic && !useFallback) return;
+    const previewViewport = previewViewportRef.current;
+    if (!previewViewport) return;
 
-    const iframe = iframeRef.current;
-    if (!iframe) return;
+    let currentIframe: HTMLIFrameElement | null = null;
 
-    const applyScrollableStyles = () => enforceScrollableIframe(iframe);
+    const applyScrollableStyles = () => {
+      const nextIframe = previewViewport.querySelector('iframe');
+      if (!(nextIframe instanceof HTMLIFrameElement)) return;
+
+      if (currentIframe !== nextIframe) {
+        currentIframe?.removeEventListener('load', applyScrollableStyles);
+        currentIframe = nextIframe;
+        currentIframe.addEventListener('load', applyScrollableStyles);
+      }
+
+      enforceScrollableIframe(nextIframe);
+    };
 
     applyScrollableStyles();
-    iframe.addEventListener('load', applyScrollableStyles);
 
-    return () => iframe.removeEventListener('load', applyScrollableStyles);
+    const observer = new MutationObserver(() => applyScrollableStyles());
+    observer.observe(previewViewport, { childList: true, subtree: true });
+
+    return () => {
+      observer.disconnect();
+      currentIframe?.removeEventListener('load', applyScrollableStyles);
+    };
   }, [enforceScrollableIframe, isStatic, useFallback, key]);
 
   const buildCombinedHTML = useCallback((): string => {
@@ -287,7 +304,7 @@ ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n
   };
 
   const handleFullscreen = () => {
-    const el = iframeRef.current || document.querySelector('iframe[title="Sandpack Preview"]');
+    const el = iframeRef.current || previewViewportRef.current?.querySelector('iframe') || document.querySelector('iframe[title="Sandpack Preview"]');
     if (el && el.requestFullscreen) {
       el.requestFullscreen();
     }
@@ -373,13 +390,13 @@ ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n
     return (
       <div className="absolute inset-0 flex flex-col bg-background">
         <Toolbar />
-        <div className="flex-1 relative overflow-auto">
+        <div ref={previewViewportRef} className="flex-1 relative min-h-0 overflow-y-auto overflow-x-hidden">
           <iframe
             key={key}
             ref={enforceScrollableIframe}
             srcDoc={buildCombinedHTML()}
             className="block"
-            style={{ width: '100%', height: '100%', border: '0', overflow: 'auto', overflowX: 'hidden', overflowY: 'auto' }}
+            style={{ width: '100%', height: '100%', border: '0', overflowY: 'auto', overflowX: 'auto' }}
             sandbox="allow-scripts allow-same-origin"
             scrolling="yes"
             title="Preview"
@@ -394,7 +411,7 @@ ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n
   return (
     <div className="absolute inset-0 flex flex-col bg-background">
       <Toolbar />
-      <div className="flex-1 relative">
+      <div ref={previewViewportRef} className="flex-1 relative min-h-0 overflow-y-auto overflow-x-hidden">
         <SandpackWithFallback
           key={key}
           files={previewFiles}

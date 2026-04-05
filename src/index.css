@@ -246,4 +246,10 @@
     height: 100% !important;
     width: 100% !important;
   }
+
+  .sp-preview, .sp-preview-container, .sp-preview-iframe {
+    overflow: auto !important;
+    overflow-y: auto !important;
+    overflow-x: auto !important;
+  }
 }
