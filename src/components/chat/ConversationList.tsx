@@ -9,7 +9,19 @@ import {
   X,
   MessageSquare,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { Conversation } from '@/hooks/useConversations';
+import { format, isToday, isYesterday } from 'date-fns';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Conversation } from '@/hooks/useConversations';
 import {
   AlertDialog,
