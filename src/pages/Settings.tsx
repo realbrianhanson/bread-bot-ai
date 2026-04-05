@@ -223,36 +223,36 @@ export default function Settings() {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="account" className="space-y-6">
-          <TabsList className="glass-strong border-white/20 grid w-full max-w-4xl grid-cols-8">
-            <TabsTrigger value="account" className="flex items-center gap-2">
+          <TabsList className="glass-strong border-white/20 flex w-full max-w-4xl overflow-x-auto no-scrollbar md:grid md:grid-cols-8">
+            <TabsTrigger value="account" className="flex items-center gap-2 shrink-0">
               <Settings2 className="h-4 w-4" />
               <span className="hidden sm:inline">Account</span>
             </TabsTrigger>
-            <TabsTrigger value="agents" className="flex items-center gap-2">
+            <TabsTrigger value="agents" className="flex items-center gap-2 shrink-0">
               <Bot className="h-4 w-4" />
               <span className="hidden sm:inline">Agents</span>
             </TabsTrigger>
-            <TabsTrigger value="memory" className="flex items-center gap-2">
+            <TabsTrigger value="memory" className="flex items-center gap-2 shrink-0">
               <Brain className="h-4 w-4" />
               <span className="hidden sm:inline">Memory</span>
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <TabsTrigger value="analytics" className="flex items-center gap-2 shrink-0">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Analytics</span>
             </TabsTrigger>
-            <TabsTrigger value="security" className="flex items-center gap-2">
+            <TabsTrigger value="security" className="flex items-center gap-2 shrink-0">
               <Shield className="h-4 w-4" />
               <span className="hidden sm:inline">Security</span>
             </TabsTrigger>
-            <TabsTrigger value="scraper" className="flex items-center gap-2">
+            <TabsTrigger value="scraper" className="flex items-center gap-2 shrink-0">
               <Globe className="h-4 w-4" />
               <span className="hidden sm:inline">Scraper</span>
             </TabsTrigger>
-            <TabsTrigger value="documents" className="flex items-center gap-2">
+            <TabsTrigger value="documents" className="flex items-center gap-2 shrink-0">
               <FileUp className="h-4 w-4" />
               <span className="hidden sm:inline">Documents</span>
             </TabsTrigger>
-            <TabsTrigger value="docs" className="flex items-center gap-2">
+            <TabsTrigger value="docs" className="flex items-center gap-2 shrink-0">
               <Book className="h-4 w-4" />
               <span className="hidden sm:inline">Docs</span>
             </TabsTrigger>

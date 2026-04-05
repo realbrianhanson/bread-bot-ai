@@ -237,6 +237,10 @@
   .prose th, .prose td { @apply border border-border px-3 py-2; }
   .prose th { @apply bg-muted font-semibold; }
 
+  /* Hide scrollbar */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
   /* Sandpack overrides */
   .sp-wrapper, .sp-layout, .sp-stack, .sp-preview, .sp-preview-container, .sp-preview-iframe {
     height: 100% !important;
