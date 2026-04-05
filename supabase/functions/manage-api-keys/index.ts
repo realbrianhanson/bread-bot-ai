@@ -60,14 +60,36 @@ serve(async (req) => {
     );
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    let userId: string | null = null;
+
+    // Try getClaims first (fast, no network call)
+    try {
+      const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+      if (!claimsError && claimsData?.claims?.sub) {
+        userId = claimsData.claims.sub as string;
+      }
+    } catch (e) {
+      console.warn("getClaims failed, falling back to getUser:", e);
+    }
+
+    // Fallback to getUser if getClaims failed
+    if (!userId) {
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+        if (!userError && user?.id) {
+          userId = user.id;
+        }
+      } catch (e) {
+        console.warn("getUser also failed:", e);
+      }
+    }
+
+    if (!userId) {
+      return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const userId = claimsData.claims.sub as string;
 
     const { action, provider, key } = await req.json();
 
