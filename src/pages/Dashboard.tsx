@@ -51,7 +51,7 @@ const Dashboard = () => {
     typeof window !== 'undefined' ? window.innerWidth < 768 : false
   );
   const { messages, isHistoryLoading, isLoading, isStreaming, isInspirationLoading, sendMessage, sendInspirationMessage, stopStreaming } = useChat(activeConversationId || undefined);
-  const { conversations, createConversation, deleteConversation, renameConversation } = useConversations();
+  const { conversations, createConversation, deleteConversation, renameConversation, autoTitleConversation } = useConversations();
   const { currentTask, isExecuting, executeTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask();
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const { plan, isPlanning, generatePlan, updateStep, removeStep, addStep, reorderSteps, clearPlan } = useTaskPlanner();
@@ -70,11 +70,14 @@ const Dashboard = () => {
   }, []);
 
   const handleSendWithPlanner = async (content: string, options?: { ghlMode?: boolean }) => {
-    // If message starts with /plan, use the AI planner
     if (content.trimStart().startsWith("/plan ")) {
       const prompt = content.replace(/^\/plan\s+/, "");
       await generatePlan(prompt);
       return;
+    }
+    // Auto-title conversation on first user message
+    if (activeConversationId && messages.filter(m => m.role === 'user').length === 0) {
+      autoTitleConversation(activeConversationId, content);
     }
     sendMessage(content, options);
   };

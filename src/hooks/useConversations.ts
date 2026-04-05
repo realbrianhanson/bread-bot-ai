@@ -47,7 +47,7 @@ export const useConversations = () => {
   const createConversation = async (name?: string) => {
     if (!user) return null;
 
-    const conversationName = name || `Chat ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`;
+    const conversationName = name || `New Chat`;
     
     const { data, error } = await supabase
       .from('projects')
@@ -128,12 +128,29 @@ export const useConversations = () => {
     }
   };
 
+  const autoTitleConversation = async (id: string, firstUserMessage: string) => {
+    // Generate a short title (max ~6 words) from the first user message
+    const title = firstUserMessage
+      .replace(/\n/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .split(/\s+/)
+      .slice(0, 6)
+      .join(' ');
+    
+    const shortTitle = title.length > 40 ? title.substring(0, 40) + '…' : title;
+    if (!shortTitle) return;
+
+    await renameConversation(id, shortTitle);
+  };
+
   return {
     conversations,
     isLoading,
     createConversation,
     deleteConversation,
     renameConversation,
+    autoTitleConversation,
     refreshConversations: fetchConversations,
   };
 };

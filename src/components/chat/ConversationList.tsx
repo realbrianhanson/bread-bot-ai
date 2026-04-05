@@ -11,6 +11,14 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { Conversation } from '@/hooks/useConversations';
+import { format, isToday, isYesterday } from 'date-fns';
+
+const formatTimestamp = (dateStr: string) => {
+  const date = new Date(dateStr);
+  if (isToday(date)) return format(date, 'h:mm a');
+  if (isYesterday(date)) return 'Yesterday';
+  return format(date, 'MMM d');
+};
 import {
   AlertDialog,
   AlertDialogAction,
@@ -134,13 +142,18 @@ const ConversationList = ({
                   </div>
                 ) : (
                   <div
-                    className="flex items-center gap-2 p-3 cursor-pointer"
+                    className="flex items-start gap-2 p-3 cursor-pointer"
                     onClick={() => onSelectConversation(conversation.id)}
                   >
-                    <MessageSquare className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                    <span className="flex-1 text-sm truncate">
-                      {conversation.name}
-                    </span>
+                    <MessageSquare className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium truncate block text-foreground">
+                        {conversation.name}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatTimestamp(conversation.updated_at || conversation.created_at)}
+                      </span>
+                    </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button
                         size="sm"
