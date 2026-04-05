@@ -342,6 +342,7 @@ const Dashboard = () => {
               onDeleteConversation={handleDeleteConversation}
               onRenameConversation={renameConversation}
             />
+            </div>
           </div>
         )}
         {(activeConversationId || messages.length > 0) ? (
