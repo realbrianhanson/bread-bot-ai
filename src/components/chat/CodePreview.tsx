@@ -164,6 +164,56 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
     };
   }, [enforceScrollableIframe, isStatic, useFallback, key]);
 
+  const bridgeIframeWheelScroll = useCallback((event: WheelEvent) => {
+    if (event.defaultPrevented || event.ctrlKey) return;
+
+    const previewViewport = previewViewportRef.current;
+    const target = event.target;
+    if (!previewViewport || !(target instanceof Node) || !previewViewport.contains(target)) return;
+
+    const frame = iframeRef.current || previewViewport.querySelector('iframe');
+    if (!(frame instanceof HTMLIFrameElement)) return;
+
+    try {
+      const doc = frame.contentDocument;
+      const scrollElement = (doc?.scrollingElement || doc?.documentElement || doc?.body) as HTMLElement | null;
+      if (!scrollElement) return;
+
+      const deltaMultiplier = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? scrollElement.clientHeight : 1;
+      const deltaY = event.deltaY * deltaMultiplier;
+      const deltaX = event.deltaX * deltaMultiplier;
+      const maxScrollTop = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight);
+      const maxScrollLeft = Math.max(0, scrollElement.scrollWidth - scrollElement.clientWidth);
+
+      if (maxScrollTop === 0 && maxScrollLeft === 0) return;
+
+      const nextScrollTop = Math.min(maxScrollTop, Math.max(0, scrollElement.scrollTop + deltaY));
+      const nextScrollLeft = Math.min(maxScrollLeft, Math.max(0, scrollElement.scrollLeft + deltaX));
+      const didScroll = nextScrollTop !== scrollElement.scrollTop || nextScrollLeft !== scrollElement.scrollLeft;
+
+      if (!didScroll) return;
+
+      event.preventDefault();
+      scrollElement.style.setProperty('overflow-y', 'auto', 'important');
+      scrollElement.style.setProperty('overflow-x', 'hidden', 'important');
+      scrollElement.scrollTop = nextScrollTop;
+      scrollElement.scrollLeft = nextScrollLeft;
+    } catch {
+      return;
+    }
+  }, []);
+
+  useEffect(() => {
+    const previewViewport = previewViewportRef.current;
+    if (!previewViewport) return;
+
+    previewViewport.addEventListener('wheel', bridgeIframeWheelScroll, { passive: false, capture: true });
+
+    return () => {
+      previewViewport.removeEventListener('wheel', bridgeIframeWheelScroll, true);
+    };
+  }, [bridgeIframeWheelScroll]);
+
   const buildCombinedHTML = useCallback((): string => {
     let css = '';
     let js = '';
