@@ -46,11 +46,15 @@ async function fetchAndStoreScreenshots(
           continue;
         }
 
-        const { data: { publicUrl } } = supabaseClient.storage
+        const { data: signedUrlData, error: signedUrlError } = await supabaseClient.storage
           .from('browser-screenshots')
-          .getPublicUrl(fileName);
+          .createSignedUrl(fileName, 3600);
 
-        screenshotUrls.push(publicUrl);
+        if (signedUrlError || !signedUrlData?.signedUrl) {
+          console.error('Failed to create signed URL:', signedUrlError);
+          continue;
+        }
+        screenshotUrls.push(signedUrlData.signedUrl);
       } catch (error) {
         console.error('Error processing screenshot:', error);
       }
