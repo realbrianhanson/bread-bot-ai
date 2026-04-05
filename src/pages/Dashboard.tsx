@@ -50,7 +50,7 @@ const Dashboard = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     typeof window !== 'undefined' ? window.innerWidth < 768 : false
   );
-  const { messages, isLoading, isStreaming, isInspirationLoading, sendMessage, sendInspirationMessage, stopStreaming } = useChat(activeConversationId || undefined);
+  const { messages, isHistoryLoading, isLoading, isStreaming, isInspirationLoading, sendMessage, sendInspirationMessage, stopStreaming } = useChat(activeConversationId || undefined);
   const { conversations, createConversation, deleteConversation, renameConversation } = useConversations();
   const { currentTask, isExecuting, executeTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask();
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
@@ -161,7 +161,16 @@ const Dashboard = () => {
     if (taskDescription) executeTask(taskDescription, activeConversationId || undefined, selectedProfileId || undefined);
   };
 
-  const handleSelectConversation = (id: string) => setActiveConversationId(id);
+  const handleSelectConversation = (id: string) => {
+    setQueuedPrompt(null);
+    setActiveConversationId(id);
+    setMobileView('chat');
+    lastAutoOpenedPreviewMessageId.current = null;
+
+    if (isMobile) {
+      setSidebarCollapsed(true);
+    }
+  };
 
   const handleDeleteConversation = async (id: string) => {
     await deleteConversation(id);
@@ -320,7 +329,7 @@ const Dashboard = () => {
             <ConversationList
               conversations={conversations}
               activeConversationId={activeConversationId}
-              onSelectConversation={(id) => { handleSelectConversation(id); setSidebarCollapsed(true); }}
+              onSelectConversation={handleSelectConversation}
               onNewConversation={handleNewConversation}
               onDeleteConversation={handleDeleteConversation}
               onRenameConversation={renameConversation}
@@ -360,7 +369,8 @@ const Dashboard = () => {
             {mobileView === 'chat' || !hasPreviewContent ? (
               <div className="flex-1 min-h-0 flex flex-col">
                 <ChatContainer
-                  messages={messages} isLoading={isLoading} isStreaming={isStreaming}
+                  key={activeConversationId || 'mobile-chat'}
+                  messages={messages} isLoading={isLoading || isHistoryLoading} isStreaming={isStreaming}
                   onSendMessage={handleSendWithPlanner} onStopStreaming={stopStreaming}
                   currentTask={currentTask} isExecutingTask={isExecuting}
                   onExecuteTask={executeTask} onStopTask={stopTask} onPauseTask={pauseTask} onResumeTask={resumeTask}
@@ -373,7 +383,7 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="flex-1 min-h-0 relative">
-                <CodePreview files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} />
+                <CodePreview key={activeConversationId || 'mobile-preview'} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} />
               </div>
             )}
           </>
@@ -403,7 +413,8 @@ const Dashboard = () => {
                 </div>
                 <div className="flex-1 min-h-0">
                   <ChatContainer
-                    messages={messages} isLoading={isLoading} isStreaming={isStreaming}
+                    key={activeConversationId || 'desktop-chat'}
+                    messages={messages} isLoading={isLoading || isHistoryLoading} isStreaming={isStreaming}
                     onSendMessage={handleSendWithPlanner} onStopStreaming={stopStreaming}
                     currentTask={currentTask} isExecutingTask={isExecuting}
                     onExecuteTask={executeTask} onStopTask={stopTask} onPauseTask={pauseTask} onResumeTask={resumeTask}
@@ -463,7 +474,7 @@ const Dashboard = () => {
                   projectId={activeConversationId || undefined}
                 />
               ) : (
-                <CodePreview files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} />
+                <CodePreview key={activeConversationId || 'desktop-preview'} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} />
               )}
             </ResizablePanel>
           </ResizablePanelGroup>

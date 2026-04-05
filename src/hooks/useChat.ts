@@ -130,6 +130,7 @@ export const useChat = (projectId?: string) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isInspirationLoading, setIsInspirationLoading] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const { user } = useAuth();
   const { canSendMessage, refreshSubscription } = useSubscription();
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -139,8 +140,15 @@ export const useChat = (projectId?: string) => {
   useEffect(() => {
     if (!user || !projectId) {
       setMessages([]);
+      messagesRef.current = [];
+      setIsHistoryLoading(false);
       return;
     }
+
+    let isCancelled = false;
+    setMessages([]);
+    messagesRef.current = [];
+    setIsHistoryLoading(true);
 
     const loadMessages = async () => {
       const { data, error } = await supabase
@@ -152,17 +160,24 @@ export const useChat = (projectId?: string) => {
 
       if (error) {
         console.error('Error loading messages:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load chat history',
-          variant: 'destructive',
-        });
+        if (!isCancelled) {
+          toast({
+            title: 'Error',
+            description: 'Failed to load chat history',
+            variant: 'destructive',
+          });
+          setIsHistoryLoading(false);
+        }
         return;
       }
 
       const loaded = (data || []) as Message[];
+
+      if (isCancelled) return;
+
       setMessages(loaded);
       messagesRef.current = loaded;
+      setIsHistoryLoading(false);
     };
 
     loadMessages();
@@ -197,6 +212,7 @@ export const useChat = (projectId?: string) => {
       .subscribe();
 
     return () => {
+      isCancelled = true;
       supabase.removeChannel(channel);
     };
   }, [user, projectId]);
@@ -856,6 +872,7 @@ Format the output with clear headers, scores in bold, and specific actionable re
 
   return {
     messages,
+    isHistoryLoading,
     isLoading,
     isStreaming,
     isInspirationLoading,
