@@ -294,6 +294,55 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
         return blocked && node.scrollHeight > node.clientHeight + 8;
       };
 
+      const getScrollableTarget = (startNode) => {
+        let node = startNode instanceof HTMLElement ? startNode : startNode?.parentElement ?? null;
+
+        while (node && node !== document.body) {
+          const styles = window.getComputedStyle(node);
+          const canScrollY = ['auto', 'scroll', 'overlay'].includes(styles.overflowY) && node.scrollHeight > node.clientHeight + 4;
+          const canScrollX = ['auto', 'scroll', 'overlay'].includes(styles.overflowX) && node.scrollWidth > node.clientWidth + 4;
+
+          if (canScrollY || canScrollX) {
+            return node;
+          }
+
+          node = node.parentElement;
+        }
+
+        return scrollingRoot();
+      };
+
+      const applyManualScroll = (node, deltaX, deltaY) => {
+        if (!(node instanceof HTMLElement)) return false;
+
+        const maxScrollTop = Math.max(0, node.scrollHeight - node.clientHeight);
+        const maxScrollLeft = Math.max(0, node.scrollWidth - node.clientWidth);
+        const nextScrollTop = Math.min(maxScrollTop, Math.max(0, node.scrollTop + deltaY));
+        const nextScrollLeft = Math.min(maxScrollLeft, Math.max(0, node.scrollLeft + deltaX));
+        const didScroll = nextScrollTop !== node.scrollTop || nextScrollLeft !== node.scrollLeft;
+
+        if (!didScroll) return false;
+
+        node.scrollTop = nextScrollTop;
+        node.scrollLeft = nextScrollLeft;
+        return true;
+      };
+
+      const handleWheel = (event) => {
+        if (event.defaultPrevented || event.ctrlKey) return;
+
+        const deltaMultiplier = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerHeight : 1;
+        const deltaX = event.deltaX * deltaMultiplier;
+        const deltaY = event.deltaY * deltaMultiplier;
+        const target = getScrollableTarget(event.target);
+        const didScroll = applyManualScroll(target, deltaX, deltaY)
+          || (target !== scrollingRoot() && applyManualScroll(scrollingRoot(), deltaX, deltaY));
+
+        if (didScroll) {
+          event.preventDefault();
+        }
+      };
+
       const normalizeScroll = () => {
         normalizeRoot(document.documentElement);
         normalizeRoot(document.body);
@@ -315,6 +364,7 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
 
       const init = () => {
         normalizeScroll();
+        document.addEventListener('wheel', handleWheel, { passive: false, capture: true });
 
         if (document.body) {
           const observer = new MutationObserver(() => normalizeScroll());
