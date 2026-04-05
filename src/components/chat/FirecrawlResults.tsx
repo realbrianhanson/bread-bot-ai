@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Globe, FileText, Search, ExternalLink, ChevronDown, ChevronUp,
-  Send, Download, Loader2, Copy, Check, MousePointer,
+  Send, Download, Copy, Check, MousePointer,
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import ReactMarkdown from 'react-markdown';
