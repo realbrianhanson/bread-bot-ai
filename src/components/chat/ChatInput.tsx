@@ -218,138 +218,138 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
       )}
 
       <div className={cn(
-        'flex items-end gap-3 p-3 rounded-2xl border transition-all duration-200',
+        'flex flex-col gap-2 p-3 rounded-2xl border transition-all duration-200',
         'bg-card/80 backdrop-blur-sm',
         disabled ? 'border-border/30' : 'border-border/60 focus-within:border-primary/50 focus-within:shadow-glow'
       )}>
-        {/* Browse badge */}
-        {isBrowseCmd && (
-          <div className="shrink-0 mb-1.5 flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-warm/10 border border-brand-warm/30">
-            <Zap className="h-3 w-3 text-brand-warm" />
-            <span className="text-[10px] font-medium text-brand-warm">Browser</span>
-          </div>
-        )}
-        {isPlanCmd && (
-          <div className="shrink-0 mb-1.5 flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 border border-primary/30">
-            <span className="text-[10px]">🧠</span>
-            <span className="text-[10px] font-medium text-primary">Planner</span>
-          </div>
-        )}
-        {isCodeCmd && (
-          <div className="shrink-0 mb-1.5 flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/10 border border-accent/30">
-            <span className="text-[10px]">💻</span>
-            <span className="text-[10px] font-medium text-accent">Sandbox</span>
-          </div>
-        )}
-
-        {/* Inspiration button */}
-        <InspirationPopover
-          disabled={disabled}
-          isLoading={isInspirationLoading}
-          onSubmit={(url, content, ghl) => onInspire?.(url, content, ghl)}
-        />
-
-        {/* Style picker */}
-        <StylePicker
-          selectedId={selectedDesignId}
-          onSelect={(id, md, templateMarketingMd) => {
-            setSelectedDesignId(id);
-            if (md) setCustomDesignMd(md);
-            // If the design template has its own marketing_md, use it (unless user picks a separate purpose)
-            if (templateMarketingMd && !selectedPurposeId) {
-              setMarketingMd(templateMarketingMd);
-            }
-          }}
-          disabled={disabled}
-        />
-
-        {/* Purpose picker */}
-        <PurposePicker
-          selectedId={selectedPurposeId}
-          onSelect={(id, md, cat) => {
-            setSelectedPurposeId(id);
-            setMarketingMd(md);
-            setMarketingCategory(cat);
-          }}
-          disabled={disabled}
-        />
-
-        {/* Attachment button */}
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={disabled || attachedFiles.length >= MAX_FILES}
-          className={cn(
-            'shrink-0 mb-0.5 p-1.5 rounded-lg transition-colors',
-            'text-muted-foreground hover:text-foreground hover:bg-muted/50',
-            (disabled || attachedFiles.length >= MAX_FILES) && 'opacity-30 pointer-events-none'
+        {/* Toolbar row */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Browse badge */}
+          {isBrowseCmd && (
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-warm/10 border border-brand-warm/30">
+              <Zap className="h-3 w-3 text-brand-warm" />
+              <span className="text-[10px] font-medium text-brand-warm">Browser</span>
+            </div>
           )}
-          title="Attach files (CSV, PDF, images, JSON, TXT, XLSX)"
-        >
-          <Paperclip className="h-4 w-4" />
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={ACCEPTED_TYPES}
-          multiple
-          className="hidden"
-          onChange={handleFileSelect}
-        />
-
-        <textarea
-          ref={textareaRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={disabled ? 'Waiting…' : 'Message GarlicBread or type / for commands…'}
-          disabled={disabled}
-          rows={1}
-          className={cn(
-            'flex-1 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground/50',
-            'min-h-[24px] max-h-[160px] py-0.5 leading-relaxed',
-            disabled && 'opacity-50'
+          {isPlanCmd && (
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 border border-primary/30">
+              <span className="text-[10px]">🧠</span>
+              <span className="text-[10px] font-medium text-primary">Planner</span>
+            </div>
           )}
-        />
-
-        {/* GHL Mode toggle */}
-        <button
-          onClick={toggleGhlMode}
-          className={cn(
-            'shrink-0 mb-0.5 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold transition-all duration-200 border',
-            ghlMode
-              ? 'bg-accent/15 border-accent/40 text-accent shadow-[0_0_8px_hsl(var(--accent)/0.3)]'
-              : 'bg-muted/30 border-border/40 text-muted-foreground hover:border-border/60'
+          {isCodeCmd && (
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/10 border border-accent/30">
+              <span className="text-[10px]">💻</span>
+              <span className="text-[10px] font-medium text-accent">Sandbox</span>
+            </div>
           )}
-          title={ghlMode ? 'GHL Mode ON — code optimized for GoHighLevel' : 'GHL Mode OFF — standard Tailwind output'}
-        >
-          {ghlMode ? <ToggleRight className="h-3 w-3" /> : <ToggleLeft className="h-3 w-3" />}
-          GHL
-        </button>
 
-        <VoiceInputButton isListening={isListening} isSupported={isSupported} onToggle={toggle} />
+          <InspirationPopover
+            disabled={disabled}
+            isLoading={isInspirationLoading}
+            onSubmit={(url, content, ghl) => onInspire?.(url, content, ghl)}
+          />
 
-        {isStreaming ? (
-          <Button
-            onClick={onStop}
-            size="icon"
-            variant="destructive"
-            className="h-8 w-8 shrink-0 rounded-xl"
-          >
-            <Square className="h-3.5 w-3.5" />
-          </Button>
-        ) : (
-          <Button
-            onClick={handleSend}
-            disabled={disabled || (!input.trim() && attachedFiles.length === 0)}
-            size="icon"
+          <StylePicker
+            selectedId={selectedDesignId}
+            onSelect={(id, md, templateMarketingMd) => {
+              setSelectedDesignId(id);
+              if (md) setCustomDesignMd(md);
+              if (templateMarketingMd && !selectedPurposeId) {
+                setMarketingMd(templateMarketingMd);
+              }
+            }}
+            disabled={disabled}
+          />
+
+          <PurposePicker
+            selectedId={selectedPurposeId}
+            onSelect={(id, md, cat) => {
+              setSelectedPurposeId(id);
+              setMarketingMd(md);
+              setMarketingCategory(cat);
+            }}
+            disabled={disabled}
+          />
+
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={disabled || attachedFiles.length >= MAX_FILES}
             className={cn(
-              'h-8 w-8 shrink-0 rounded-xl transition-all duration-200',
-              (input.trim() || attachedFiles.length > 0) && !disabled ? 'shadow-glow' : 'opacity-40'
+              'p-1.5 rounded-lg transition-colors',
+              'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+              (disabled || attachedFiles.length >= MAX_FILES) && 'opacity-30 pointer-events-none'
             )}
+            title="Attach files (CSV, PDF, images, JSON, TXT, XLSX)"
           >
-            <Send className="h-3.5 w-3.5" />
-          </Button>
-        )}
+            <Paperclip className="h-4 w-4" />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPTED_TYPES}
+            multiple
+            className="hidden"
+            onChange={handleFileSelect}
+          />
+
+          <button
+            onClick={toggleGhlMode}
+            className={cn(
+              'flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold transition-all duration-200 border',
+              ghlMode
+                ? 'bg-accent/15 border-accent/40 text-accent shadow-[0_0_8px_hsl(var(--accent)/0.3)]'
+                : 'bg-muted/30 border-border/40 text-muted-foreground hover:border-border/60'
+            )}
+            title={ghlMode ? 'GHL Mode ON — code optimized for GoHighLevel' : 'GHL Mode OFF — standard Tailwind output'}
+          >
+            {ghlMode ? <ToggleRight className="h-3 w-3" /> : <ToggleLeft className="h-3 w-3" />}
+            GHL
+          </button>
+
+          <VoiceInputButton isListening={isListening} isSupported={isSupported} onToggle={toggle} />
+        </div>
+
+        {/* Input row */}
+        <div className="flex items-end gap-2">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={disabled ? 'Waiting…' : 'Message GarlicBread or type / for commands…'}
+            disabled={disabled}
+            rows={1}
+            className={cn(
+              'flex-1 min-w-0 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground/50',
+              'min-h-[24px] max-h-[160px] py-0.5 leading-relaxed',
+              disabled && 'opacity-50'
+            )}
+          />
+
+          {isStreaming ? (
+            <Button
+              onClick={onStop}
+              size="icon"
+              variant="destructive"
+              className="h-8 w-8 shrink-0 rounded-xl"
+            >
+              <Square className="h-3.5 w-3.5" />
+            </Button>
+          ) : (
+            <Button
+              onClick={handleSend}
+              disabled={disabled || (!input.trim() && attachedFiles.length === 0)}
+              size="icon"
+              className={cn(
+                'h-8 w-8 shrink-0 rounded-xl transition-all duration-200',
+                (input.trim() || attachedFiles.length > 0) && !disabled ? 'shadow-glow' : 'opacity-40'
+              )}
+            >
+              <Send className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
