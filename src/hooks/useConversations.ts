@@ -47,7 +47,7 @@ export const useConversations = () => {
   const createConversation = async (name?: string) => {
     if (!user) return null;
 
-    const conversationName = name || `Chat ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`;
+    const conversationName = name || `New Chat`;
     
     const { data, error } = await supabase
       .from('projects')
