@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
-import { Settings, LogOut, MessageSquarePlus, ChevronLeft, ChevronRight, Sparkles, Brain, MessageCircle, Eye } from "lucide-react";
+import { Settings, LogOut, MessageSquarePlus, ChevronLeft, ChevronRight, Sparkles, Brain, MessageCircle, Eye, RefreshCw } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
   AlertDialog,
@@ -61,6 +61,7 @@ const Dashboard = () => {
   const [queuedPrompt, setQueuedPrompt] = useState<string | null>(null);
   const isMobile = useIsMobile();
   const lastAutoOpenedPreviewMessageId = useRef<string | null>(null);
+  const [mobilePreviewKey, setMobilePreviewKey] = useState(0);
 
   useEffect(() => {
     supabase.functions.invoke('honcho-proxy', { body: { action: 'status' } })
@@ -363,6 +364,15 @@ const Dashboard = () => {
                   <Eye className="h-3.5 w-3.5" />
                   Preview
                 </button>
+                {mobileView === 'preview' && (
+                  <button
+                    onClick={() => setMobilePreviewKey(prev => prev + 1)}
+                    className="flex items-center justify-center px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label="Refresh preview"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
             )}
 
@@ -383,7 +393,7 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="flex-1 min-h-0 relative">
-                <CodePreview key={activeConversationId || 'mobile-preview'} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} />
+                <CodePreview key={`${activeConversationId || 'mobile-preview'}-${mobilePreviewKey}`} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} />
               </div>
             )}
           </>
