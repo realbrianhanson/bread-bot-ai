@@ -126,6 +126,7 @@ const ChatContainer = ({
 
       const result: FirecrawlResult = { type: 'scrape', url, title, markdown: md, wordCount };
       setFirecrawlResults((prev) => [...prev, result]);
+
     } catch (err: any) {
       toast({ title: 'Scrape failed', description: err.message || 'Unknown error', variant: 'destructive' });
     } finally {
@@ -241,6 +242,18 @@ const ChatContainer = ({
       }
     }
     
+    // If there are scraped results, prepend them as context so the AI knows about them
+    if (firecrawlResults.length > 0 && !trimmedContent.startsWith('/')) {
+      const scrapeContext = firecrawlResults
+        .filter((r): r is import('./FirecrawlResults').ScrapeResult => r.type === 'scrape' && !!r.markdown)
+        .map((r) => `[SCRAPED PAGE: ${r.url}]\nTitle: ${r.title || 'Untitled'}\n\n${(r.markdown || '').slice(0, 6000)}`)
+        .join('\n\n---\n\n');
+      if (scrapeContext) {
+        const enrichedContent = `The user previously scraped the following page(s). Use this content to fulfill their request:\n\n${scrapeContext}\n\n---\n\nUser's request: ${trimmedContent}`;
+        onSendMessage(enrichedContent, options);
+        return;
+      }
+    }
     onSendMessage(content, options);
   };
 
