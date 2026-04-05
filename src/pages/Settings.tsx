@@ -206,10 +206,7 @@ export default function Settings() {
     return 'outline';
   };
 
-  const [pageReady, setPageReady] = useState(false);
-
   useEffect(() => {
-    // Signal that the page is ready after a micro-delay so content renders before paint
     const t = requestAnimationFrame(() => setPageReady(true));
     return () => cancelAnimationFrame(t);
   }, []);
