@@ -46,14 +46,37 @@ export function SaveTemplateDialog({ open, onOpenChange, files }: SaveTemplateDi
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase.functions.invoke('extract-template', {
-        body: { html, css, js, name: name.trim(), category },
-      });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      try {
+        const { data, error } = await supabase.functions.invoke('extract-template', {
+          body: { html, css, js, name: name.trim(), category },
+        });
 
-      toast.success('Template saved! It\'s now available in your style picker.');
+        clearTimeout(timeout);
+
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+
+        toast.success('Template saved! It\'s now available in your style picker.');
+      } catch (extractErr: any) {
+        clearTimeout(timeout);
+        // If timeout or extraction fails, save with raw code as fallback
+        if (extractErr?.name === 'AbortError' || extractErr?.message?.includes('timeout')) {
+          const { error: fallbackError } = await supabase.from('design_templates').insert({
+            name: name.trim(),
+            category,
+            design_md: `# ${name.trim()}\n\n## Raw Code\n\`\`\`html\n${html.slice(0, 5000)}\n\`\`\`\n${css ? `\n\`\`\`css\n${css.slice(0, 2000)}\n\`\`\`` : ''}`,
+            source: 'manual',
+            user_id: session.user.id,
+          });
+          if (fallbackError) throw fallbackError;
+          toast.success('Template saved with raw code (extraction timed out).');
+        } else {
+          throw extractErr;
+        }
+      }
       onOpenChange(false);
       setName('');
       setCategory('Custom');

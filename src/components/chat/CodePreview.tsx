@@ -1,5 +1,5 @@
 import { SandpackProvider, SandpackLayout, SandpackPreview } from '@codesandbox/sandpack-react';
-import { Maximize2, RefreshCw, Copy, Download, Check, BookmarkPlus } from 'lucide-react';
+import { Maximize2, Minimize2, RefreshCw, Copy, Download, Check, BookmarkPlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -92,8 +92,19 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
   const [copied, setCopied] = useState(false);
   const [useFallback, setUseFallback] = useState(false);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const previewViewportRef = useRef<HTMLDivElement>(null);
+
+  // Escape key to exit fullscreen overlay
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsFullscreen(false);
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [isFullscreen]);
 
   const resolvedPreview = useMemo(() => {
     if (!isPreviewPlaceholder(files, mainFile)) {
@@ -480,10 +491,7 @@ ${previewScrollRecoveryScript}
   };
 
   const handleFullscreen = () => {
-    const el = iframeRef.current || previewViewportRef.current?.querySelector('iframe') || document.querySelector('iframe[title="Sandpack Preview"]');
-    if (el && el.requestFullscreen) {
-      el.requestFullscreen();
-    }
+    setIsFullscreen((prev) => !prev);
   };
 
   const handleCopyForGHL = async () => {
@@ -555,48 +563,90 @@ ${previewScrollRecoveryScript}
           <RefreshCw className="h-3 w-3" />
         </Button>
         <Button variant="ghost" size="icon" onClick={handleFullscreen} className="h-6 w-6">
-          <Maximize2 className="h-3 w-3" />
+          {isFullscreen ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
         </Button>
       </div>
     </div>
   );
 
+  const FullscreenOverlay = () => {
+    if (!isFullscreen) return null;
+    return (
+      <div className="fixed inset-0 z-[9999] bg-background flex flex-col">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setIsFullscreen(false)}
+          className="absolute top-4 right-4 z-[10000] h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm border border-border shadow-lg hover:bg-destructive hover:text-destructive-foreground transition-colors"
+        >
+          <X className="h-5 w-5" />
+        </Button>
+        <div className="flex-1 min-h-0">
+          {isStatic || useFallback ? (
+            <iframe
+              key={`fs-${key}`}
+              srcDoc={buildCombinedHTML()}
+              className="block w-full h-full border-0"
+              style={{ overflowY: 'auto', overflowX: 'auto' }}
+              sandbox="allow-scripts allow-same-origin"
+              scrolling="yes"
+              title="Preview Fullscreen"
+            />
+          ) : (
+            <SandpackWithFallback
+              key={`fs-${key}`}
+              files={previewFiles}
+              template="react-ts"
+              onFallback={() => setUseFallback(true)}
+            />
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // Static/vanilla: use iframe srcdoc directly (no Sandpack)
   if (isStatic || useFallback) {
     return (
-      <div className="absolute inset-0 flex flex-col bg-background">
-        <Toolbar />
-        <div ref={previewViewportRef} className="flex-1 relative min-h-0 overflow-y-auto overflow-x-hidden">
-          <iframe
-            key={key}
-            ref={enforceScrollableIframe}
-            srcDoc={buildCombinedHTML()}
-            className="block"
-            style={{ width: '100%', height: '100%', border: '0', overflowY: 'auto', overflowX: 'auto' }}
-            sandbox="allow-scripts allow-same-origin"
-            scrolling="yes"
-            title="Preview"
-          />
+      <>
+        <FullscreenOverlay />
+        <div className="absolute inset-0 flex flex-col bg-background">
+          <Toolbar />
+          <div ref={previewViewportRef} className="flex-1 relative min-h-0 overflow-y-auto overflow-x-hidden">
+            <iframe
+              key={key}
+              ref={enforceScrollableIframe}
+              srcDoc={buildCombinedHTML()}
+              className="block"
+              style={{ width: '100%', height: '100%', border: '0', overflowY: 'auto', overflowX: 'auto' }}
+              sandbox="allow-scripts allow-same-origin"
+              scrolling="yes"
+              title="Preview"
+            />
+          </div>
+          <SaveTemplateDialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate} files={previewFiles} />
         </div>
-        <SaveTemplateDialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate} files={previewFiles} />
-      </div>
+      </>
     );
   }
 
   // React template: try Sandpack with fallback
   return (
-    <div className="absolute inset-0 flex flex-col bg-background">
-      <Toolbar />
-      <div ref={previewViewportRef} className="flex-1 relative min-h-0 overflow-y-auto overflow-x-hidden">
-        <SandpackWithFallback
-          key={key}
-          files={previewFiles}
-          template="react-ts"
-          onFallback={() => setUseFallback(true)}
-        />
+    <>
+      <FullscreenOverlay />
+      <div className="absolute inset-0 flex flex-col bg-background">
+        <Toolbar />
+        <div ref={previewViewportRef} className="flex-1 relative min-h-0 overflow-y-auto overflow-x-hidden">
+          <SandpackWithFallback
+            key={key}
+            files={previewFiles}
+            template="react-ts"
+            onFallback={() => setUseFallback(true)}
+          />
+        </div>
+        <SaveTemplateDialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate} files={previewFiles} />
       </div>
-      <SaveTemplateDialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate} files={previewFiles} />
-    </div>
+    </>
   );
 };
 

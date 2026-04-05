@@ -11,6 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { toast } from '@/hooks/use-toast';
+import { ExportResultsDropdown } from './ExportResultsDropdown';
 
 /* ---------- types ---------- */
 export interface ScrapeResult {
@@ -104,6 +105,7 @@ const FirecrawlResults = ({ result, onSendToAI, onScrapeUrl, onSaveAsFile }: Fir
                 <Button size="sm" variant="ghost" className="gap-1.5 text-xs h-8" onClick={() => handleCopy(result.markdown || result.url, 'scrape-copy')}>
                   {copiedId === 'scrape-copy' ? <Check className="h-3 w-3 text-primary" /> : <Copy className="h-3 w-3" />} Copy
                 </Button>
+                <ExportResultsDropdown result={result} />
               </div>
             </CollapsibleContent>
           </Collapsible>
@@ -143,6 +145,9 @@ const FirecrawlResults = ({ result, onSendToAI, onScrapeUrl, onSaveAsFile }: Fir
               </div>
             ))}
           </div>
+          <div className="px-4 py-3 border-t border-border/30">
+            <ExportResultsDropdown result={result} />
+          </div>
         </Card>
       </motion.div>
     );
@@ -180,6 +185,9 @@ const FirecrawlResults = ({ result, onSendToAI, onScrapeUrl, onSaveAsFile }: Fir
                 </div>
               </div>
             ))}
+          </div>
+          <div className="px-4 py-3 border-t border-border/30">
+            <ExportResultsDropdown result={result} />
           </div>
         </Card>
       </motion.div>
