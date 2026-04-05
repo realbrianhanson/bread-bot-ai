@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
-import { Settings, LogOut, MessageSquarePlus, ChevronLeft, ChevronRight, Sparkles, Brain, MessageCircle, Eye, RefreshCw } from "lucide-react";
+import { Settings, LogOut, MessageSquarePlus, ChevronLeft, ChevronRight, Sparkles, Brain, MessageCircle, Eye, RefreshCw, ArrowLeft } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
   AlertDialog,
