@@ -1,4 +1,5 @@
 import { Message } from '@/hooks/useChat';
+import { extractHtmlDocument, extractPreviewFromContent } from '@/lib/previewContent';
 
 export interface ParsedCode {
   files: Record<string, string>;
@@ -21,19 +22,21 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
   console.log('Assistant messages:', assistantMessages.length);
   
   for (const message of assistantMessages) {
-    const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+    const codeBlockRegex = /```([\w-]+)?\s*\n([\s\S]*?)```/gi;
     let match;
+    let messageHasHtml = false;
     
     while ((match = codeBlockRegex.exec(message.content)) !== null) {
-      const language = match[1] || 'javascript';
+      const language = (match[1] || 'javascript').toLowerCase();
       const code = match[2].trim();
       
       console.log('Found code block:', language, 'length:', code.length);
       
       // Determine file name and type based on language and content
-      if (language === 'html') {
+      if (language === 'html' || language === 'htm') {
         files['/index.html'] = code;
         hasHtml = true;
+        messageHasHtml = true;
       } else if (language === 'css') {
         files['/styles.css'] = code;
         hasCss = true;
@@ -48,6 +51,14 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
         if (code.includes('export default') || code.includes('function App')) {
           files['/App.jsx'] = code;
         }
+      }
+    }
+
+    if (!messageHasHtml) {
+      const htmlDocument = extractHtmlDocument(message.content);
+      if (htmlDocument) {
+        files['/index.html'] = htmlDocument;
+        hasHtml = true;
       }
     }
   }
@@ -125,6 +136,15 @@ export const parseCodeFromMessages = (messages: Message[]): ParsedCode => {
   console.log('Parsed files:', Object.keys(files));
   console.log('Template:', template);
   console.log('Main file:', mainFile);
+
+  if (!hasHtml && !files['/App.tsx'] && !files['/App.jsx']) {
+    for (let i = assistantMessages.length - 1; i >= 0; i -= 1) {
+      const extracted = extractPreviewFromContent(assistantMessages[i].content);
+      if (extracted) {
+        return extracted;
+      }
+    }
+  }
 
   // If no files found, return a default setup
   if (Object.keys(files).length === 0) {

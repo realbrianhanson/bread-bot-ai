@@ -1,3 +1,5 @@
+import { extractHtmlDocument } from '@/lib/previewContent';
+
 export interface ValidationIssue {
   severity: 'critical' | 'warning';
   category: 'contrast' | 'responsive' | 'accessibility' | 'structure' | 'images';
@@ -202,12 +204,12 @@ export function validateWebsite(html: string, css: string = '', js: string = '')
 }
 
 export function hasCodeBlocks(content: string): boolean {
-  return /```(html|css|javascript|js|tsx|jsx)\n/i.test(content);
+  return /```(html|css|javascript|js|tsx|jsx)\s*\n/i.test(content) || Boolean(extractHtmlDocument(content));
 }
 
 export function extractCodeFromResponse(content: string): { html: string; css: string; js: string } {
   let html = '', css = '', js = '';
-  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+  const codeBlockRegex = /```([\w-]+)?\s*\n([\s\S]*?)```/gi;
   let match;
   while ((match = codeBlockRegex.exec(content)) !== null) {
     const lang = (match[1] || '').toLowerCase();
@@ -215,6 +217,9 @@ export function extractCodeFromResponse(content: string): { html: string; css: s
     if (lang === 'html') html = code;
     else if (lang === 'css') css = code;
     else if (lang === 'javascript' || lang === 'js') js = code;
+  }
+  if (!html) {
+    html = extractHtmlDocument(content) || '';
   }
   return { html, css, js };
 }
