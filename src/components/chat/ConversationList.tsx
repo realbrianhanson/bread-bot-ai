@@ -9,9 +9,16 @@ import {
   X,
   MessageSquare,
 } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Conversation } from '@/hooks/useConversations';
 import { format, isToday, isYesterday } from 'date-fns';
+
+const formatTimestamp = (dateStr: string) => {
+  const date = new Date(dateStr);
+  if (isToday(date)) return format(date, 'h:mm a');
+  if (isYesterday(date)) return 'Yesterday';
+  return format(date, 'MMM d');
+};
 import {
   AlertDialog,
   AlertDialogAction,
