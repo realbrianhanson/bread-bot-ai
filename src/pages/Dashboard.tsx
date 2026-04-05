@@ -401,7 +401,6 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="flex-1 min-h-0 relative">
-                <CodePreview key={`${activeConversationId || 'mobile-preview'}-${mobilePreviewKey}`} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} />
                 <CodePreview key={`${activeConversationId || 'mobile-preview'}-${mobilePreviewKey}`} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} />
               </div>
             )}
