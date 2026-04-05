@@ -186,6 +186,113 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
     // and append any extra CSS/JS files.
     const isCompleteDoc = html.toLowerCase().includes('<!doctype') && /<html[\s>]/i.test(html) && /<body[\s>]/i.test(html);
 
+    const previewHeadFixes = `  <style>
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      min-height: 100% !important;
+      height: auto !important;
+      max-height: none !important;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+      overscroll-behavior-y: auto !important;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    #root, #app, main, body > :first-child {
+      min-height: 100vh !important;
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+    }
+    section, [class*="section"], .hero, .pricing, .features, .cta, .testimonials, .faq, .footer {
+      padding-top: clamp(40px, 5vw, 80px) !important;
+      padding-bottom: clamp(40px, 5vw, 80px) !important;
+      margin-top: 0 !important;
+      margin-bottom: 0 !important;
+    }
+  </style>\n`;
+
+    const previewScrollRecoveryScript = `  <script>
+    (() => {
+      const scrollingRoot = () => document.scrollingElement || document.documentElement;
+
+      const normalizeRoot = (node) => {
+        if (!(node instanceof HTMLElement)) return;
+        node.style.setProperty('min-height', '100%', 'important');
+        node.style.setProperty('height', 'auto', 'important');
+        node.style.setProperty('max-height', 'none', 'important');
+        node.style.setProperty('overflow-x', 'hidden', 'important');
+        node.style.setProperty('overflow-y', 'auto', 'important');
+      };
+
+      const releaseContainer = (node) => {
+        if (!(node instanceof HTMLElement)) return;
+        node.style.setProperty('height', 'auto', 'important');
+        node.style.setProperty('max-height', 'none', 'important');
+        node.style.setProperty('overflow', 'visible', 'important');
+        node.style.setProperty('overflow-y', 'visible', 'important');
+      };
+
+      const hasBlockedScroll = (node) => {
+        if (!(node instanceof HTMLElement)) return false;
+        const styles = window.getComputedStyle(node);
+        const overflowY = styles.overflowY;
+        const overflow = styles.overflow;
+        const blocked = overflowY === 'hidden' || overflowY === 'clip' || overflow === 'hidden' || overflow === 'clip';
+        return blocked && node.scrollHeight > node.clientHeight + 8;
+      };
+
+      const normalizeScroll = () => {
+        normalizeRoot(document.documentElement);
+        normalizeRoot(document.body);
+        normalizeRoot(scrollingRoot());
+
+        [
+          document.getElementById('root'),
+          document.getElementById('app'),
+          document.querySelector('main'),
+          document.body?.firstElementChild,
+        ].forEach((node) => releaseContainer(node));
+
+        Array.from(document.body?.querySelectorAll('*') ?? [])
+          .filter((node) => node instanceof HTMLElement)
+          .filter((node) => hasBlockedScroll(node))
+          .slice(0, 50)
+          .forEach((node) => releaseContainer(node));
+      };
+
+      const init = () => {
+        normalizeScroll();
+
+        if (document.body) {
+          const observer = new MutationObserver(() => normalizeScroll());
+          observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class', 'style'],
+          });
+          setTimeout(() => observer.disconnect(), 4000);
+        }
+
+        requestAnimationFrame(normalizeScroll);
+        setTimeout(normalizeScroll, 100);
+        setTimeout(normalizeScroll, 400);
+        setTimeout(normalizeScroll, 1000);
+      };
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init, { once: true });
+      } else {
+        init();
+      }
+
+      window.addEventListener('load', normalizeScroll, { once: true });
+    })();
+  <\/script>\n`;
+
     if (isCompleteDoc) {
       let finalHtml = html;
 
@@ -203,23 +310,7 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
         );
       }
 
-      // Cap section spacing for complete docs too
-      const sectionSpacingFix = `  <style>
-    html, body {
-      margin: 0 !important;
-      padding: 0 !important;
-      min-height: 100% !important;
-      overflow-x: hidden !important;
-      overflow-y: auto !important;
-    }
-    section, [class*="section"], .hero, .pricing, .features, .cta, .testimonials, .faq, .footer {
-      padding-top: clamp(40px, 5vw, 80px) !important;
-      padding-bottom: clamp(40px, 5vw, 80px) !important;
-      margin-top: 0 !important;
-      margin-bottom: 0 !important;
-    }
-  </style>\n`;
-      finalHtml = finalHtml.replace('</head>', sectionSpacingFix + '</head>');
+      finalHtml = finalHtml.replace('</head>', previewHeadFixes + '</head>');
 
       // Append any separate CSS files as inline <style>
       if (css.trim()) {
@@ -230,6 +321,8 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
       if (js.trim()) {
         finalHtml = finalHtml.replace('</body>', `  <script>\n${js}  <\/script>\n</body>`);
       }
+
+      finalHtml = finalHtml.replace('</body>', `${previewScrollRecoveryScript}</body>`);
 
       const { html: fixedHtml, issuesFound } = fixContrastIssues(finalHtml);
       if (issuesFound > 0) {
@@ -265,29 +358,12 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      min-height: 100%;
-      overflow-x: hidden !important;
-      overflow-y: auto !important;
-    }
-    body {
-      font-family: 'Inter', sans-serif;
-    }
-    section, [class*="section"], .hero, .pricing, .features, .cta, .testimonials, .faq, .footer {
-      padding-top: clamp(40px, 5vw, 80px) !important;
-      padding-bottom: clamp(40px, 5vw, 80px) !important;
-      margin-top: 0 !important;
-      margin-bottom: 0 !important;
-    }
-${css.split('\n').map(l => '    ' + l).join('\n')}
-  </style>
+${previewHeadFixes}${css.trim() ? `  <style>\n${css.split('\n').map(l => '    ' + l).join('\n')}\n  </style>\n` : ''}
 </head>
 <body>
 ${bodyContent}
 ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n  <\/script>` : ''}
+${previewScrollRecoveryScript}
 </body>
 </html>`;
 
