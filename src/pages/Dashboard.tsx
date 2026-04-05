@@ -70,11 +70,14 @@ const Dashboard = () => {
   }, []);
 
   const handleSendWithPlanner = async (content: string, options?: { ghlMode?: boolean }) => {
-    // If message starts with /plan, use the AI planner
     if (content.trimStart().startsWith("/plan ")) {
       const prompt = content.replace(/^\/plan\s+/, "");
       await generatePlan(prompt);
       return;
+    }
+    // Auto-title conversation on first user message
+    if (activeConversationId && messages.filter(m => m.role === 'user').length === 0) {
+      autoTitleConversation(activeConversationId, content);
     }
     sendMessage(content, options);
   };
