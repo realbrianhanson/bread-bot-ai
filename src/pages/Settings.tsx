@@ -48,6 +48,7 @@ export default function Settings() {
   const [managingSubscription, setManagingSubscription] = useState(false);
   const [googleIntegration, setGoogleIntegration] = useState<{ provider_email: string | null; connected: boolean }>({ connected: false, provider_email: null });
   const [connectingGoogle, setConnectingGoogle] = useState(false);
+  const [pageReady, setPageReady] = useState(false);
 
   const loadGoogleIntegration = useCallback(async () => {
     if (!user) return;
