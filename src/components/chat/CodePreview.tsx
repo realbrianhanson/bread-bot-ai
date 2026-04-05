@@ -147,6 +147,17 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
         );
       }
 
+      // Cap section spacing for complete docs too
+      const sectionSpacingFix = `  <style>
+    section, [class*="section"], .hero, .pricing, .features, .cta, .testimonials, .faq, .footer {
+      padding-top: clamp(40px, 5vw, 80px) !important;
+      padding-bottom: clamp(40px, 5vw, 80px) !important;
+      margin-top: 0 !important;
+      margin-bottom: 0 !important;
+    }
+  </style>\n`;
+      finalHtml = finalHtml.replace('</head>', sectionSpacingFix + '</head>');
+
       // Append any separate CSS files as inline <style>
       if (css.trim()) {
         finalHtml = finalHtml.replace('</head>', `  <style>\n${css}  </style>\n</head>`);
