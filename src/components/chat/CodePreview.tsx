@@ -145,7 +145,7 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
     iframe.addEventListener('load', applyScrollableStyles);
 
     return () => iframe.removeEventListener('load', applyScrollableStyles);
-  }, [buildCombinedHTML, enforceScrollableIframe, isStatic, useFallback, key]);
+  }, [enforceScrollableIframe, isStatic, useFallback, key]);
 
   const buildCombinedHTML = useCallback((): string => {
     let css = '';
