@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
-import { Settings, LogOut, MessageSquarePlus, ChevronLeft, ChevronRight, Sparkles, Brain, MessageCircle, Eye, RefreshCw } from "lucide-react";
+import { Settings, LogOut, MessageSquarePlus, ChevronLeft, ChevronRight, Sparkles, Brain, MessageCircle, Eye, RefreshCw, ArrowLeft } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
   AlertDialog,
@@ -325,34 +325,22 @@ const Dashboard = () => {
 
       {/* Mobile View */}
       <div className="flex-1 flex flex-col md:hidden min-h-0 overflow-hidden">
-        {!sidebarCollapsed && (
-          <div className="absolute inset-x-0 top-0 bottom-0 z-20 bg-background flex flex-col">
-            <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-border/50">
-              <span className="text-sm font-semibold text-foreground">Conversations</span>
-              <Button variant="ghost" size="icon" onClick={() => setSidebarCollapsed(true)} className="h-8 w-8">
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="flex-1 min-h-0 overflow-y-auto">
-            <ConversationList
-              conversations={conversations}
-              activeConversationId={activeConversationId}
-              onSelectConversation={handleSelectConversation}
-              onNewConversation={handleNewConversation}
-              onDeleteConversation={handleDeleteConversation}
-              onRenameConversation={renameConversation}
-            />
-            </div>
-          </div>
-        )}
         {(activeConversationId || messages.length > 0) ? (
           <>
-            {/* Mobile tab bar for Chat / Preview */}
-            {hasPreviewContent && (
-              <div className="shrink-0 flex border-b border-border/50 bg-card/80">
+            {/* Mobile top bar with back arrow + Chat/Preview tabs */}
+            <div className="shrink-0 flex items-center border-b border-border/50 bg-card/80">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => { setActiveConversationId(null); setSidebarCollapsed(false); }}
+                className="h-10 w-10 shrink-0"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div className="flex-1 flex">
                 <button
                   onClick={() => setMobileView('chat')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors ${
                     mobileView === 'chat'
                       ? 'text-primary border-b-2 border-primary'
                       : 'text-muted-foreground'
@@ -361,28 +349,32 @@ const Dashboard = () => {
                   <MessageCircle className="h-3.5 w-3.5" />
                   Chat
                 </button>
-                <button
-                  onClick={() => setMobileView('preview')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${
-                    mobileView === 'preview'
-                      ? 'text-primary border-b-2 border-primary'
-                      : 'text-muted-foreground'
-                  }`}
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                  Preview
-                </button>
-                {mobileView === 'preview' && (
-                  <button
-                    onClick={() => setMobilePreviewKey(prev => prev + 1)}
-                    className="flex items-center justify-center px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label="Refresh preview"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                  </button>
+                {hasPreviewContent && (
+                  <>
+                    <button
+                      onClick={() => setMobileView('preview')}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors ${
+                        mobileView === 'preview'
+                          ? 'text-primary border-b-2 border-primary'
+                          : 'text-muted-foreground'
+                      }`}
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      Preview
+                    </button>
+                    {mobileView === 'preview' && (
+                      <button
+                        onClick={() => setMobilePreviewKey(prev => prev + 1)}
+                        className="flex items-center justify-center px-3 py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                        aria-label="Refresh preview"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
-            )}
+            </div>
 
             {mobileView === 'chat' || !hasPreviewContent ? (
               <div className="flex-1 min-h-0 flex flex-col">
@@ -406,7 +398,20 @@ const Dashboard = () => {
             )}
           </>
         ) : (
-          <EmptyState mobile />
+          /* Chat list + empty state when no conversation is active */
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="shrink-0 max-h-48 overflow-y-auto border-b border-border/50">
+              <ConversationList
+                conversations={conversations}
+                activeConversationId={activeConversationId}
+                onSelectConversation={handleSelectConversation}
+                onNewConversation={handleNewConversation}
+                onDeleteConversation={handleDeleteConversation}
+                onRenameConversation={renameConversation}
+              />
+            </div>
+            <EmptyState mobile />
+          </div>
         )}
       </div>
 
