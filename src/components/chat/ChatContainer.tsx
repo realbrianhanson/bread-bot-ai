@@ -127,22 +127,13 @@ const ChatContainer = ({
       const result: FirecrawlResult = { type: 'scrape', url, title, markdown: md, wordCount };
       setFirecrawlResults((prev) => [...prev, result]);
 
-      // Save scraped content as messages so the AI can reference it in follow-up requests
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user && projectId) {
-        await supabase.from('messages').insert({ user_id: user.id, project_id: projectId, role: 'user', content: `/scrape ${url}` });
-        const summaryContent = `📄 **Scraped: ${title || url}** (${wordCount} words)\n\nHere is the content from ${url}:\n\n${md.slice(0, 8000)}${md.length > 8000 ? '\n\n...(content truncated)' : ''}`;
-        await supabase.from('messages').insert({ user_id: user.id, project_id: projectId, role: 'assistant', content: summaryContent, metadata: { type: 'scrape_result', url, title } });
-        // Inject into local messages so follow-up in same session works
-        onSendMessage('', { ghlMode: false }); // trigger a no-op to refresh — actually let's just add to messages
-      }
     } catch (err: any) {
       toast({ title: 'Scrape failed', description: err.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setIsFirecrawling(false);
       setFirecrawlStatus('');
     }
-  }, [projectId]);
+  }, []);
 
   const handleCrawl = useCallback(async (url: string) => {
     setIsFirecrawling(true);
@@ -254,7 +245,7 @@ const ChatContainer = ({
     // If there are scraped results, prepend them as context so the AI knows about them
     if (firecrawlResults.length > 0 && !trimmedContent.startsWith('/')) {
       const scrapeContext = firecrawlResults
-        .filter((r) => r.type === 'scrape' && r.markdown)
+        .filter((r): r is import('./FirecrawlResults').ScrapeResult => r.type === 'scrape' && !!r.markdown)
         .map((r) => `[SCRAPED PAGE: ${r.url}]\nTitle: ${r.title || 'Untitled'}\n\n${(r.markdown || '').slice(0, 6000)}`)
         .join('\n\n---\n\n');
       if (scrapeContext) {
