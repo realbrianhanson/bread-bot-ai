@@ -206,7 +206,7 @@ export default function Settings() {
   };
 
   return (
-    <div className="min-h-screen gradient-primary">
+    <div className="min-h-screen bg-background gradient-subtle">
       <header className="border-b border-white/10 glass">
         <div className="container mx-auto px-4 py-4 flex items-center gap-4">
           <Button
