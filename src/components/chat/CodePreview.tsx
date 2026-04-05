@@ -147,6 +147,17 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
         );
       }
 
+      // Cap section spacing for complete docs too
+      const sectionSpacingFix = `  <style>
+    section, [class*="section"], .hero, .pricing, .features, .cta, .testimonials, .faq, .footer {
+      padding-top: clamp(40px, 5vw, 80px) !important;
+      padding-bottom: clamp(40px, 5vw, 80px) !important;
+      margin-top: 0 !important;
+      margin-bottom: 0 !important;
+    }
+  </style>\n`;
+      finalHtml = finalHtml.replace('</head>', sectionSpacingFix + '</head>');
+
       // Append any separate CSS files as inline <style>
       if (css.trim()) {
         finalHtml = finalHtml.replace('</head>', `  <style>\n${css}  </style>\n</head>`);
@@ -196,6 +207,12 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
       font-family: 'Inter', sans-serif;
       margin: 0;
       padding: 0;
+    }
+    section, [class*="section"], .hero, .pricing, .features, .cta, .testimonials, .faq, .footer {
+      padding-top: clamp(40px, 5vw, 80px) !important;
+      padding-bottom: clamp(40px, 5vw, 80px) !important;
+      margin-top: 0 !important;
+      margin-bottom: 0 !important;
     }
 ${css.split('\n').map(l => '    ' + l).join('\n')}
   </style>
@@ -305,12 +322,13 @@ ${js.trim() ? `\n  <script>\n${js.split('\n').map(l => '    ' + l).join('\n')}\n
     return (
       <div className="absolute inset-0 flex flex-col bg-background">
         <Toolbar />
-        <div className="flex-1 relative">
+        <div className="flex-1 relative overflow-auto">
           <iframe
             key={key}
             ref={iframeRef}
             srcDoc={buildCombinedHTML()}
             className="w-full h-full border-0"
+            style={{ overflowY: 'auto' }}
             sandbox="allow-scripts allow-same-origin"
             title="Preview"
           />

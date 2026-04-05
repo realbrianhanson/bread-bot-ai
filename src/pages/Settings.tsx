@@ -48,6 +48,7 @@ export default function Settings() {
   const [managingSubscription, setManagingSubscription] = useState(false);
   const [googleIntegration, setGoogleIntegration] = useState<{ provider_email: string | null; connected: boolean }>({ connected: false, provider_email: null });
   const [connectingGoogle, setConnectingGoogle] = useState(false);
+  const [pageReady, setPageReady] = useState(false);
 
   const loadGoogleIntegration = useCallback(async () => {
     if (!user) return;
@@ -205,8 +206,24 @@ export default function Settings() {
     return 'outline';
   };
 
+  useEffect(() => {
+    const t = requestAnimationFrame(() => setPageReady(true));
+    return () => cancelAnimationFrame(t);
+  }, []);
+
+  if (!pageReady) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Loading settings…</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background gradient-subtle">
+    <div className="min-h-screen bg-background" style={{ background: 'linear-gradient(135deg, hsl(var(--gradient-from) / 0.03), hsl(var(--gradient-to) / 0.02))' }}>
       <header className="border-b border-white/10 glass">
         <div className="container mx-auto px-4 py-4 flex items-center gap-4">
           <Button
