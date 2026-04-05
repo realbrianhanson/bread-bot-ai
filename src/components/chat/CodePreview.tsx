@@ -197,6 +197,12 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
       margin: 0;
       padding: 0;
     }
+    section, [class*="section"], .hero, .pricing, .features, .cta, .testimonials, .faq, .footer {
+      padding-top: clamp(40px, 5vw, 80px) !important;
+      padding-bottom: clamp(40px, 5vw, 80px) !important;
+      margin-top: 0 !important;
+      margin-bottom: 0 !important;
+    }
 ${css.split('\n').map(l => '    ' + l).join('\n')}
   </style>
 </head>
