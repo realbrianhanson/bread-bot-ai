@@ -116,17 +116,22 @@ export function AnalyticsDashboard() {
         {/* Chart */}
         <div>
           <h4 className="text-sm font-medium mb-3">Daily Traffic</h4>
-          <div className="flex items-end gap-1 h-32">
-            {analytics.dailyData.map((day, index) => (
-              <div key={index} className="flex-1 flex flex-col items-center gap-1">
-                <div
-                  className="w-full bg-primary/60 rounded-t transition-all hover:bg-primary"
-                  style={{ height: `${(day.views / maxViews) * 100}%` }}
-                  title={`${day.views} views`}
-                />
-                <span className="text-xs text-muted-foreground">{day.date}</span>
-              </div>
-            ))}
+          <div className="flex items-end gap-1" style={{ height: '8rem' }}>
+            {analytics.dailyData.map((day, index) => {
+              const barHeight = Math.max((day.views / maxViews) * 100, 4);
+              return (
+                <div key={index} className="flex-1 flex flex-col items-center h-full">
+                  <div className="flex-1 w-full flex items-end">
+                    <div
+                      className="w-full bg-primary/60 rounded-t transition-all hover:bg-primary min-h-[4px]"
+                      style={{ height: `${barHeight}%` }}
+                      title={`${day.views} views`}
+                    />
+                  </div>
+                  <span className="text-xs text-muted-foreground mt-1 shrink-0">{day.date}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
 
