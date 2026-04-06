@@ -274,15 +274,16 @@ const Dashboard = () => {
       <CommandPalette onNewConversation={handleNewConversation} onQuickStart={handleQuickStart} />
       <OnboardingTour />
       {/* Header */}
-      <header className="shrink-0 h-12 border-b border-border/50 bg-card/80 backdrop-blur-sm z-10 flex items-center justify-between px-4">
-        <div className="flex items-center gap-2.5">
+      <header className="shrink-0 h-12 border-b border-border/50 bg-card/80 backdrop-blur-sm z-10 flex items-center justify-between px-3 md:px-4">
+        <div className="flex items-center gap-2">
+          {/* Mobile: hamburger for conversation drawer */}
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            onClick={() => setMobileDrawerOpen(true)}
             className="md:hidden h-8 w-8"
           >
-            {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            <Menu className="h-4 w-4" />
           </Button>
           <span className="text-xl">🧄</span>
           <span className="text-sm font-semibold tracking-tight text-foreground hidden sm:block">GarlicBread.ai</span>
@@ -303,7 +304,8 @@ const Dashboard = () => {
             </TooltipProvider>
           )}
         </div>
-        <div className="flex items-center gap-1.5">
+        {/* Desktop: full toolbar */}
+        <div className="hidden md:flex items-center gap-1.5">
           <TaskTemplatesPanel onSelectTemplate={handleQuickStart} />
           <WorkflowBuilder onExecuteWorkflow={handleExecuteWorkflow} />
           <ScheduledTasksPanel />
@@ -318,6 +320,32 @@ const Dashboard = () => {
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Sign out?</AlertDialogTitle>
+                <AlertDialogDescription>Are you sure you want to sign out?</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleSignOut}>Sign out</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+        {/* Mobile: scrollable icon row */}
+        <div className="flex md:hidden items-center gap-1 overflow-x-auto scrollbar-none">
+          <BuildHistory onOpenBuild={handleSelectConversation} />
+          <ResultsDashboard />
+          <ThemeToggle />
+          <Button variant="ghost" size="icon" onClick={() => navigate("/settings")} className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground">
+            <Settings className="h-4 w-4" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground">
                 <LogOut className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>
