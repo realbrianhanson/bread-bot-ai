@@ -141,7 +141,6 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
     setAttachedFiles((prev) => [...prev, ...valid]);
     if (imageInputRef.current) imageInputRef.current.value = '';
   };
-  };
 
   const removeFile = (index: number) => {
     setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
