@@ -621,6 +621,14 @@ ${previewScrollRecoveryScript}
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={onPublish} disabled={isPublishing || !onPublish} className="h-6 w-6">
+              {isPublishing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Globe className="h-3 w-3" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">{publishedSlug ? 'Update published page' : 'Publish as live page'}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" onClick={handleSharePreview} disabled={isSharing} className="h-6 w-6">
               {isSharing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Share2 className="h-3 w-3" />}
             </Button>
