@@ -59,6 +59,7 @@ function AnimatedRoutes() {
         <Route path="/auth" element={<PageWrapper><Auth /></PageWrapper>} />
         <Route path="/pricing" element={<PageWrapper><Pricing /></PageWrapper>} />
         <Route path="/lead" element={<PageWrapper><LeadCapture /></PageWrapper>} />
+        <Route path="/preview/:shareId" element={<SharedPreview />} />
         <Route
           path="/dashboard"
           element={
