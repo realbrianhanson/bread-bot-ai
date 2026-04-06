@@ -703,6 +703,8 @@ Format the output with clear headers, scores in bold, and specific actionable re
             const lines = chunk.split('\n');
 
             for (const line of lines) {
+              // Handle custom category SSE event for auto-detection caching
+              if (line.startsWith('event: category')) continue;
               if (line.startsWith('data: ')) {
                 const data = line.slice(6);
 
@@ -710,6 +712,12 @@ Format the output with clear headers, scores in bold, and specific actionable re
 
                 try {
                   const parsed = JSON.parse(data);
+
+                  // Cache detected category from auto-detection
+                  if (parsed.category && !conversationCategoryRef.current) {
+                    conversationCategoryRef.current = parsed.category;
+                    continue;
+                  }
 
                   if (parsed.type === 'content_block_delta') {
                     const delta = parsed.delta?.text || '';
