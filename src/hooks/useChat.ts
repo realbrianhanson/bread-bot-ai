@@ -137,19 +137,17 @@ export const useChat = (projectId?: string) => {
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesRef = useRef<Message[]>([]);
 
+  // Load messages from database (and abort any in-flight requests)
   useEffect(() => {
+    // Abort any in-flight streaming request from the previous conversation
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-
     setIsLoading(false);
     setIsStreaming(false);
     setIsInspirationLoading(false);
-  }, [projectId]);
 
-  // Load messages from database
-  useEffect(() => {
     if (!user || !projectId) {
       setMessages([]);
       messagesRef.current = [];
