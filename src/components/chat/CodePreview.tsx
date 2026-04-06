@@ -1,5 +1,5 @@
 import { SandpackProvider, SandpackLayout, SandpackPreview } from '@codesandbox/sandpack-react';
-import { Maximize2, Minimize2, RefreshCw, Copy, Download, Check, BookmarkPlus, X, Share2, Loader2, Undo2, Redo2, Globe } from 'lucide-react';
+import { Maximize2, Minimize2, RefreshCw, Copy, Download, Check, BookmarkPlus, X, Share2, Loader2, Undo2, Redo2, Globe, Columns2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -21,6 +21,7 @@ interface CodePreviewProps {
   onPublish?: () => void;
   isPublishing?: boolean;
   publishedSlug?: string | null;
+  competitorHtml?: string | null;
 }
 
 const SandpackWithFallback = ({ files, template, onFallback }: {
