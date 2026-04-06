@@ -21,9 +21,11 @@ const MermaidDiagram = lazy(() => import('./MermaidDiagram'));
 
 interface ChatMessageProps {
   message: Message;
+  onInsertImage?: (imageUrl: string) => void;
+  onRegenerateImage?: (prompt: string) => void;
 }
 
-const ChatMessage = ({ message }: ChatMessageProps) => {
+const ChatMessage = ({ message, onInsertImage, onRegenerateImage }: ChatMessageProps) => {
   const isUser = message.role === 'user';
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [showTime, setShowTime] = useState(false);
