@@ -138,7 +138,7 @@ const Dashboard = () => {
       setActiveConversationId(newConv.id);
       setMobileView('chat');
       if (isMobile) {
-        setSidebarCollapsed(true);
+        setMobileDrawerOpen(false);
       }
     }
   };
