@@ -602,6 +602,22 @@ ${previewScrollRecoveryScript}
       <div className="flex gap-1">
         <Tooltip>
           <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={onUndo} disabled={!canUndo} className={`h-6 w-6 ${!canUndo ? 'opacity-30 pointer-events-none' : ''}`}>
+              <Undo2 className="h-3 w-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">Undo</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={onRedo} disabled={!canRedo} className={`h-6 w-6 ${!canRedo ? 'opacity-30 pointer-events-none' : ''}`}>
+              <Redo2 className="h-3 w-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">Redo</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" onClick={handleSharePreview} disabled={isSharing} className="h-6 w-6">
               {isSharing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Share2 className="h-3 w-3" />}
             </Button>
