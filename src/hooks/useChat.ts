@@ -131,6 +131,7 @@ export const useChat = (projectId?: string) => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isInspirationLoading, setIsInspirationLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [activeCode, setActiveCode] = useState<{ html: string; css: string; js: string } | null>(null);
   const { user } = useAuth();
   const { canSendMessage, refreshSubscription } = useSubscription();
   const abortControllerRef = useRef<AbortController | null>(null);

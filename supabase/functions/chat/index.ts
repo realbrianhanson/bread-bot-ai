@@ -367,7 +367,16 @@ USER-UPLOADED IMAGES:
 When the user uploads images, use the provided URLs in <img> tags. Do NOT use placeholder URLs when real images are provided.
 
 BROWSER AUTOMATION:
-This app has browser automation. For browsing tasks, tell users: /browse [task description]`;
+This app has browser automation. For browsing tasks, tell users: /browse [task description]
+
+ITERATIVE EDITING MODE:
+When the user's message includes sections labeled "CURRENT HTML:", "CURRENT CSS:", and "CURRENT JAVASCRIPT:" followed by code blocks and then an edit request:
+- Apply ONLY the requested changes to the provided code. Do NOT regenerate from scratch.
+- Keep all unchanged sections exactly as they are.
+- Always return the COMPLETE updated code so the preview renders correctly.
+- Maintain the same design system, colors, and layout unless specifically asked to change them.
+- If asked to add a new section, insert it in a logical position without removing existing sections.
+- If asked to change a specific element (color, size, text), find and modify only that element.`;
 
     const basePrompt = ghlMode ? ghlSystemPrompt : standardSystemPrompt;
 
