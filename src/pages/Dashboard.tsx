@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Settings, LogOut, MessageSquarePlus, Sparkles, Brain, MessageCircle, Eye, RefreshCw, ArrowLeft, Menu } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
@@ -35,6 +36,7 @@ import { PlanBadge } from "@/components/ui/plan-badge";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { TaskTemplatesPanel } from "@/components/templates/TaskTemplatesPanel";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
+import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { ScheduledTasksPanel } from "@/components/scheduled/ScheduledTasksPanel";
 import { WorkflowBuilder } from "@/components/workflow/WorkflowBuilder";
 import { TaskPlanViewer } from "@/components/workflow/TaskPlanViewer";
@@ -65,6 +67,22 @@ const Dashboard = () => {
   const isMobile = useIsMobile();
   const lastAutoOpenedPreviewMessageId = useRef<string | null>(null);
   const [mobilePreviewKey, setMobilePreviewKey] = useState(0);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Check onboarding status
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('profiles')
+      .select('has_completed_onboarding')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (data && !(data as any).has_completed_onboarding) {
+          setShowOnboarding(true);
+        }
+      });
+  }, [user]);
 
   useEffect(() => {
     supabase.functions.invoke('honcho-proxy', { body: { action: 'status' } })
@@ -597,6 +615,18 @@ const Dashboard = () => {
           <EmptyState />
         )}
       </div>
+
+      {/* Onboarding Wizard */}
+      <AnimatePresence>
+        {showOnboarding && (
+          <OnboardingWizard
+            onComplete={() => setShowOnboarding(false)}
+            onPrefill={(text) => {
+              handleQuickStart(text);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
