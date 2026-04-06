@@ -540,6 +540,94 @@ Format the output with clear headers, scores in bold, and specific actionable re
         }
       }
 
+      // Handle /image command — AI image generation
+      if (content.trim().startsWith('/image ')) {
+        const imagePrompt = content.trim().slice(7).trim();
+        if (!imagePrompt) return;
+        setIsLoading(true);
+
+        const statusId = crypto.randomUUID();
+        setMessages((prev) => [...prev, {
+          id: crypto.randomUUID(),
+          role: 'user' as const,
+          content: content.trim(),
+          created_at: new Date().toISOString(),
+        }]);
+        setMessages((prev) => [...prev, {
+          id: statusId,
+          role: 'assistant' as const,
+          content: '✨ Generating image...',
+          metadata: { type: 'image_generating' },
+          created_at: new Date().toISOString(),
+        }]);
+
+        try {
+          await supabase.from('messages').insert({ user_id: user.id, project_id: projectId, role: 'user', content: content.trim() });
+
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) throw new Error('No active session');
+
+          // Check if there's a recently uploaded image to use as reference
+          let referenceImage: string | undefined;
+          const recentUserMsgs = messagesRef.current.filter(m => m.role === 'user').slice(-3);
+          for (const msg of recentUserMsgs) {
+            if (msg.metadata?.files) {
+              const imgFile = (msg.metadata.files as any[]).find(f => f.type?.startsWith('image/'));
+              if (imgFile?.url) {
+                // Convert URL to base64 for the API
+                try {
+                  const imgResp = await fetch(imgFile.url);
+                  const blob = await imgResp.blob();
+                  const reader = new FileReader();
+                  referenceImage = await new Promise<string>((resolve) => {
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.readAsDataURL(blob);
+                  });
+                } catch (e) {
+                  console.error('Failed to load reference image:', e);
+                }
+              }
+            }
+          }
+
+          const { data, error } = await supabase.functions.invoke('generate-image', {
+            body: { prompt: imagePrompt, referenceImage },
+          });
+
+          if (error) throw error;
+          if (data?.error) throw new Error(data.error);
+
+          const imageUrl = data?.imageUrl;
+          if (!imageUrl) throw new Error('No image generated');
+
+          const metadata = {
+            type: 'ai_image',
+            imageUrl,
+            prompt: imagePrompt,
+          };
+
+          const { data: savedMsg } = await supabase.from('messages').insert({
+            user_id: user.id, project_id: projectId, role: 'assistant',
+            content: `Generated image for: "${imagePrompt}"`,
+            metadata,
+          }).select().single();
+
+          setMessages((prev) => prev.map((m) => m.id === statusId
+            ? (savedMsg as Message) || { ...m, content: `Generated image for: "${imagePrompt}"`, metadata }
+            : m
+          ));
+        } catch (err: any) {
+          if (err.name !== 'AbortError') {
+            toast({ title: 'Image Generation Failed', description: err.message || 'Unknown error', variant: 'destructive' });
+            setMessages((prev) => prev.filter((m) => m.id !== statusId));
+          }
+        } finally {
+          setIsLoading(false);
+          refreshSubscription();
+        }
+        return;
+      }
+
       if (content.trim().startsWith('/code ')) {
         const code = content.trim().slice(6);
         setIsLoading(true);
