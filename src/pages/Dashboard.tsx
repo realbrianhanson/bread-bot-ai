@@ -46,8 +46,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePublish } from "@/hooks/usePublish";
 import PublishedPagesList from "@/components/chat/PublishedPagesList";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Globe, Copy, Check as CheckIcon } from "lucide-react";
 
 const Dashboard = () => {
   const { signOut, user } = useAuth();

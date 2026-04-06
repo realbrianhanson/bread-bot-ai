@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-
-function generateSlug(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let slug = '';
   for (let i = 0; i < 6; i++) {
