@@ -41,6 +41,11 @@ interface ChatContainerProps {
   isInspirationLoading?: boolean;
   activeCode?: { html: string; css: string; js: string } | null;
   onClearActiveCode?: () => void;
+  codeHistoryIndex?: number;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 const ChatContainer = ({
@@ -66,6 +71,11 @@ const ChatContainer = ({
   isInspirationLoading,
   activeCode,
   onClearActiveCode,
+  codeHistoryIndex,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
 }: ChatContainerProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -490,7 +500,7 @@ const ChatContainer = ({
             <div className="flex items-center justify-center mb-2">
               <div className="inline-flex items-center gap-1.5 bg-primary/15 text-primary rounded-full px-3 py-1 text-xs font-medium">
                 <Pencil className="h-3 w-3" />
-                <span>Editing current page</span>
+                <span>Editing v{(codeHistoryIndex ?? 0) + 1}</span>
                 <button
                   onClick={() => onClearActiveCode?.()}
                   className="ml-0.5 p-0.5 rounded-full hover:bg-primary/20 transition-colors"
