@@ -503,6 +503,7 @@ const Dashboard = () => {
                     onRenameConversation={renameConversation}
                   />
                 </div>
+                <PublishedPagesList />
                 <div className="p-3 border-b border-border/50">
                   <ProfileSelector onProfileSelect={setSelectedProfileId} />
                 </div>
