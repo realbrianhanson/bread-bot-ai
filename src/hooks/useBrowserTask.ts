@@ -207,6 +207,16 @@ export const useBrowserTask = (projectId?: string) => {
   const { canRunBrowserTask, refreshSubscription } = useSubscription();
   const currentTaskIdRef = useRef<string | null>(null);
 
+  useEffect(() => {
+    setCurrentTask(null);
+    setIsExecuting(false);
+    setIsStopping(false);
+    setIsPausing(false);
+    setIsResuming(false);
+    setActivePollingTaskId(null);
+    currentTaskIdRef.current = null;
+  }, [projectId]);
+
   // Determine intervention reason from task data
   const getInterventionReason = (outputData: any): { reason: InterventionReason; message: string } => {
     if (outputData?.requires_login) {
