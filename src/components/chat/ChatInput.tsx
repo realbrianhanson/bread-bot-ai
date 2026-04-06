@@ -318,6 +318,26 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
           />
 
           <button
+            onClick={() => imageInputRef.current?.click()}
+            disabled={disabled || attachedFiles.length >= MAX_FILES}
+            className={cn(
+              'p-1.5 rounded-lg transition-colors',
+              'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+              (disabled || attachedFiles.length >= MAX_FILES) && 'opacity-30 pointer-events-none'
+            )}
+            title="Upload image for AI editing (PNG, JPG, WEBP up to 5MB)"
+          >
+            <ImageIcon className="h-4 w-4" />
+          </button>
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept=".png,.jpg,.jpeg,.webp"
+            className="hidden"
+            onChange={handleImageSelect}
+          />
+
+          <button
             onClick={toggleGhlMode}
             className={cn(
               'flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold transition-all duration-200 border',
