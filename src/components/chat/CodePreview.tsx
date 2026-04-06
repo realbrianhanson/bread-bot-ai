@@ -1,5 +1,5 @@
 import { SandpackProvider, SandpackLayout, SandpackPreview } from '@codesandbox/sandpack-react';
-import { Maximize2, Minimize2, RefreshCw, Copy, Download, Check, BookmarkPlus, X, Share2, Loader2, Undo2, Redo2 } from 'lucide-react';
+import { Maximize2, Minimize2, RefreshCw, Copy, Download, Check, BookmarkPlus, X, Share2, Loader2, Undo2, Redo2, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -18,6 +18,9 @@ interface CodePreviewProps {
   canRedo?: boolean;
   onUndo?: () => void;
   onRedo?: () => void;
+  onPublish?: () => void;
+  isPublishing?: boolean;
+  publishedSlug?: string | null;
 }
 
 const SandpackWithFallback = ({ files, template, onFallback }: {
@@ -92,7 +95,7 @@ const SandpackWithFallback = ({ files, template, onFallback }: {
   );
 };
 
-const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent = '', canUndo = false, canRedo = false, onUndo, onRedo }: CodePreviewProps) => {
+const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent = '', canUndo = false, canRedo = false, onUndo, onRedo, onPublish, isPublishing = false, publishedSlug }: CodePreviewProps) => {
   const [key, setKey] = useState(0);
   const [copied, setCopied] = useState(false);
   const [useFallback, setUseFallback] = useState(false);
