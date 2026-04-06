@@ -1,5 +1,5 @@
 import { SandpackProvider, SandpackLayout, SandpackPreview } from '@codesandbox/sandpack-react';
-import { Maximize2, Minimize2, RefreshCw, Copy, Download, Check, BookmarkPlus, X } from 'lucide-react';
+import { Maximize2, Minimize2, RefreshCw, Copy, Download, Check, BookmarkPlus, X, Share2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { fixContrastIssues } from '@/lib/contrastFixer';
 import { SaveTemplateDialog } from '@/components/chat/SaveTemplateDialog';
 import { extractPreviewFromContent, isPreviewPlaceholder } from '@/lib/previewContent';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CodePreviewProps {
   files: Record<string, string>;
