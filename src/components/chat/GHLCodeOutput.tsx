@@ -446,7 +446,7 @@ const GHLCodeOutput = ({
           {shareCopied ? 'Copied!' : 'Share'}
         </Button>
 
-          size="sm"
+        <Button
           className="h-8 gap-1.5 text-xs bg-accent text-accent-foreground hover:bg-accent/90 shadow-[0_0_12px_hsl(var(--accent)/0.3)] font-semibold"
           onClick={() => setShowAutoDeploy(true)}
           disabled={isExecutingTask}
