@@ -1,6 +1,6 @@
 import { useState, KeyboardEvent, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Square, Zap, ToggleLeft, ToggleRight, Paperclip } from 'lucide-react';
+import { Send, Square, Zap, ToggleLeft, ToggleRight, Paperclip, ImageIcon } from 'lucide-react';
 import { StylePicker } from '@/components/chat/StylePicker';
 import { PurposePicker } from '@/components/chat/PurposePicker';
 import { cn } from '@/lib/utils';
@@ -31,6 +31,7 @@ const SLASH_COMMANDS = [
   { cmd: "/search", label: "Web search", icon: "🔍" },
   { cmd: "/code", label: "Execute Python code in a sandbox", icon: "💻" },
   { cmd: "/slides", label: "Generate a presentation from a topic or research", icon: "📊" },
+  { cmd: "/image", label: "Generate an AI image from a text description", icon: "✨" },
   { cmd: "/research", label: "Deep research with AI", icon: "🔬" },
   { cmd: "/deep", label: "Deep analysis", icon: "🧠" },
   { cmd: "/plan", label: "AI task planner", icon: "🧠" },
