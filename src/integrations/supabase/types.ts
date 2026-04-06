@@ -358,6 +358,39 @@ export type Database = {
           },
         ]
       }
+      shared_previews: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          html_content: string
+          id: string
+          title: string | null
+          token: string
+          user_id: string
+          view_count: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          html_content: string
+          id?: string
+          title?: string | null
+          token?: string
+          user_id: string
+          view_count?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          html_content?: string
+          id?: string
+          title?: string | null
+          token?: string
+          user_id?: string
+          view_count?: number | null
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           can_use_own_keys: boolean | null
@@ -651,6 +684,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_preview_views: { Args: { p_token: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "user"

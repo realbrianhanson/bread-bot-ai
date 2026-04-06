@@ -1,5 +1,5 @@
 import { SandpackProvider, SandpackLayout, SandpackPreview } from '@codesandbox/sandpack-react';
-import { Maximize2, Minimize2, RefreshCw, Copy, Download, Check, BookmarkPlus, X } from 'lucide-react';
+import { Maximize2, Minimize2, RefreshCw, Copy, Download, Check, BookmarkPlus, X, Share2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { fixContrastIssues } from '@/lib/contrastFixer';
 import { SaveTemplateDialog } from '@/components/chat/SaveTemplateDialog';
 import { extractPreviewFromContent, isPreviewPlaceholder } from '@/lib/previewContent';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CodePreviewProps {
   files: Record<string, string>;
@@ -93,6 +94,7 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
   const [useFallback, setUseFallback] = useState(false);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const previewViewportRef = useRef<HTMLDivElement>(null);
 
@@ -515,6 +517,42 @@ ${previewScrollRecoveryScript}
     toast.success('HTML file downloaded.');
   };
 
+  const handleSharePreview = async () => {
+    setIsSharing(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Please sign in to share previews.');
+        return;
+      }
+
+      const html = buildCombinedHTML();
+      // Extract title from HTML
+      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
+        || html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
+      const title = titleMatch?.[1]?.trim() || 'Untitled Page';
+
+      const { data, error } = await supabase
+        .from('shared_previews')
+        .insert({ user_id: user.id, html_content: html, title })
+        .select('token')
+        .single();
+
+      if (error) throw error;
+
+      const shareUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/share-preview?token=${data.token}`;
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success('Share link copied! Valid for 7 days.', {
+        description: 'Anyone with this link can view your page.',
+      });
+    } catch (err) {
+      console.error('Share error:', err);
+      toast.error('Failed to create share link.');
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   // Empty state
   if (isPreviewPlaceholder(previewFiles, previewMainFile)) {
     return (
@@ -538,6 +576,14 @@ ${previewScrollRecoveryScript}
     <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 bg-background/50 shrink-0 z-20">
       <span className="text-xs font-medium">Live Preview</span>
       <div className="flex gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={handleSharePreview} disabled={isSharing} className="h-6 w-6">
+              {isSharing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Share2 className="h-3 w-3" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">Share as public link (7 days)</TooltipContent>
+        </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" onClick={handleCopyForGHL} className="h-6 w-6">
