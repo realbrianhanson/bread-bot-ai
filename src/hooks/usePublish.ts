@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+function generateSlug(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let slug = '';
   for (let i = 0; i < 6; i++) {
@@ -12,7 +14,6 @@ import { toast } from 'sonner';
 export function usePublish(activeCode: { html: string; css: string; js: string } | null, conversationId?: string) {
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishedSlug, setPublishedSlug] = useState<string | null>(null);
-  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
 
   // Check if already published for this conversation
   useEffect(() => {
@@ -40,7 +41,6 @@ export function usePublish(activeCode: { html: string; css: string; js: string }
     if (!activeCode) return '';
     const { html, css, js } = activeCode;
 
-    // If HTML is already a complete document, inject CSS/JS
     if (html.toLowerCase().includes('<!doctype') || html.toLowerCase().includes('<html')) {
       let fullHtml = html;
       if (css.trim()) {
@@ -52,19 +52,18 @@ export function usePublish(activeCode: { html: string; css: string; js: string }
       return fullHtml;
     }
 
-    // Build a document from fragments
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.tailwindcss.com"><\/script>
+  <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   ${css.trim() ? `<style>\n${css}\n</style>` : ''}
 </head>
 <body>
 ${html}
-${js.trim() ? `<script>\n${js}\n<\/script>` : ''}
+${js.trim() ? `<script>\n${js}\n</script>` : ''}
 </body>
 </html>`;
   }, [activeCode]);
@@ -81,17 +80,20 @@ ${js.trim() ? `<script>\n${js}\n<\/script>` : ''}
       const titleMatch = fullHtml.match(/<title[^>]*>([^<]+)<\/title>/i) || fullHtml.match(/<h1[^>]*>([^<]+)<\/h1>/i);
       const title = titleMatch?.[1]?.trim() || 'Untitled Page';
 
-      if (publishedSlug) {
-        // Update existing
+      let currentSlug = publishedSlug;
+
+      if (currentSlug) {
         await supabase
           .from('shared_previews')
           .update({ html_content: fullHtml, title })
-          .eq('slug', publishedSlug)
+          .eq('slug', currentSlug)
           .eq('user_id', user.id);
-        setPublishDialogOpen(true);
+        
+        const url = `${window.location.origin}/p/${currentSlug}`;
+        await navigator.clipboard.writeText(url);
+        toast.success('Page updated!', { description: url });
       } else {
-        // Create new
-        const slug = generateSlug();
+        currentSlug = generateSlug();
         const { error } = await supabase
           .from('shared_previews')
           .insert({
@@ -100,11 +102,14 @@ ${js.trim() ? `<script>\n${js}\n<\/script>` : ''}
             title,
             conversation_id: conversationId || null,
             is_published: true,
-            slug,
+            slug: currentSlug,
           });
         if (error) throw error;
-        setPublishedSlug(slug);
-        setPublishDialogOpen(true);
+        setPublishedSlug(currentSlug);
+
+        const url = `${window.location.origin}/p/${currentSlug}`;
+        await navigator.clipboard.writeText(url);
+        toast.success('Page published!', { description: `${url} — copied to clipboard` });
       }
     } catch (err) {
       console.error('Publish error:', err);
@@ -114,7 +119,5 @@ ${js.trim() ? `<script>\n${js}\n<\/script>` : ''}
     }
   }, [activeCode, publishedSlug, conversationId, buildFullHTML]);
 
-  const publishedUrl = publishedSlug ? `${window.location.origin}/p/${publishedSlug}` : null;
-
-  return { publish, isPublishing, publishedSlug, publishedUrl, publishDialogOpen, setPublishDialogOpen };
+  return { publish, isPublishing, publishedSlug };
 }
