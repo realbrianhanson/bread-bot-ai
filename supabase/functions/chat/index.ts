@@ -163,7 +163,7 @@ serve(async (req) => {
       });
     }
 
-    const { messages, ghlMode, designMd: clientDesignMd, marketingMd } = await req.json();
+    const { messages, ghlMode, designMd: clientDesignMd, marketingMd, conversationCategory } = await req.json();
 
     console.log('Calling Anthropic API with', messages.length, 'messages, ghlMode:', !!ghlMode, 'hasDesignMd:', !!clientDesignMd, 'hasMarketingMd:', !!marketingMd);
 
