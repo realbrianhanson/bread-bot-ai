@@ -486,6 +486,20 @@ const ChatContainer = ({
               </Button>
             </div>
           )}
+          {activeCode && (
+            <div className="flex items-center justify-center mb-2">
+              <div className="inline-flex items-center gap-1.5 bg-primary/15 text-primary rounded-full px-3 py-1 text-xs font-medium">
+                <Pencil className="h-3 w-3" />
+                <span>Editing current page</span>
+                <button
+                  onClick={() => onClearActiveCode?.()}
+                  className="ml-0.5 p-0.5 rounded-full hover:bg-primary/20 transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+          )}
           <ChatInput
             onSend={handleSendMessage}
             disabled={isLoading || isExecutingTask || isFirecrawling}
