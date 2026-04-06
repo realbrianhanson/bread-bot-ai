@@ -59,6 +59,7 @@ const Dashboard = () => {
   const { plan, isPlanning, generatePlan, updateStep, removeStep, addStep, reorderSteps, clearPlan } = useTaskPlanner();
 
   const [memoryActive, setMemoryActive] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [mobileView, setMobileView] = useState<'chat' | 'preview'>('chat');
   const [queuedPrompt, setQueuedPrompt] = useState<string | null>(null);
   const isMobile = useIsMobile();
