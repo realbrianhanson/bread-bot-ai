@@ -197,13 +197,18 @@ const ChatContainer = ({
       }));
       const result: FirecrawlResult = { type: 'search', query, results };
       setFirecrawlResults((prev) => [...prev, result]);
+
+      // Persist as a message so the AI has context for follow-ups
+      const resultsList = results.slice(0, 10).map((r: any, i: number) => `${i + 1}. **${r.title || r.url}**\n   ${r.url}\n   ${r.description || ''}`).join('\n\n');
+      const summaryContent = `🔍 **Search results for "${query}"** (${results.length} results):\n\n${resultsList}`;
+      onSendMessage(summaryContent, { ghlMode: false });
     } catch (err: any) {
       toast({ title: 'Search failed', description: err.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setIsFirecrawling(false);
       setFirecrawlStatus('');
     }
-  }, []);
+  }, [onSendMessage]);
 
   const handleSendToAI = useCallback((content: string) => {
     onSendMessage(content);
