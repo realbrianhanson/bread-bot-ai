@@ -156,7 +156,7 @@ const Dashboard = () => {
       setQueuedPrompt(prompt);
       setMobileView('chat');
       if (isMobile) {
-        setSidebarCollapsed(true);
+        setMobileDrawerOpen(false);
       }
     }
   };
