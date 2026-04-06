@@ -36,6 +36,9 @@ interface GHLCodeOutputProps {
   canRedo?: boolean;
   onUndo?: () => void;
   onRedo?: () => void;
+  onPublish?: () => void;
+  isPublishing?: boolean;
+  publishedSlug?: string | null;
 }
 
 type ViewportSize = 'desktop' | 'tablet' | 'mobile';
@@ -74,6 +77,9 @@ const GHLCodeOutput = ({
   canRedo = false,
   onUndo,
   onRedo,
+  onPublish,
+  isPublishing = false,
+  publishedSlug,
 }: GHLCodeOutputProps) => {
   const [viewport, setViewport] = useState<ViewportSize>('desktop');
   const [copied, setCopied] = useState(false);
