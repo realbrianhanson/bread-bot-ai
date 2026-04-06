@@ -131,21 +131,35 @@ export const useChat = (projectId?: string) => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isInspirationLoading, setIsInspirationLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [loadedProjectId, setLoadedProjectId] = useState<string | undefined>(undefined);
   const { user } = useAuth();
   const { canSendMessage, refreshSubscription } = useSubscription();
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesRef = useRef<Message[]>([]);
+
+  useEffect(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    setIsLoading(false);
+    setIsStreaming(false);
+    setIsInspirationLoading(false);
+  }, [projectId]);
 
   // Load messages from database
   useEffect(() => {
     if (!user || !projectId) {
       setMessages([]);
       messagesRef.current = [];
+      setLoadedProjectId(undefined);
       setIsHistoryLoading(false);
       return;
     }
 
     let isCancelled = false;
+    setLoadedProjectId(undefined);
     setMessages([]);
     messagesRef.current = [];
     setIsHistoryLoading(true);
@@ -177,6 +191,7 @@ export const useChat = (projectId?: string) => {
 
       setMessages(loaded);
       messagesRef.current = loaded;
+      setLoadedProjectId(projectId);
       setIsHistoryLoading(false);
     };
 
@@ -870,8 +885,10 @@ Format the output with clear headers, scores in bold, and specific actionable re
   }, []);
 
 
+  const scopedMessages = loadedProjectId === projectId ? messages : [];
+
   return {
-    messages,
+    messages: scopedMessages,
     isHistoryLoading,
     isLoading,
     isStreaming,

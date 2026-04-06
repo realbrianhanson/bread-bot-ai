@@ -52,7 +52,7 @@ const Dashboard = () => {
   );
   const { messages, isHistoryLoading, isLoading, isStreaming, isInspirationLoading, sendMessage, sendInspirationMessage, stopStreaming } = useChat(activeConversationId || undefined);
   const { conversations, createConversation, deleteConversation, renameConversation, autoTitleConversation } = useConversations();
-  const { currentTask, isExecuting, executeTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask();
+  const { currentTask, isExecuting, executeTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask(activeConversationId || undefined);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const { plan, isPlanning, generatePlan, updateStep, removeStep, addStep, reorderSteps, clearPlan } = useTaskPlanner();
 
