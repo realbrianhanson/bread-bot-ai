@@ -510,7 +510,21 @@ const Dashboard = () => {
             </ResizablePanel>
           </ResizablePanelGroup>
         ) : (
-          <EmptyState />
+          <div className="flex h-full w-full">
+            <div className="w-72 shrink-0 border-r border-border/50 overflow-y-auto">
+              <ConversationList
+                conversations={conversations}
+                activeConversationId={activeConversationId}
+                onSelectConversation={handleSelectConversation}
+                onNewConversation={handleNewConversation}
+                onDeleteConversation={handleDeleteConversation}
+                onRenameConversation={renameConversation}
+              />
+            </div>
+            <div className="flex-1">
+              <EmptyState />
+            </div>
+          </div>
         )}
       </div>
     </div>
