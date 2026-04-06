@@ -98,6 +98,12 @@ const Dashboard = () => {
     return match ? match[1].trim() : '';
   }, [messages, isGhlMode]);
 
+  // Extract competitor HTML from the latest competitor_analysis message
+  const competitorHtml = useMemo(() => {
+    const compMsg = [...messages].reverse().find(m => m.metadata?.type === 'competitor_analysis' && m.metadata?.competitorHtml);
+    return compMsg?.metadata?.competitorHtml || null;
+  }, [messages]);
+
   const handleExecutePlan = async () => {
     if (!plan) return;
     for (const step of plan.steps) {
