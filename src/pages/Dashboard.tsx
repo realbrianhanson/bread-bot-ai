@@ -470,7 +470,6 @@ const Dashboard = () => {
             )}
           </>
         ) : (
-          /* Empty state when no conversation is active */}
           <EmptyState mobile />
         )}
       </div>
