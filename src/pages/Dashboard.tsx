@@ -504,6 +504,18 @@ const Dashboard = () => {
                   isExecutingTask={isExecuting}
                   projectId={activeConversationId || undefined}
                 />
+              ) : isHistoryLoading ? (
+                <div className="absolute inset-0 flex flex-col bg-background">
+                  <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-background/50 shrink-0">
+                    <span className="text-sm font-medium">Live Preview</span>
+                  </div>
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      <p className="text-sm text-muted-foreground">Loading conversation…</p>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <CodePreview key={activeConversationId || 'desktop-preview'} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} />
               )}
