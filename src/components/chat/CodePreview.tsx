@@ -535,14 +535,14 @@ ${previewScrollRecoveryScript}
       const { data, error } = await supabase
         .from('shared_previews')
         .insert({ user_id: user.id, html_content: html, title })
-        .select('token')
+        .select('share_id')
         .single();
 
       if (error) throw error;
 
-      const shareUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/share-preview?token=${data.token}`;
+      const shareUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/share-preview?token=${data.share_id}`;
       await navigator.clipboard.writeText(shareUrl);
-      toast.success('Share link copied! Valid for 7 days.', {
+      toast.success('Share link copied!', {
         description: 'Anyone with this link can view your page.',
       });
     } catch (err) {

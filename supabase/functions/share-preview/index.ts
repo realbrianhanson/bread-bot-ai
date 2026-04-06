@@ -13,8 +13,8 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
 
-  if (!token || token.length < 16) {
-    return new Response("Missing or invalid token", { status: 400, headers: corsHeaders });
+  if (!token || token.length < 8) {
+    return new Response("Missing or invalid token", { status: 400 });
   }
 
   const supabase = createClient(
@@ -24,29 +24,22 @@ Deno.serve(async (req) => {
 
   const { data, error } = await supabase
     .from("shared_previews")
-    .select("html_content, title, expires_at, view_count")
-    .eq("token", token)
+    .select("html_content, title, views")
+    .eq("share_id", token)
     .single();
 
   if (error || !data) {
     return new Response(
-      `<!DOCTYPE html><html><head><title>Not Found</title></head><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#111;color:#fff"><div style="text-align:center"><h1>Preview Not Found</h1><p>This link may have expired or been removed.</p></div></body></html>`,
+      `<!DOCTYPE html><html><head><title>Not Found</title></head><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#111;color:#fff"><div style="text-align:center"><h1>Preview Not Found</h1><p>This link may have been removed.</p></div></body></html>`,
       { status: 404, headers: { "Content-Type": "text/html" } }
-    );
-  }
-
-  if (new Date(data.expires_at) < new Date()) {
-    return new Response(
-      `<!DOCTYPE html><html><head><title>Expired</title></head><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#111;color:#fff"><div style="text-align:center"><h1>Preview Expired</h1><p>This shared preview link has expired.</p></div></body></html>`,
-      { status: 410, headers: { "Content-Type": "text/html" } }
     );
   }
 
   // Increment view count
   await supabase
     .from("shared_previews")
-    .update({ view_count: (data.view_count || 0) + 1 })
-    .eq("token", token);
+    .update({ views: (data.views || 0) + 1 })
+    .eq("share_id", token);
 
   return new Response(data.html_content, {
     status: 200,
