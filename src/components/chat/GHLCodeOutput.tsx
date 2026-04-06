@@ -409,26 +409,52 @@ const GHLCodeOutput = ({
       </AnimatePresence>
 
       {/* ---- Preview iframe ---- */}
-      <div className="flex-1 relative overflow-hidden flex items-start justify-center bg-[hsl(222_20%_12%)] p-4">
-        <div
-          className="relative bg-white rounded-lg overflow-hidden shadow-2xl transition-all duration-300"
-          style={{
-            width: VIEWPORT_WIDTHS[viewport],
-            maxWidth: '100%',
-            height: '100%',
-          }}
-        >
-          <iframe
-            ref={iframeRef}
-            key={iframeKey}
-            srcDoc={code}
-            title="GHL Preview"
-            sandbox="allow-scripts"
-            className="w-full h-full border-0"
-            style={{ background: '#ffffff' }}
-          />
+      {compareMode && competitorHtml ? (
+        <div className="flex-1 relative overflow-hidden flex bg-[hsl(222_20%_12%)]">
+          <div className="w-1/2 flex flex-col border-r border-border/30">
+            <div className="px-2 py-1 bg-muted/30 text-[10px] font-medium text-muted-foreground text-center border-b border-border/20">Competitor</div>
+            <iframe
+              srcDoc={competitorHtml}
+              className="flex-1 w-full border-0"
+              sandbox="allow-scripts"
+              title="Competitor Preview"
+              style={{ background: '#ffffff' }}
+            />
+          </div>
+          <div className="w-1/2 flex flex-col">
+            <div className="px-2 py-1 bg-primary/10 text-[10px] font-medium text-primary text-center border-b border-border/20">Your Version ✨</div>
+            <iframe
+              key={iframeKey}
+              srcDoc={code}
+              className="flex-1 w-full border-0"
+              sandbox="allow-scripts"
+              title="Your Preview"
+              style={{ background: '#ffffff' }}
+            />
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex-1 relative overflow-hidden flex items-start justify-center bg-[hsl(222_20%_12%)] p-4">
+          <div
+            className="relative bg-white rounded-lg overflow-hidden shadow-2xl transition-all duration-300"
+            style={{
+              width: VIEWPORT_WIDTHS[viewport],
+              maxWidth: '100%',
+              height: '100%',
+            }}
+          >
+            <iframe
+              ref={iframeRef}
+              key={iframeKey}
+              srcDoc={code}
+              title="GHL Preview"
+              sandbox="allow-scripts"
+              className="w-full h-full border-0"
+              style={{ background: '#ffffff' }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* ---- Bottom action bar ---- */}
       <div className="shrink-0 border-t border-border/20 bg-[hsl(222_47%_10%)] px-3 py-2 flex items-center gap-2">
