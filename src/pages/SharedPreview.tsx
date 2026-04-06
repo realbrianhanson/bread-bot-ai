@@ -19,7 +19,7 @@ const SharedPreview = () => {
 
       if (error || !data) { setNotFound(true); return; }
 
-      document.title = `${data.title || 'Untitled'} — GarlicBread.ai Preview`;
+      document.title = data.title ? `${data.title} — GarlicBread.ai` : 'Preview — GarlicBread.ai';
       setHtml(data.html_content);
 
       // fire-and-forget view increment
