@@ -1,6 +1,6 @@
 import { Message } from '@/hooks/useChat';
 import { Button } from '@/components/ui/button';
-import { Copy, Check, Bot, User, CheckCircle2, Sparkles, AlertTriangle } from 'lucide-react';
+import { Copy, Check, Bot, User, CheckCircle2, Sparkles, AlertTriangle, Download, ImagePlus, RefreshCw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -14,6 +14,8 @@ import SandboxComputerView from './SandboxComputerView';
 import FileAttachment from './FileAttachment';
 import SlidePreview from './SlidePreview';
 import AuditResults from './AuditResults';
+import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const MermaidDiagram = lazy(() => import('./MermaidDiagram'));
 
