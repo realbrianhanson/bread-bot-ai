@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import {
   Copy, Check, Rocket, Monitor, Tablet, Smartphone, RefreshCw,
   Maximize2, X, ChevronRight, Info, Loader2, CheckCircle2,
-  ExternalLink, RotateCcw, Globe, Link,
+  ExternalLink, RotateCcw, Globe, Link, Undo2, Redo2,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -32,6 +32,10 @@ interface GHLCodeOutputProps {
   currentTaskScreenshots?: string[];
   isExecutingTask?: boolean;
   projectId?: string;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 type ViewportSize = 'desktop' | 'tablet' | 'mobile';
@@ -66,6 +70,10 @@ const GHLCodeOutput = ({
   currentTaskScreenshots,
   isExecutingTask,
   projectId,
+  canUndo = false,
+  canRedo = false,
+  onUndo,
+  onRedo,
 }: GHLCodeOutputProps) => {
   const [viewport, setViewport] = useState<ViewportSize>('desktop');
   const [copied, setCopied] = useState(false);
