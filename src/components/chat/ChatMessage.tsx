@@ -13,6 +13,7 @@ import SandboxComputerView from './SandboxComputerView';
 import FileAttachment from './FileAttachment';
 import SlidePreview from './SlidePreview';
 import AuditResults from './AuditResults';
+import CompetitorAnalysis from './CompetitorAnalysis';
 import { toast } from '@/hooks/use-toast';
 
 const MermaidDiagram = lazy(() => import('./MermaidDiagram'));
@@ -171,6 +172,14 @@ const ChatMessage = ({ message, onInsertImage, onRegenerateImage }: ChatMessageP
             <AuditResults
               content={message.content}
               url={message.metadata.auditUrl || ''}
+            />
+          )}
+
+          {/* Competitor Analysis results */}
+          {message.metadata?.type === 'competitor_analysis' && message.metadata.analysis && (
+            <CompetitorAnalysis
+              analysis={message.metadata.analysis}
+              competitorUrl={message.metadata.competitorUrl || ''}
             />
           )}
 
