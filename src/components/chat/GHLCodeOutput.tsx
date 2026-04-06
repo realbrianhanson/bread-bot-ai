@@ -281,6 +281,9 @@ const GHLCodeOutput = ({
             ))}
           </div>
 
+          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground/60 hover:text-foreground" onClick={onPublish} disabled={isPublishing || !onPublish}>
+            {isPublishing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Globe className="h-3 w-3" />}
+          </Button>
           <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground/60 hover:text-foreground" onClick={handleSharePreview} disabled={isSharing}>
             {isSharing ? <Loader2 className="h-3 w-3 animate-spin" /> : shareCopied ? <Check className="h-3 w-3 text-green-500" /> : <Link className="h-3 w-3" />}
           </Button>
@@ -450,6 +453,22 @@ const GHLCodeOutput = ({
         >
           {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
           {copied ? 'Copied!' : 'Copy Code'}
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn(
+            'h-8 gap-1.5 text-xs transition-all',
+            publishedSlug
+              ? 'border-primary/50 bg-primary/10 text-primary'
+              : 'border-border/30 bg-background/10 hover:bg-background/20'
+          )}
+          onClick={onPublish}
+          disabled={isPublishing || !onPublish}
+        >
+          {isPublishing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Globe className="h-3 w-3" />}
+          {publishedSlug ? 'Update' : 'Publish'}
         </Button>
 
         <Button
