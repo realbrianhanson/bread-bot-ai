@@ -83,6 +83,7 @@ const GHLCodeOutput = ({
   isPublishing = false,
   publishedSlug,
   competitorHtml,
+  codeVersion = 0,
 }: GHLCodeOutputProps) => {
   const [viewport, setViewport] = useState<ViewportSize>('desktop');
   const [copied, setCopied] = useState(false);
