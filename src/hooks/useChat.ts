@@ -142,6 +142,7 @@ export const useChat = (projectId?: string) => {
     if (!user || !projectId) {
       setMessages([]);
       messagesRef.current = [];
+      conversationCategoryRef.current = null;
       setIsHistoryLoading(false);
       return;
     }
