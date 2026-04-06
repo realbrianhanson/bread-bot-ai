@@ -168,13 +168,18 @@ const ChatContainer = ({
       }));
       const result: FirecrawlResult = { type: 'crawl', url, pages, total: data?.total || pages.length };
       setFirecrawlResults((prev) => [...prev, result]);
+
+      // Persist as a message so the AI has context for follow-ups
+      const pagesList = pages.slice(0, 20).map((p: any, i: number) => `${i + 1}. ${p.title || p.url} - ${p.url}`).join('\n');
+      const summaryContent = `🕷️ **Crawled: ${url}**\nFound ${pages.length} pages:\n\n${pagesList}`;
+      onSendMessage(summaryContent, { ghlMode: false });
     } catch (err: any) {
       toast({ title: 'Crawl failed', description: err.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setIsFirecrawling(false);
       setFirecrawlStatus('');
     }
-  }, []);
+  }, [onSendMessage]);
 
   const handleSearch = useCallback(async (query: string) => {
     setIsFirecrawling(true);
