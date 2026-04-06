@@ -1,6 +1,6 @@
 import { Message } from '@/hooks/useChat';
 import { Button } from '@/components/ui/button';
-import { Copy, Check, Bot, User, CheckCircle2, Sparkles, AlertTriangle } from 'lucide-react';
+import { Copy, Check, Bot, User, CheckCircle2, Sparkles, AlertTriangle, Download, ImagePlus, RefreshCw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -9,19 +9,21 @@ import { useState, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import CodeExecutionResult from './CodeExecutionResult';
 import SandboxComputerView from './SandboxComputerView';
 import FileAttachment from './FileAttachment';
 import SlidePreview from './SlidePreview';
 import AuditResults from './AuditResults';
+import { toast } from '@/hooks/use-toast';
 
 const MermaidDiagram = lazy(() => import('./MermaidDiagram'));
 
 interface ChatMessageProps {
   message: Message;
+  onInsertImage?: (imageUrl: string) => void;
+  onRegenerateImage?: (prompt: string) => void;
 }
 
-const ChatMessage = ({ message }: ChatMessageProps) => {
+const ChatMessage = ({ message, onInsertImage, onRegenerateImage }: ChatMessageProps) => {
   const isUser = message.role === 'user';
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [showTime, setShowTime] = useState(false);
@@ -170,6 +172,85 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
               content={message.content}
               url={message.metadata.auditUrl || ''}
             />
+          )}
+
+          {/* AI Generated Image */}
+          {message.metadata?.type === 'ai_image' && message.metadata.imageUrl && (
+            <div className="mt-3 space-y-2">
+              <img
+                src={message.metadata.imageUrl}
+                alt={message.metadata.prompt || 'AI generated image'}
+                className="w-full rounded-lg border border-border/50"
+                loading="lazy"
+              />
+              <div className="flex flex-wrap gap-1.5">
+                {onInsertImage && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => onInsertImage(message.metadata.imageUrl)}
+                  >
+                    <ImagePlus className="h-3 w-3" />
+                    Insert into Page
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1"
+                  onClick={() => {
+                    const a = document.createElement('a');
+                    a.href = message.metadata.imageUrl;
+                    a.download = `ai-image-${Date.now()}.png`;
+                    a.click();
+                  }}
+                >
+                  <Download className="h-3 w-3" />
+                  Download PNG
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1"
+                  onClick={async () => {
+                    try {
+                      const resp = await fetch(message.metadata.imageUrl);
+                      const blob = await resp.blob();
+                      await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+                      toast({ title: 'Image copied to clipboard' });
+                    } catch {
+                      navigator.clipboard.writeText(message.metadata.imageUrl);
+                      toast({ title: 'Image URL copied' });
+                    }
+                  }}
+                >
+                  <Copy className="h-3 w-3" />
+                  Copy Image
+                </Button>
+                {onRegenerateImage && message.metadata.prompt && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => onRegenerateImage(message.metadata.prompt)}
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    Generate Variation
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Image generating skeleton */}
+          {message.metadata?.type === 'image_generating' && (
+            <div className="mt-3 w-full h-48 rounded-lg bg-muted/50 animate-pulse flex items-center justify-center">
+              <div className="text-center space-y-2">
+                <Sparkles className="h-6 w-6 text-primary animate-spin mx-auto" />
+                <p className="text-xs text-muted-foreground">Generating image...</p>
+              </div>
+            </div>
           )}
 
           {/* Screenshots */}

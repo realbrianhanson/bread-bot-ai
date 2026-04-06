@@ -1,6 +1,6 @@
 import { useState, KeyboardEvent, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Square, Zap, ToggleLeft, ToggleRight, Paperclip } from 'lucide-react';
+import { Send, Square, Zap, ToggleLeft, ToggleRight, Paperclip, ImageIcon } from 'lucide-react';
 import { StylePicker } from '@/components/chat/StylePicker';
 import { PurposePicker } from '@/components/chat/PurposePicker';
 import { cn } from '@/lib/utils';
@@ -31,6 +31,7 @@ const SLASH_COMMANDS = [
   { cmd: "/search", label: "Web search", icon: "🔍" },
   { cmd: "/code", label: "Execute Python code in a sandbox", icon: "💻" },
   { cmd: "/slides", label: "Generate a presentation from a topic or research", icon: "📊" },
+  { cmd: "/image", label: "Generate an AI image from a text description", icon: "✨" },
   { cmd: "/research", label: "Deep research with AI", icon: "🔬" },
   { cmd: "/deep", label: "Deep analysis", icon: "🧠" },
   { cmd: "/plan", label: "AI task planner", icon: "🧠" },
@@ -57,6 +58,7 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
   const [marketingCategory, setMarketingCategory] = useState<string | undefined>();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (prefill !== undefined && prefill !== '') {
@@ -125,6 +127,21 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+    const remaining = MAX_FILES - attachedFiles.length;
+    const valid = files.slice(0, remaining).filter((f) => {
+      if (f.size > MAX_IMAGE_SIZE) {
+        console.warn(`Image ${f.name} exceeds 5MB limit`);
+        return false;
+      }
+      return true;
+    });
+    setAttachedFiles((prev) => [...prev, ...valid]);
+    if (imageInputRef.current) imageInputRef.current.value = '';
+  };
+
   const removeFile = (index: number) => {
     setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
   };
@@ -176,6 +193,7 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
   const isBrowseCmd = input.trimStart().startsWith('/browse');
   const isPlanCmd = input.trimStart().startsWith('/plan');
   const isCodeCmd = input.trimStart().startsWith('/code');
+  const isImageCmd = input.trimStart().startsWith('/image');
 
   return (
     <div className="space-y-1 relative">
@@ -243,6 +261,12 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
               <span className="text-[10px] font-medium text-accent">Sandbox</span>
             </div>
           )}
+          {isImageCmd && (
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/30">
+              <span className="text-[10px]">✨</span>
+              <span className="text-[10px] font-medium text-purple-400">Image Gen</span>
+            </div>
+          )}
 
           <InspirationPopover
             disabled={disabled}
@@ -291,6 +315,26 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
             multiple
             className="hidden"
             onChange={handleFileSelect}
+          />
+
+          <button
+            onClick={() => imageInputRef.current?.click()}
+            disabled={disabled || attachedFiles.length >= MAX_FILES}
+            className={cn(
+              'p-1.5 rounded-lg transition-colors',
+              'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+              (disabled || attachedFiles.length >= MAX_FILES) && 'opacity-30 pointer-events-none'
+            )}
+            title="Upload image for AI editing (PNG, JPG, WEBP up to 5MB)"
+          >
+            <ImageIcon className="h-4 w-4" />
+          </button>
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept=".png,.jpg,.jpeg,.webp"
+            className="hidden"
+            onChange={handleImageSelect}
           />
 
           <button
