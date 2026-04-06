@@ -679,7 +679,7 @@ Format the output with clear headers, scores in bold, and specific actionable re
               'Content-Type': 'application/json',
               Authorization: `Bearer ${session.access_token}`,
             },
-            body: JSON.stringify({ messages: messagesForAPI, ghlMode: options?.ghlMode || false, designMd, marketingMd: finalMarketingMd }),
+            body: JSON.stringify({ messages: messagesForAPI, ghlMode: options?.ghlMode || false, designMd, marketingMd: finalMarketingMd, conversationCategory: conversationCategoryRef.current }),
             signal: abortControllerRef.current.signal,
           }
         );
