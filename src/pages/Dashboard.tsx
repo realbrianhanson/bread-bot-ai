@@ -472,7 +472,7 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="flex-1 min-h-0 relative">
-                <CodePreview key={`${activeConversationId || 'mobile-preview'}-${mobilePreviewKey}`} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} />
+                <CodePreview key={`${activeConversationId || 'mobile-preview'}-${mobilePreviewKey}`} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} />
               </div>
             )}
           </>
@@ -568,9 +568,13 @@ const Dashboard = () => {
                   currentTaskScreenshots={currentTask?.screenshots}
                   isExecutingTask={isExecuting}
                   projectId={activeConversationId || undefined}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
+                  onUndo={undoCode}
+                  onRedo={redoCode}
                 />
               ) : (
-                <CodePreview key={activeConversationId || 'desktop-preview'} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} />
+                <CodePreview key={activeConversationId || 'desktop-preview'} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} />
               )}
             </ResizablePanel>
           </ResizablePanelGroup>
