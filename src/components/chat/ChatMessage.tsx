@@ -9,13 +9,11 @@ import { useState, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import CodeExecutionResult from './CodeExecutionResult';
 import SandboxComputerView from './SandboxComputerView';
 import FileAttachment from './FileAttachment';
 import SlidePreview from './SlidePreview';
 import AuditResults from './AuditResults';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 const MermaidDiagram = lazy(() => import('./MermaidDiagram'));
 
