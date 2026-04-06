@@ -14,7 +14,7 @@ import { BrowserTask } from '@/hooks/useBrowserTask';
 import { useOrchestrator } from '@/hooks/useOrchestrator';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { ArrowDown, Sparkles, Terminal, Search, FileText, Loader2, LayoutGrid } from 'lucide-react';
+import { ArrowDown, Sparkles, Terminal, Search, FileText, Loader2, LayoutGrid, Pencil, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { hasCodeBlocks, extractCodeFromResponse } from '@/lib/validateWebsite';
 
@@ -39,6 +39,8 @@ interface ChatContainerProps {
   onSlashCommand?: (command: string) => void;
   onInspire?: (url: string, content: string, ghlMode: boolean) => void;
   isInspirationLoading?: boolean;
+  activeCode?: { html: string; css: string; js: string } | null;
+  onClearActiveCode?: () => void;
 }
 
 const ChatContainer = ({
@@ -62,6 +64,8 @@ const ChatContainer = ({
   onSlashCommand,
   onInspire,
   isInspirationLoading,
+  activeCode,
+  onClearActiveCode,
 }: ChatContainerProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
