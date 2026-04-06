@@ -196,7 +196,7 @@ export interface BrowserTask {
   notifications?: NotifyMessageData[];
 }
 
-export const useBrowserTask = (projectId?: string) => {
+export const useBrowserTask = () => {
   const [currentTask, setCurrentTask] = useState<BrowserTask | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
@@ -206,16 +206,6 @@ export const useBrowserTask = (projectId?: string) => {
   const { user } = useAuth();
   const { canRunBrowserTask, refreshSubscription } = useSubscription();
   const currentTaskIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    setCurrentTask(null);
-    setIsExecuting(false);
-    setIsStopping(false);
-    setIsPausing(false);
-    setIsResuming(false);
-    setActivePollingTaskId(null);
-    currentTaskIdRef.current = null;
-  }, [projectId]);
 
   // Determine intervention reason from task data
   const getInterventionReason = (outputData: any): { reason: InterventionReason; message: string } => {

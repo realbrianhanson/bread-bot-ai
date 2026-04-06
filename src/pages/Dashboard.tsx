@@ -52,7 +52,7 @@ const Dashboard = () => {
   );
   const { messages, isHistoryLoading, isLoading, isStreaming, isInspirationLoading, sendMessage, sendInspirationMessage, stopStreaming } = useChat(activeConversationId || undefined);
   const { conversations, createConversation, deleteConversation, renameConversation, autoTitleConversation } = useConversations();
-  const { currentTask, isExecuting, executeTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask(activeConversationId || undefined);
+  const { currentTask, isExecuting, executeTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask();
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const { plan, isPlanning, generatePlan, updateStep, removeStep, addStep, reorderSteps, clearPlan } = useTaskPlanner();
 
@@ -504,39 +504,13 @@ const Dashboard = () => {
                   isExecutingTask={isExecuting}
                   projectId={activeConversationId || undefined}
                 />
-              ) : isHistoryLoading ? (
-                <div className="absolute inset-0 flex flex-col bg-background">
-                  <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-background/50 shrink-0">
-                    <span className="text-sm font-medium">Live Preview</span>
-                  </div>
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                      <p className="text-sm text-muted-foreground">Loading conversation…</p>
-                    </div>
-                  </div>
-                </div>
               ) : (
                 <CodePreview key={activeConversationId || 'desktop-preview'} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} />
               )}
             </ResizablePanel>
           </ResizablePanelGroup>
         ) : (
-          <div className="flex h-full w-full">
-            <div className="w-72 shrink-0 border-r border-border/50 overflow-y-auto">
-              <ConversationList
-                conversations={conversations}
-                activeConversationId={activeConversationId}
-                onSelectConversation={handleSelectConversation}
-                onNewConversation={handleNewConversation}
-                onDeleteConversation={handleDeleteConversation}
-                onRenameConversation={renameConversation}
-              />
-            </div>
-            <div className="flex-1">
-              <EmptyState />
-            </div>
-          </div>
+          <EmptyState />
         )}
       </div>
     </div>
