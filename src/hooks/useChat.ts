@@ -132,6 +132,7 @@ export const useChat = (projectId?: string) => {
   const [isInspirationLoading, setIsInspirationLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [activeCode, setActiveCodeRaw] = useState<{ html: string; css: string; js: string } | null>(null);
+  const [codeVersion, setCodeVersion] = useState(0);
   const [codeHistory, setCodeHistory] = useState<Array<{ html: string; css: string; js: string }>>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
