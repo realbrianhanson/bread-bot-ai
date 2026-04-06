@@ -360,6 +360,30 @@ const Dashboard = () => {
         </div>
       </header>
 
+      {/* Mobile conversation drawer */}
+      <Sheet open={mobileDrawerOpen} onOpenChange={setMobileDrawerOpen}>
+        <SheetContent side="left" className="w-[85vw] max-w-sm p-0">
+          <div className="flex flex-col h-full">
+            <div className="p-3 border-b border-border/50 flex items-center justify-between">
+              <span className="text-sm font-semibold">Conversations</span>
+              <Button size="sm" variant="ghost" onClick={() => { handleNewConversation(); setMobileDrawerOpen(false); }}>
+                <MessageSquarePlus className="h-4 w-4 mr-1" /> New
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <ConversationList
+                conversations={conversations}
+                activeConversationId={activeConversationId}
+                onSelectConversation={(id) => { handleSelectConversation(id); setMobileDrawerOpen(false); }}
+                onNewConversation={handleNewConversation}
+                onDeleteConversation={handleDeleteConversation}
+                onRenameConversation={renameConversation}
+              />
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
       {/* Mobile View */}
       <div className="flex-1 flex flex-col md:hidden min-h-0 overflow-hidden">
         {(activeConversationId || messages.length > 0) ? (
@@ -369,7 +393,7 @@ const Dashboard = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => { setActiveConversationId(null); setSidebarCollapsed(false); }}
+                onClick={() => setActiveConversationId(null)}
                 className="h-10 w-10 shrink-0"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -414,7 +438,7 @@ const Dashboard = () => {
             </div>
 
             {mobileView === 'chat' || !hasPreviewContent ? (
-              <div className="flex-1 min-h-0 flex flex-col">
+              <div className="flex-1 min-h-0 flex flex-col relative">
                 <ChatContainer
                   key={activeConversationId || 'mobile-chat'}
                   messages={messages} isLoading={isLoading || isHistoryLoading} isStreaming={isStreaming}
@@ -427,6 +451,17 @@ const Dashboard = () => {
                   onInspire={sendInspirationMessage}
                   isInspirationLoading={isInspirationLoading}
                 />
+                {/* Floating preview button on mobile chat view */}
+                {hasPreviewContent && (
+                  <Button
+                    onClick={() => setMobileView('preview')}
+                    size="sm"
+                    className="fixed bottom-20 right-4 z-30 shadow-lg rounded-full gap-1.5"
+                  >
+                    <Eye className="h-4 w-4" />
+                    Preview
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="flex-1 min-h-0 relative">
@@ -435,20 +470,8 @@ const Dashboard = () => {
             )}
           </>
         ) : (
-          /* Chat list + empty state when no conversation is active */
-          <div className="flex-1 flex flex-col min-h-0">
-            <div className="shrink-0 max-h-48 overflow-y-auto border-b border-border/50">
-              <ConversationList
-                conversations={conversations}
-                activeConversationId={activeConversationId}
-                onSelectConversation={handleSelectConversation}
-                onNewConversation={handleNewConversation}
-                onDeleteConversation={handleDeleteConversation}
-                onRenameConversation={renameConversation}
-              />
-            </div>
-            <EmptyState mobile />
-          </div>
+          /* Empty state when no conversation is active */}
+          <EmptyState mobile />
         )}
       </div>
 
