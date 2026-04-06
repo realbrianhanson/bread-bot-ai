@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import {
   Copy, Check, Rocket, Monitor, Tablet, Smartphone, RefreshCw,
   Maximize2, X, ChevronRight, Info, Loader2, CheckCircle2,
-  ExternalLink, RotateCcw, Globe, Link, Undo2, Redo2,
+  ExternalLink, RotateCcw, Globe, Link, Undo2, Redo2, Columns2,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -39,6 +39,7 @@ interface GHLCodeOutputProps {
   onPublish?: () => void;
   isPublishing?: boolean;
   publishedSlug?: string | null;
+  competitorHtml?: string | null;
 }
 
 type ViewportSize = 'desktop' | 'tablet' | 'mobile';
