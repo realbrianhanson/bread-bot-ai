@@ -20,6 +20,7 @@ import ConversationList from "@/components/chat/ConversationList";
 import CodePreview from "@/components/chat/CodePreview";
 import GHLCodeOutput from "@/components/chat/GHLCodeOutput";
 import TaskHistory from "@/components/chat/TaskHistory";
+import BuildHistory from "@/components/chat/BuildHistory";
 import ProfileSelector from "@/components/chat/ProfileSelector";
 import LiveBrowserView from "@/components/chat/LiveBrowserView";
 import { useChat } from "@/hooks/useChat";
@@ -305,6 +306,7 @@ const Dashboard = () => {
           <WorkflowBuilder onExecuteWorkflow={handleExecuteWorkflow} />
           <ScheduledTasksPanel />
           <WebhookManager />
+          <BuildHistory onOpenBuild={handleSelectConversation} />
           <ResultsDashboard />
           <ThemeToggle />
           <TaskHistory onRerunTask={handleRerunTask} />
