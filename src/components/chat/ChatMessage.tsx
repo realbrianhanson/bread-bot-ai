@@ -262,12 +262,27 @@ const ChatMessage = ({ message, onInsertImage, onRegenerateImage }: ChatMessageP
             </div>
           )}
 
-          {/* Screenshots */}
+          {/* Screenshots - browse result style */}
           {message.metadata?.screenshots && message.metadata.screenshots.length > 0 && (
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              {message.metadata.screenshots.map((screenshot: string, idx: number) => (
-                <img key={idx} src={screenshot} alt={`Screenshot ${idx + 1}`} className="rounded-lg border border-border/50 w-full" />
-              ))}
+            <div className="mt-3 space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                {message.metadata.screenshots.map((screenshot: string, idx: number) => (
+                  <img key={idx} src={screenshot} alt={`Screenshot ${idx + 1}`} className="rounded-lg border border-border/50 w-full cursor-pointer hover:opacity-90 transition-opacity" onClick={() => window.open(screenshot, '_blank')} />
+                ))}
+              </div>
+              {message.metadata?.extractedData && (
+                <div className="rounded-lg border border-border/30 overflow-hidden mt-2">
+                  <div className="px-3 py-1.5 bg-muted/20 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Extracted Data</div>
+                  <div className="divide-y divide-border/20">
+                    {Object.entries(message.metadata.extractedData).map(([key, value], idx) => (
+                      <div key={key} className={`px-3 py-2 flex gap-3 text-xs ${idx % 2 === 0 ? 'bg-muted/5' : ''}`}>
+                        <span className="text-muted-foreground font-medium min-w-[100px]">{key}</span>
+                        <span className="text-foreground break-all">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

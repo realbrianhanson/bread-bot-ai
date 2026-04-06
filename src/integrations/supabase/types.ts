@@ -439,6 +439,33 @@ export type Database = {
         }
         Relationships: []
       }
+      task_results: {
+        Row: {
+          created_at: string
+          id: string
+          query: string | null
+          results_json: Json
+          task_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          query?: string | null
+          results_json?: Json
+          task_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          query?: string | null
+          results_json?: Json
+          task_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           completed_at: string | null
