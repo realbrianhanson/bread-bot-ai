@@ -172,7 +172,7 @@ const Dashboard = () => {
     lastAutoOpenedPreviewMessageId.current = null;
 
     if (isMobile) {
-      setSidebarCollapsed(true);
+      setMobileDrawerOpen(false);
     }
   };
 
