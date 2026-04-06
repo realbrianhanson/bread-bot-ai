@@ -94,6 +94,7 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
   const [useFallback, setUseFallback] = useState(false);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const previewViewportRef = useRef<HTMLDivElement>(null);
 
@@ -514,6 +515,42 @@ ${previewScrollRecoveryScript}
     a.click();
     URL.revokeObjectURL(url);
     toast.success('HTML file downloaded.');
+  };
+
+  const handleSharePreview = async () => {
+    setIsSharing(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Please sign in to share previews.');
+        return;
+      }
+
+      const html = buildCombinedHTML();
+      // Extract title from HTML
+      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
+        || html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
+      const title = titleMatch?.[1]?.trim() || 'Untitled Page';
+
+      const { data, error } = await supabase
+        .from('shared_previews')
+        .insert({ user_id: user.id, html_content: html, title })
+        .select('token')
+        .single();
+
+      if (error) throw error;
+
+      const shareUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/share-preview?token=${data.token}`;
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success('Share link copied! Valid for 7 days.', {
+        description: 'Anyone with this link can view your page.',
+      });
+    } catch (err) {
+      console.error('Share error:', err);
+      toast.error('Failed to create share link.');
+    } finally {
+      setIsSharing(false);
+    }
   };
 
   // Empty state
