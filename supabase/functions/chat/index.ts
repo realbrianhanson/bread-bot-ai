@@ -552,8 +552,28 @@ This app has browser automation. For browsing tasks, tell users: /browse [task d
         .catch(err => console.error('[CHAT] Honcho background store error:', err));
     }
 
-    // Stream the response
-    return new Response(response.body, {
+    // Stream the response, prepending detected category as a custom SSE event
+    const categoryEvent = detectedCategory
+      ? new TextEncoder().encode(`event: category\ndata: ${JSON.stringify({ category: detectedCategory })}\n\n`)
+      : null;
+
+    const bodyStream = new ReadableStream({
+      async start(controller) {
+        if (categoryEvent) controller.enqueue(categoryEvent);
+        const reader = response.body!.getReader();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            controller.enqueue(value);
+          }
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(bodyStream, {
       headers: {
         ...corsHeaders,
         'Content-Type': 'text/event-stream',
