@@ -249,6 +249,14 @@ const GHLCodeOutput = ({
         </div>
 
         <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 mr-1">
+            <Button variant="ghost" size="icon" className={`h-6 w-6 text-muted-foreground/60 hover:text-foreground ${!canUndo ? 'opacity-30 pointer-events-none' : ''}`} onClick={onUndo} disabled={!canUndo}>
+              <Undo2 className="h-3 w-3" />
+            </Button>
+            <Button variant="ghost" size="icon" className={`h-6 w-6 text-muted-foreground/60 hover:text-foreground ${!canRedo ? 'opacity-30 pointer-events-none' : ''}`} onClick={onRedo} disabled={!canRedo}>
+              <Redo2 className="h-3 w-3" />
+            </Button>
+          </div>
           <div className="flex items-center rounded-lg border border-border/30 bg-background/10 p-0.5 mr-1">
             {viewportButtons.map(({ key, icon: Icon, label }) => (
               <button
