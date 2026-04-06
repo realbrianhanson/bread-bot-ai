@@ -66,6 +66,22 @@ const Dashboard = () => {
   const isMobile = useIsMobile();
   const lastAutoOpenedPreviewMessageId = useRef<string | null>(null);
   const [mobilePreviewKey, setMobilePreviewKey] = useState(0);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Check onboarding status
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('profiles')
+      .select('has_completed_onboarding')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (data && !(data as any).has_completed_onboarding) {
+          setShowOnboarding(true);
+        }
+      });
+  }, [user]);
 
   useEffect(() => {
     supabase.functions.invoke('honcho-proxy', { body: { action: 'status' } })
