@@ -364,7 +364,9 @@ export type Database = {
           created_at: string | null
           html_content: string
           id: string
+          is_published: boolean
           share_id: string
+          slug: string | null
           title: string | null
           user_id: string
           views: number | null
@@ -374,7 +376,9 @@ export type Database = {
           created_at?: string | null
           html_content: string
           id?: string
+          is_published?: boolean
           share_id?: string
+          slug?: string | null
           title?: string | null
           user_id: string
           views?: number | null
@@ -384,7 +388,9 @@ export type Database = {
           created_at?: string | null
           html_content?: string
           id?: string
+          is_published?: boolean
           share_id?: string
+          slug?: string | null
           title?: string | null
           user_id?: string
           views?: number | null
