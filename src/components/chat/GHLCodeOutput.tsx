@@ -255,6 +255,17 @@ const GHLCodeOutput = ({
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
             GHL Mode
           </Badge>
+          {competitorHtml && (
+            <Button
+              variant={compareMode ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setCompareMode(!compareMode)}
+              className="h-5 px-2 text-[10px] gap-1"
+            >
+              <Columns2 className="h-3 w-3" />
+              {compareMode ? 'Exit Compare' : 'Compare'}
+            </Button>
+          )}
         </div>
 
         <div className="flex items-center gap-1">
