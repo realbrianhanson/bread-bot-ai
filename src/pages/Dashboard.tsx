@@ -49,7 +49,7 @@ const Dashboard = () => {
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const { messages, isHistoryLoading, isLoading, isStreaming, isInspirationLoading, sendMessage, sendInspirationMessage, stopStreaming } = useChat(activeConversationId || undefined);
+  const { messages, isHistoryLoading, isLoading, isStreaming, isInspirationLoading, activeCode, sendMessage, sendInspirationMessage, stopStreaming, clearActiveCode } = useChat(activeConversationId || undefined);
   const { conversations, createConversation, deleteConversation, renameConversation, autoTitleConversation } = useConversations();
   const { currentTask, isExecuting, executeTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask();
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
@@ -450,6 +450,8 @@ const Dashboard = () => {
                   onSlashCommand={handleSlashCommand}
                   onInspire={sendInspirationMessage}
                   isInspirationLoading={isInspirationLoading}
+                  activeCode={activeCode}
+                  onClearActiveCode={clearActiveCode}
                 />
                 {/* Floating preview button on mobile chat view */}
                 {hasPreviewContent && (
@@ -506,6 +508,8 @@ const Dashboard = () => {
                     onSlashCommand={handleSlashCommand}
                     onInspire={sendInspirationMessage}
                     isInspirationLoading={isInspirationLoading}
+                    activeCode={activeCode}
+                    onClearActiveCode={clearActiveCode}
                   />
                 </div>
               </div>

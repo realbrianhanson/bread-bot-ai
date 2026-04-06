@@ -14,7 +14,7 @@ import { BrowserTask } from '@/hooks/useBrowserTask';
 import { useOrchestrator } from '@/hooks/useOrchestrator';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { ArrowDown, Sparkles, Terminal, Search, FileText, Loader2, LayoutGrid } from 'lucide-react';
+import { ArrowDown, Sparkles, Terminal, Search, FileText, Loader2, LayoutGrid, Pencil, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { hasCodeBlocks, extractCodeFromResponse } from '@/lib/validateWebsite';
 
@@ -39,6 +39,8 @@ interface ChatContainerProps {
   onSlashCommand?: (command: string) => void;
   onInspire?: (url: string, content: string, ghlMode: boolean) => void;
   isInspirationLoading?: boolean;
+  activeCode?: { html: string; css: string; js: string } | null;
+  onClearActiveCode?: () => void;
 }
 
 const ChatContainer = ({
@@ -62,6 +64,8 @@ const ChatContainer = ({
   onSlashCommand,
   onInspire,
   isInspirationLoading,
+  activeCode,
+  onClearActiveCode,
 }: ChatContainerProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -480,6 +484,20 @@ const ChatContainer = ({
                 <LayoutGrid className="h-3 w-3" />
                 {showTemplateGallery ? 'Hide Templates' : 'Browse Templates'}
               </Button>
+            </div>
+          )}
+          {activeCode && (
+            <div className="flex items-center justify-center mb-2">
+              <div className="inline-flex items-center gap-1.5 bg-primary/15 text-primary rounded-full px-3 py-1 text-xs font-medium">
+                <Pencil className="h-3 w-3" />
+                <span>Editing current page</span>
+                <button
+                  onClick={() => onClearActiveCode?.()}
+                  className="ml-0.5 p-0.5 rounded-full hover:bg-primary/20 transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
             </div>
           )}
           <ChatInput
