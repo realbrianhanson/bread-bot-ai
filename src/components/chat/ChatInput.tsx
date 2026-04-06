@@ -261,6 +261,12 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
               <span className="text-[10px] font-medium text-accent">Sandbox</span>
             </div>
           )}
+          {isImageCmd && (
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/30">
+              <span className="text-[10px]">✨</span>
+              <span className="text-[10px] font-medium text-purple-400">Image Gen</span>
+            </div>
+          )}
 
           <InspirationPopover
             disabled={disabled}
