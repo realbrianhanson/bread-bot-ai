@@ -2,8 +2,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
-import { Settings, LogOut, MessageSquarePlus, ChevronLeft, ChevronRight, Sparkles, Brain, MessageCircle, Eye, RefreshCw, ArrowLeft } from "lucide-react";
+import { Settings, LogOut, MessageSquarePlus, Sparkles, Brain, MessageCircle, Eye, RefreshCw, ArrowLeft, Menu } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,9 +49,6 @@ const Dashboard = () => {
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(
-    typeof window !== 'undefined' ? window.innerWidth < 768 : false
-  );
   const { messages, isHistoryLoading, isLoading, isStreaming, isInspirationLoading, sendMessage, sendInspirationMessage, stopStreaming } = useChat(activeConversationId || undefined);
   const { conversations, createConversation, deleteConversation, renameConversation, autoTitleConversation } = useConversations();
   const { currentTask, isExecuting, executeTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask();
@@ -58,6 +56,7 @@ const Dashboard = () => {
   const { plan, isPlanning, generatePlan, updateStep, removeStep, addStep, reorderSteps, clearPlan } = useTaskPlanner();
 
   const [memoryActive, setMemoryActive] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [mobileView, setMobileView] = useState<'chat' | 'preview'>('chat');
   const [queuedPrompt, setQueuedPrompt] = useState<string | null>(null);
   const isMobile = useIsMobile();
@@ -139,7 +138,7 @@ const Dashboard = () => {
       setActiveConversationId(newConv.id);
       setMobileView('chat');
       if (isMobile) {
-        setSidebarCollapsed(true);
+        setMobileDrawerOpen(false);
       }
     }
   };
@@ -157,7 +156,7 @@ const Dashboard = () => {
       setQueuedPrompt(prompt);
       setMobileView('chat');
       if (isMobile) {
-        setSidebarCollapsed(true);
+        setMobileDrawerOpen(false);
       }
     }
   };
@@ -173,7 +172,7 @@ const Dashboard = () => {
     lastAutoOpenedPreviewMessageId.current = null;
 
     if (isMobile) {
-      setSidebarCollapsed(true);
+      setMobileDrawerOpen(false);
     }
   };
 
@@ -272,15 +271,16 @@ const Dashboard = () => {
       <CommandPalette onNewConversation={handleNewConversation} onQuickStart={handleQuickStart} />
       <OnboardingTour />
       {/* Header */}
-      <header className="shrink-0 h-12 border-b border-border/50 bg-card/80 backdrop-blur-sm z-10 flex items-center justify-between px-4">
-        <div className="flex items-center gap-2.5">
+      <header className="shrink-0 h-12 border-b border-border/50 bg-card/80 backdrop-blur-sm z-10 flex items-center justify-between px-3 md:px-4">
+        <div className="flex items-center gap-2">
+          {/* Mobile: hamburger for conversation drawer */}
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            onClick={() => setMobileDrawerOpen(true)}
             className="md:hidden h-8 w-8"
           >
-            {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            <Menu className="h-4 w-4" />
           </Button>
           <span className="text-xl">🧄</span>
           <span className="text-sm font-semibold tracking-tight text-foreground hidden sm:block">GarlicBread.ai</span>
@@ -301,7 +301,8 @@ const Dashboard = () => {
             </TooltipProvider>
           )}
         </div>
-        <div className="flex items-center gap-1.5">
+        {/* Desktop: full toolbar */}
+        <div className="hidden md:flex items-center gap-1.5">
           <TaskTemplatesPanel onSelectTemplate={handleQuickStart} />
           <WorkflowBuilder onExecuteWorkflow={handleExecuteWorkflow} />
           <ScheduledTasksPanel />
@@ -331,7 +332,57 @@ const Dashboard = () => {
             </AlertDialogContent>
           </AlertDialog>
         </div>
+        {/* Mobile: scrollable icon row */}
+        <div className="flex md:hidden items-center gap-1 overflow-x-auto scrollbar-none">
+          <BuildHistory onOpenBuild={handleSelectConversation} />
+          <ResultsDashboard />
+          <ThemeToggle />
+          <Button variant="ghost" size="icon" onClick={() => navigate("/settings")} className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground">
+            <Settings className="h-4 w-4" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground">
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Sign out?</AlertDialogTitle>
+                <AlertDialogDescription>Are you sure you want to sign out?</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleSignOut}>Sign out</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </header>
+
+      {/* Mobile conversation drawer */}
+      <Sheet open={mobileDrawerOpen} onOpenChange={setMobileDrawerOpen}>
+        <SheetContent side="left" className="w-[85vw] max-w-sm p-0">
+          <div className="flex flex-col h-full">
+            <div className="p-3 border-b border-border/50 flex items-center justify-between">
+              <span className="text-sm font-semibold">Conversations</span>
+              <Button size="sm" variant="ghost" onClick={() => { handleNewConversation(); setMobileDrawerOpen(false); }}>
+                <MessageSquarePlus className="h-4 w-4 mr-1" /> New
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <ConversationList
+                conversations={conversations}
+                activeConversationId={activeConversationId}
+                onSelectConversation={(id) => { handleSelectConversation(id); setMobileDrawerOpen(false); }}
+                onNewConversation={handleNewConversation}
+                onDeleteConversation={handleDeleteConversation}
+                onRenameConversation={renameConversation}
+              />
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Mobile View */}
       <div className="flex-1 flex flex-col md:hidden min-h-0 overflow-hidden">
@@ -342,7 +393,7 @@ const Dashboard = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => { setActiveConversationId(null); setSidebarCollapsed(false); }}
+                onClick={() => setActiveConversationId(null)}
                 className="h-10 w-10 shrink-0"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -387,7 +438,7 @@ const Dashboard = () => {
             </div>
 
             {mobileView === 'chat' || !hasPreviewContent ? (
-              <div className="flex-1 min-h-0 flex flex-col">
+              <div className="flex-1 min-h-0 flex flex-col relative">
                 <ChatContainer
                   key={activeConversationId || 'mobile-chat'}
                   messages={messages} isLoading={isLoading || isHistoryLoading} isStreaming={isStreaming}
@@ -400,6 +451,17 @@ const Dashboard = () => {
                   onInspire={sendInspirationMessage}
                   isInspirationLoading={isInspirationLoading}
                 />
+                {/* Floating preview button on mobile chat view */}
+                {hasPreviewContent && (
+                  <Button
+                    onClick={() => setMobileView('preview')}
+                    size="sm"
+                    className="fixed bottom-20 right-4 z-30 shadow-lg rounded-full gap-1.5"
+                  >
+                    <Eye className="h-4 w-4" />
+                    Preview
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="flex-1 min-h-0 relative">
@@ -408,20 +470,7 @@ const Dashboard = () => {
             )}
           </>
         ) : (
-          /* Chat list + empty state when no conversation is active */
-          <div className="flex-1 flex flex-col min-h-0">
-            <div className="shrink-0 max-h-48 overflow-y-auto border-b border-border/50">
-              <ConversationList
-                conversations={conversations}
-                activeConversationId={activeConversationId}
-                onSelectConversation={handleSelectConversation}
-                onNewConversation={handleNewConversation}
-                onDeleteConversation={handleDeleteConversation}
-                onRenameConversation={renameConversation}
-              />
-            </div>
-            <EmptyState mobile />
-          </div>
+          <EmptyState mobile />
         )}
       </div>
 
