@@ -40,6 +40,7 @@ interface GHLCodeOutputProps {
   isPublishing?: boolean;
   publishedSlug?: string | null;
   competitorHtml?: string | null;
+  codeVersion?: number;
 }
 
 type ViewportSize = 'desktop' | 'tablet' | 'mobile';
@@ -82,6 +83,7 @@ const GHLCodeOutput = ({
   isPublishing = false,
   publishedSlug,
   competitorHtml,
+  codeVersion = 0,
 }: GHLCodeOutputProps) => {
   const [viewport, setViewport] = useState<ViewportSize>('desktop');
   const [copied, setCopied] = useState(false);
@@ -424,7 +426,7 @@ const GHLCodeOutput = ({
           <div className="w-1/2 flex flex-col">
             <div className="px-2 py-1 bg-primary/10 text-[10px] font-medium text-primary text-center border-b border-border/20">Your Version ✨</div>
             <iframe
-              key={iframeKey}
+              key={`${iframeKey}-${codeVersion}`}
               srcDoc={code}
               className="flex-1 w-full border-0"
               sandbox="allow-scripts"
@@ -445,7 +447,7 @@ const GHLCodeOutput = ({
           >
             <iframe
               ref={iframeRef}
-              key={iframeKey}
+              key={`${iframeKey}-${codeVersion}`}
               srcDoc={code}
               title="GHL Preview"
               sandbox="allow-scripts"

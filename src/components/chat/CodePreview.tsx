@@ -22,6 +22,7 @@ interface CodePreviewProps {
   isPublishing?: boolean;
   publishedSlug?: string | null;
   competitorHtml?: string | null;
+  codeVersion?: number;
 }
 
 const SandpackWithFallback = ({ files, template, onFallback }: {
@@ -96,7 +97,7 @@ const SandpackWithFallback = ({ files, template, onFallback }: {
   );
 };
 
-const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent = '', canUndo = false, canRedo = false, onUndo, onRedo, onPublish, isPublishing = false, publishedSlug, competitorHtml }: CodePreviewProps) => {
+const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent = '', canUndo = false, canRedo = false, onUndo, onRedo, onPublish, isPublishing = false, publishedSlug, competitorHtml, codeVersion = 0 }: CodePreviewProps) => {
   const [key, setKey] = useState(0);
   const [copied, setCopied] = useState(false);
   const [useFallback, setUseFallback] = useState(false);
@@ -737,7 +738,7 @@ ${previewScrollRecoveryScript}
       <div className="w-1/2 flex flex-col">
         <div className="px-2 py-1 bg-primary/10 text-[10px] font-medium text-primary text-center border-b border-border/30">Your Version ✨</div>
         <iframe
-          key={key}
+          key={`${key}-${codeVersion}`}
           srcDoc={buildCombinedHTML()}
           className="flex-1 w-full border-0"
           sandbox="allow-scripts allow-same-origin"
@@ -758,7 +759,7 @@ ${previewScrollRecoveryScript}
           ) : (
             <div ref={previewViewportRef} className="flex-1 relative min-h-0 overflow-y-auto overflow-x-hidden">
               <iframe
-                key={key}
+                key={`${key}-${codeVersion}`}
                 ref={enforceScrollableIframe}
                 srcDoc={buildCombinedHTML()}
                 className="block"
@@ -783,7 +784,7 @@ ${previewScrollRecoveryScript}
         <Toolbar />
         <div ref={previewViewportRef} className="flex-1 relative min-h-0 overflow-y-auto overflow-x-hidden">
           <SandpackWithFallback
-            key={key}
+            key={`${key}-${codeVersion}`}
             files={previewFiles}
             template="react-ts"
             onFallback={() => setUseFallback(true)}

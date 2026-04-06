@@ -132,6 +132,7 @@ export const useChat = (projectId?: string) => {
   const [isInspirationLoading, setIsInspirationLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [activeCode, setActiveCodeRaw] = useState<{ html: string; css: string; js: string } | null>(null);
+  const [codeVersion, setCodeVersion] = useState(0);
   const [codeHistory, setCodeHistory] = useState<Array<{ html: string; css: string; js: string }>>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
@@ -160,6 +161,12 @@ export const useChat = (projectId?: string) => {
       return newCode;
     });
   }, [historyIndex]);
+
+  // Increment codeVersion whenever activeCode changes (including undo/redo)
+  useEffect(() => {
+    setCodeVersion((v) => v + 1);
+  }, [activeCode]);
+
   const { user } = useAuth();
   const { canSendMessage, refreshSubscription } = useSubscription();
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -1236,6 +1243,7 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
     isStreaming,
     isInspirationLoading,
     activeCode,
+    codeVersion,
     codeHistoryIndex: historyIndex,
     codeHistoryLength: codeHistory.length,
     canUndo,
