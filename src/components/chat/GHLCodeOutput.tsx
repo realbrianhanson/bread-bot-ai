@@ -40,6 +40,7 @@ interface GHLCodeOutputProps {
   isPublishing?: boolean;
   publishedSlug?: string | null;
   competitorHtml?: string | null;
+  codeVersion?: number;
 }
 
 type ViewportSize = 'desktop' | 'tablet' | 'mobile';

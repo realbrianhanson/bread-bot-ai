@@ -22,6 +22,7 @@ interface CodePreviewProps {
   isPublishing?: boolean;
   publishedSlug?: string | null;
   competitorHtml?: string | null;
+  codeVersion?: number;
 }
 
 const SandpackWithFallback = ({ files, template, onFallback }: {
