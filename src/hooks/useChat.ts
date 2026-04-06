@@ -540,7 +540,151 @@ Format the output with clear headers, scores in bold, and specific actionable re
         }
       }
 
-      // Handle /image command — AI image generation
+      // Handle /compete command — competitor analysis + superior page generation
+      if (content.trim().startsWith('/compete ')) {
+        const rest = content.trim().slice(9).trim();
+        const compUrlMatch = rest.match(/^(https?:\/\/\S+)/i) || rest.match(/^(\S+\.\S+)/);
+        if (compUrlMatch) {
+          const compUrl = compUrlMatch[1].startsWith('http') ? compUrlMatch[1] : `https://${compUrlMatch[1]}`;
+          setIsLoading(true);
+          setIsStreaming(true);
+
+          const statusId = crypto.randomUUID();
+          setMessages((prev) => [...prev, { id: statusId, role: 'assistant' as const, content: `⚔️ **Competitor Analysis**\nScraping \`${compUrl}\`...`, created_at: new Date().toISOString() }]);
+
+          try {
+            await supabase.from('messages').insert({ user_id: user.id, project_id: projectId, role: 'user', content: content.trim() });
+
+            const { data: scrapeData, error: scrapeError } = await supabase.functions.invoke('firecrawl-scrape', {
+              body: { url: compUrl, options: { formats: ['markdown', 'html'], onlyMainContent: false } },
+            });
+            if (scrapeError) throw new Error(`Failed to scrape competitor: ${scrapeError.message}`);
+
+            const compHtml = scrapeData?.data?.html || scrapeData?.html || '';
+            const compMarkdown = scrapeData?.data?.markdown || scrapeData?.markdown || '';
+            const trimmedCompHtml = trimHtmlIntelligently(compHtml, 15000);
+            const trimmedCompMd = compMarkdown.slice(0, 5000);
+
+            setMessages((prev) => prev.map((m) => m.id === statusId ? { ...m, content: '⚔️ **Site scraped.** Analyzing weaknesses & generating a superior page...' } : m));
+
+            // Step 1: Analyze the competitor (structured extraction via prompt)
+            const analysisPrompt = `You are a conversion optimization expert and competitive analyst. Analyze this competitor's landing page and then BUILD A SUPERIOR VERSION.
+
+COMPETITOR URL: ${compUrl}
+
+COMPETITOR HTML:
+${trimmedCompHtml}
+
+COMPETITOR CONTENT:
+${trimmedCompMd}
+
+STEP 1 - ANALYSIS: First, output a JSON block wrapped in \`\`\`json ... \`\`\` with this exact structure:
+{
+  "businessType": "e.g. SaaS, E-commerce, Agency",
+  "valueProposition": "Their main pitch in one sentence",
+  "overallScore": 45,
+  "colorScheme": ["#hex1", "#hex2", "#hex3"],
+  "sections": ["Hero", "Features", "Pricing"],
+  "strengths": ["Good headline", "Clear pricing"],
+  "weaknesses": ["No social proof", "Weak CTA copy", "No urgency elements"],
+  "missingElements": ["Testimonials", "FAQ", "Trust badges", "Guarantee"]
+}
+
+STEP 2 - SUPERIOR PAGE: After the JSON block, generate a COMPLETE landing page that BEATS the competitor. The page must:
+- Target the SAME business type and audience
+- Use STRONGER AIDA headlines (Attention → Interest → Desire → Action)
+- Include ALL sections the competitor has PLUS any they're missing
+- Add: urgency elements (limited time, countdown), social proof (testimonials, stats, logos), trust badges, money-back guarantee
+- Use a more modern, polished design with better typography, spacing, and visual hierarchy
+- Be fully mobile-responsive
+- Have stronger, benefit-driven CTA copy
+- Include smooth scroll, animations, and micro-interactions
+
+Output the superior page as three code blocks: html, css, javascript — complete and ready to render.`;
+
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) throw new Error('No active session');
+
+            abortControllerRef.current = new AbortController();
+            const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+              body: JSON.stringify({ messages: [{ role: 'user', content: analysisPrompt }], ghlMode: options?.ghlMode || false }),
+              signal: abortControllerRef.current.signal,
+            });
+
+            if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'Failed to analyze competitor'); }
+
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+            let compContent = '';
+            setMessages((prev) => prev.filter((m) => m.id !== statusId));
+            const tempId = crypto.randomUUID();
+
+            if (reader) {
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value);
+                for (const line of chunk.split('\n')) {
+                  if (!line.startsWith('data: ')) continue;
+                  const d = line.slice(6);
+                  if (d === '[DONE]') continue;
+                  try {
+                    const parsed = JSON.parse(d);
+                    if (parsed.type === 'content_block_delta') {
+                      compContent += parsed.delta?.text || '';
+                      setMessages((prev) => {
+                        const existing = prev.find((m) => m.id === tempId);
+                        if (existing) return prev.map((m) => m.id === tempId ? { ...m, content: compContent } : m);
+                        return [...prev, { id: tempId, role: 'assistant' as const, content: compContent, created_at: new Date().toISOString() }];
+                      });
+                    }
+                  } catch {}
+                }
+              }
+
+              if (compContent) {
+                // Extract the analysis JSON from the response
+                let analysisData: any = null;
+                const jsonMatch = compContent.match(/```json\s*([\s\S]*?)```/);
+                if (jsonMatch) {
+                  try { analysisData = JSON.parse(jsonMatch[1].trim()); } catch {}
+                }
+
+                const metadata: any = {
+                  type: 'competitor_analysis',
+                  competitorUrl: compUrl,
+                  competitorHtml: compHtml.slice(0, 50000),
+                };
+                if (analysisData) metadata.analysis = analysisData;
+
+                const { data: savedMsg } = await supabase.from('messages').insert({
+                  user_id: user.id, project_id: projectId, role: 'assistant', content: compContent, metadata,
+                }).select().single();
+                if (savedMsg) setMessages((prev) => prev.map((m) => m.id === tempId ? { ...savedMsg as Message } : m));
+
+                // Auto-set activeCode if code blocks found
+                if (hasCodeBlocks(compContent)) {
+                  const { html: genHtml, css: genCss, js: genJs } = extractCodeFromResponse(compContent);
+                  if (genHtml) {
+                    setActiveCode({ html: genHtml, css: genCss, js: genJs });
+                  }
+                }
+              }
+            }
+          } catch (error: any) {
+            if (error.name !== 'AbortError') {
+              toast({ title: 'Competitor Analysis Error', description: error.message || 'Failed to analyze competitor', variant: 'destructive' });
+              setMessages((prev) => prev.filter((m) => m.id !== statusId));
+            }
+          } finally {
+            setIsLoading(false); setIsStreaming(false); abortControllerRef.current = null; refreshSubscription();
+          }
+          return;
+        }
+      }
+
       if (content.trim().startsWith('/image ')) {
         const imagePrompt = content.trim().slice(7).trim();
         if (!imagePrompt) return;

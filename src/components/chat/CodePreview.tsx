@@ -1,5 +1,5 @@
 import { SandpackProvider, SandpackLayout, SandpackPreview } from '@codesandbox/sandpack-react';
-import { Maximize2, Minimize2, RefreshCw, Copy, Download, Check, BookmarkPlus, X, Share2, Loader2, Undo2, Redo2, Globe } from 'lucide-react';
+import { Maximize2, Minimize2, RefreshCw, Copy, Download, Check, BookmarkPlus, X, Share2, Loader2, Undo2, Redo2, Globe, Columns2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -21,6 +21,7 @@ interface CodePreviewProps {
   onPublish?: () => void;
   isPublishing?: boolean;
   publishedSlug?: string | null;
+  competitorHtml?: string | null;
 }
 
 const SandpackWithFallback = ({ files, template, onFallback }: {
@@ -95,13 +96,14 @@ const SandpackWithFallback = ({ files, template, onFallback }: {
   );
 };
 
-const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent = '', canUndo = false, canRedo = false, onUndo, onRedo, onPublish, isPublishing = false, publishedSlug }: CodePreviewProps) => {
+const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent = '', canUndo = false, canRedo = false, onUndo, onRedo, onPublish, isPublishing = false, publishedSlug, competitorHtml }: CodePreviewProps) => {
   const [key, setKey] = useState(0);
   const [copied, setCopied] = useState(false);
   const [useFallback, setUseFallback] = useState(false);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [compareMode, setCompareMode] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const previewViewportRef = useRef<HTMLDivElement>(null);
 
@@ -601,7 +603,25 @@ ${previewScrollRecoveryScript}
 
   const Toolbar = () => (
     <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 bg-background/50 shrink-0 z-20">
-      <span className="text-xs font-medium">Live Preview</span>
+      <div className="flex items-center gap-1">
+        <span className="text-xs font-medium">Live Preview</span>
+        {competitorHtml && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={compareMode ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setCompareMode(!compareMode)}
+                className="h-6 px-2 text-[10px] gap-1 ml-1"
+              >
+                <Columns2 className="h-3 w-3" />
+                {compareMode ? 'Exit Compare' : 'Compare'}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Compare with competitor's page</TooltipContent>
+          </Tooltip>
+        )}
+      </div>
       <div className="flex gap-1">
         <Tooltip>
           <TooltipTrigger asChild>
@@ -703,24 +723,52 @@ ${previewScrollRecoveryScript}
   };
 
   // Static/vanilla: use iframe srcdoc directly (no Sandpack)
+  const CompareView = () => (
+    <div className="flex-1 relative min-h-0 flex">
+      <div className="w-1/2 flex flex-col border-r border-border/50">
+        <div className="px-2 py-1 bg-muted/50 text-[10px] font-medium text-muted-foreground text-center border-b border-border/30">Competitor</div>
+        <iframe
+          srcDoc={competitorHtml || ''}
+          className="flex-1 w-full border-0"
+          sandbox="allow-scripts"
+          title="Competitor Preview"
+        />
+      </div>
+      <div className="w-1/2 flex flex-col">
+        <div className="px-2 py-1 bg-primary/10 text-[10px] font-medium text-primary text-center border-b border-border/30">Your Version ✨</div>
+        <iframe
+          key={key}
+          srcDoc={buildCombinedHTML()}
+          className="flex-1 w-full border-0"
+          sandbox="allow-scripts allow-same-origin"
+          title="Your Preview"
+        />
+      </div>
+    </div>
+  );
+
   if (isStatic || useFallback) {
     return (
       <>
         <FullscreenOverlay />
         <div className="absolute inset-0 flex flex-col bg-background">
           <Toolbar />
-          <div ref={previewViewportRef} className="flex-1 relative min-h-0 overflow-y-auto overflow-x-hidden">
-            <iframe
-              key={key}
-              ref={enforceScrollableIframe}
-              srcDoc={buildCombinedHTML()}
-              className="block"
-              style={{ width: '100%', height: '100%', border: '0', overflowY: 'auto', overflowX: 'auto' }}
-              sandbox="allow-scripts allow-same-origin"
-              scrolling="yes"
-              title="Preview"
-            />
-          </div>
+          {compareMode && competitorHtml ? (
+            <CompareView />
+          ) : (
+            <div ref={previewViewportRef} className="flex-1 relative min-h-0 overflow-y-auto overflow-x-hidden">
+              <iframe
+                key={key}
+                ref={enforceScrollableIframe}
+                srcDoc={buildCombinedHTML()}
+                className="block"
+                style={{ width: '100%', height: '100%', border: '0', overflowY: 'auto', overflowX: 'auto' }}
+                sandbox="allow-scripts allow-same-origin"
+                scrolling="yes"
+                title="Preview"
+              />
+            </div>
+          )}
           <SaveTemplateDialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate} files={previewFiles} />
         </div>
       </>
