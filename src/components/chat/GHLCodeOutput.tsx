@@ -81,6 +81,7 @@ const GHLCodeOutput = ({
   onPublish,
   isPublishing = false,
   publishedSlug,
+  competitorHtml,
 }: GHLCodeOutputProps) => {
   const [viewport, setViewport] = useState<ViewportSize>('desktop');
   const [copied, setCopied] = useState(false);
@@ -90,6 +91,7 @@ const GHLCodeOutput = ({
   const [showAutoDeploy, setShowAutoDeploy] = useState(false);
   const [showCode, setShowCode] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
+  const [compareMode, setCompareMode] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Deploy form state
