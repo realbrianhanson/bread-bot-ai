@@ -1,6 +1,5 @@
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Target, AlertTriangle, TrendingUp, Zap, Shield, Star } from 'lucide-react';
+import { Target, AlertTriangle, Zap, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CompetitorAnalysisProps {
