@@ -1243,6 +1243,7 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
     isStreaming,
     isInspirationLoading,
     activeCode,
+    codeVersion,
     codeHistoryIndex: historyIndex,
     codeHistoryLength: codeHistory.length,
     canUndo,
