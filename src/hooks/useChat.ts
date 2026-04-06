@@ -642,9 +642,41 @@ Format the output with clear headers, scores in bold, and specific actionable re
         abortControllerRef.current = new AbortController();
 
         // Build the enriched content for the API
-        const enrichedContent = fileContext
-          ? `${fileContext}\n\nUser's message: ${content.trim()}`
-          : content.trim();
+        // Detect "start over" phrases to clear activeCode
+        const resetPhrases = /\b(start over|new page|fresh start|from scratch|different page|brand new)\b/i;
+        if (resetPhrases.test(content)) {
+          setActiveCode(null);
+        }
+
+        const isEditRequest = activeCode && !content.trim().startsWith('/') && !resetPhrases.test(content);
+        let enrichedContent: string;
+
+        if (isEditRequest) {
+          enrichedContent = `The user wants to modify the website you previously generated. Here is the CURRENT code that is live in the preview. Apply the user's requested changes to THIS code — do not start from scratch. Return the COMPLETE updated code with the changes applied.
+
+CURRENT HTML:
+\`\`\`html
+${activeCode.html}
+\`\`\`
+
+CURRENT CSS:
+\`\`\`css
+${activeCode.css}
+\`\`\`
+
+CURRENT JAVASCRIPT:
+\`\`\`javascript
+${activeCode.js}
+\`\`\`
+
+USER'S EDIT REQUEST: ${content.trim()}
+
+IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript) with the requested changes applied. Do not omit unchanged sections.`;
+        } else {
+          enrichedContent = fileContext
+            ? `${fileContext}\n\nUser's message: ${content.trim()}`
+            : content.trim();
+        }
 
         const messagesForAPI = messagesRef.current
           .concat([{ ...(userMessage as Message), content: enrichedContent }])
@@ -847,6 +879,14 @@ Format the output with clear headers, scores in bold, and specific actionable re
               setMessages((prev) =>
                 prev.map((m) => m.id === tempId ? { ...savedMessage as Message } : m)
               );
+            }
+
+            // Update activeCode if the response contains code blocks
+            if (hasCodeBlocks(finalContent)) {
+              const extracted = extractCodeFromResponse(finalContent);
+              if (extracted.html || extracted.css || extracted.js) {
+                setActiveCode({ html: extracted.html, css: extracted.css, js: extracted.js });
+              }
             }
           }
         }
