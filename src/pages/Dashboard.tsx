@@ -306,6 +306,7 @@ const Dashboard = () => {
           <WorkflowBuilder onExecuteWorkflow={handleExecuteWorkflow} />
           <ScheduledTasksPanel />
           <WebhookManager />
+          <BuildHistory onOpenBuild={handleSelectConversation} />
           <ResultsDashboard />
           <ThemeToggle />
           <TaskHistory onRerunTask={handleRerunTask} />
