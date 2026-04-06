@@ -259,6 +259,9 @@ const GHLCodeOutput = ({
             ))}
           </div>
 
+          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground/60 hover:text-foreground" onClick={handleSharePreview} disabled={isSharing}>
+            {isSharing ? <Loader2 className="h-3 w-3 animate-spin" /> : shareCopied ? <Check className="h-3 w-3 text-green-500" /> : <Link className="h-3 w-3" />}
+          </Button>
           <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground/60 hover:text-foreground" onClick={() => setIframeKey((k) => k + 1)}>
             <RefreshCw className="h-3 w-3" />
           </Button>
