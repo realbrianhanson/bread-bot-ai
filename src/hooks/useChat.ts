@@ -161,6 +161,12 @@ export const useChat = (projectId?: string) => {
       return newCode;
     });
   }, [historyIndex]);
+
+  // Increment codeVersion whenever activeCode changes (including undo/redo)
+  useEffect(() => {
+    setCodeVersion((v) => v + 1);
+  }, [activeCode]);
+
   const { user } = useAuth();
   const { canSendMessage, refreshSubscription } = useSubscription();
   const abortControllerRef = useRef<AbortController | null>(null);
