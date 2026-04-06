@@ -176,6 +176,85 @@ const ChatMessage = ({ message, onInsertImage, onRegenerateImage }: ChatMessageP
             />
           )}
 
+          {/* AI Generated Image */}
+          {message.metadata?.type === 'ai_image' && message.metadata.imageUrl && (
+            <div className="mt-3 space-y-2">
+              <img
+                src={message.metadata.imageUrl}
+                alt={message.metadata.prompt || 'AI generated image'}
+                className="w-full rounded-lg border border-border/50"
+                loading="lazy"
+              />
+              <div className="flex flex-wrap gap-1.5">
+                {onInsertImage && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => onInsertImage(message.metadata.imageUrl)}
+                  >
+                    <ImagePlus className="h-3 w-3" />
+                    Insert into Page
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1"
+                  onClick={() => {
+                    const a = document.createElement('a');
+                    a.href = message.metadata.imageUrl;
+                    a.download = `ai-image-${Date.now()}.png`;
+                    a.click();
+                  }}
+                >
+                  <Download className="h-3 w-3" />
+                  Download PNG
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1"
+                  onClick={async () => {
+                    try {
+                      const resp = await fetch(message.metadata.imageUrl);
+                      const blob = await resp.blob();
+                      await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+                      toast({ title: 'Image copied to clipboard' });
+                    } catch {
+                      navigator.clipboard.writeText(message.metadata.imageUrl);
+                      toast({ title: 'Image URL copied' });
+                    }
+                  }}
+                >
+                  <Copy className="h-3 w-3" />
+                  Copy Image
+                </Button>
+                {onRegenerateImage && message.metadata.prompt && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => onRegenerateImage(message.metadata.prompt)}
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    Generate Variation
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Image generating skeleton */}
+          {message.metadata?.type === 'image_generating' && (
+            <div className="mt-3 w-full h-48 rounded-lg bg-muted/50 animate-pulse flex items-center justify-center">
+              <div className="text-center space-y-2">
+                <Sparkles className="h-6 w-6 text-primary animate-spin mx-auto" />
+                <p className="text-xs text-muted-foreground">Generating image...</p>
+              </div>
+            </div>
+          )}
+
           {/* Screenshots */}
           {message.metadata?.screenshots && message.metadata.screenshots.length > 0 && (
             <div className="mt-3 grid grid-cols-2 gap-2">
