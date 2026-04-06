@@ -578,6 +578,14 @@ ${previewScrollRecoveryScript}
       <div className="flex gap-1">
         <Tooltip>
           <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={handleSharePreview} disabled={isSharing} className="h-6 w-6">
+              {isSharing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Share2 className="h-3 w-3" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">Share as public link (7 days)</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" onClick={handleCopyForGHL} className="h-6 w-6">
               {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
             </Button>
