@@ -131,9 +131,35 @@ export const useChat = (projectId?: string) => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isInspirationLoading, setIsInspirationLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
-  const [activeCode, setActiveCodeInternal] = useState<{ html: string; css: string; js: string } | null>(null);
+  const [activeCode, setActiveCodeRaw] = useState<{ html: string; css: string; js: string } | null>(null);
   const [codeHistory, setCodeHistory] = useState<Array<{ html: string; css: string; js: string }>>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+
+  // Wrap setActiveCode to track history
+  const setActiveCode = useCallback((newCode: { html: string; css: string; js: string } | null) => {
+    if (newCode === null) {
+      setActiveCodeRaw(null);
+      setCodeHistory([]);
+      setHistoryIndex(-1);
+      return;
+    }
+    setActiveCodeRaw((prev) => {
+      // Push previous onto history
+      if (prev) {
+        setCodeHistory((h) => {
+          // Trim any "future" entries when new code arrives after an undo
+          const trimmed = h.slice(0, historyIndex + 1 < 0 ? h.length : historyIndex + 1);
+          return [...trimmed, prev];
+        });
+        setHistoryIndex((i) => (i < 0 ? 0 : i + 1));
+      } else {
+        // First code, no previous to push
+        setCodeHistory([]);
+        setHistoryIndex(0);
+      }
+      return newCode;
+    });
+  }, [historyIndex]);
   const { user } = useAuth();
   const { canSendMessage, refreshSubscription } = useSubscription();
   const abortControllerRef = useRef<AbortController | null>(null);
