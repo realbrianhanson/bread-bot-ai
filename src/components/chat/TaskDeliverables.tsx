@@ -187,7 +187,9 @@ const TaskDeliverables = ({ deliverables, taskSummary, extractedData }: TaskDeli
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-xs font-medium text-green-500 mb-1">Summary</p>
-                    <p className="text-sm text-foreground">{taskSummary}</p>
+                    <div className="text-sm text-foreground prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-li:my-1 prose-ol:my-1.5 prose-ul:my-1.5 prose-headings:mt-3 prose-headings:mb-1" style={{ whiteSpace: 'pre-wrap' }}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{taskSummary}</ReactMarkdown>
+                    </div>
                   </div>
                   <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleCopy(taskSummary, 'summary')}>
                     {copiedId === 'summary' ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
