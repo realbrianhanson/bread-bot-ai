@@ -13,6 +13,7 @@ import Settings from "./pages/Settings";
 import Pricing from "./pages/Pricing";
 import NotFound from "./pages/NotFound";
 import LeadCapture from "./pages/LeadCapture";
+import SharedPreview from "./pages/SharedPreview";
 
 const queryClient = new QueryClient();
 
