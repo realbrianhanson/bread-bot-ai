@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.send-email]
 verify_jwt = false
+
+[functions.share-preview]
+verify_jwt = false

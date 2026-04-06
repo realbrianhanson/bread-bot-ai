@@ -22,39 +22,32 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  // Fetch the shared preview by token
   const { data, error } = await supabase
     .from("shared_previews")
-    .select("html_content, title, expires_at")
+    .select("html_content, title, expires_at, view_count")
     .eq("token", token)
     .single();
 
   if (error || !data) {
     return new Response(
       `<!DOCTYPE html><html><head><title>Not Found</title></head><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#111;color:#fff"><div style="text-align:center"><h1>Preview Not Found</h1><p>This link may have expired or been removed.</p></div></body></html>`,
-      { status: 404, headers: { ...corsHeaders, "Content-Type": "text/html" } }
+      { status: 404, headers: { "Content-Type": "text/html" } }
     );
   }
 
-  // Check expiry
   if (new Date(data.expires_at) < new Date()) {
     return new Response(
       `<!DOCTYPE html><html><head><title>Expired</title></head><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#111;color:#fff"><div style="text-align:center"><h1>Preview Expired</h1><p>This shared preview link has expired.</p></div></body></html>`,
-      { status: 410, headers: { ...corsHeaders, "Content-Type": "text/html" } }
+      { status: 410, headers: { "Content-Type": "text/html" } }
     );
   }
 
-  // Increment view count (fire-and-forget)
-  supabase
+  // Increment view count
+  await supabase
     .from("shared_previews")
-    .update({ view_count: undefined }) // We'll use raw SQL via RPC instead
-    .eq("token", token)
-    .then(() => {});
-  
-  // Actually increment with a raw update
-  await supabase.rpc("increment_preview_views", { p_token: token }).catch(() => {});
+    .update({ view_count: (data.view_count || 0) + 1 })
+    .eq("token", token);
 
-  // Return the raw HTML page
   return new Response(data.html_content, {
     status: 200,
     headers: {
