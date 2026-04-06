@@ -360,34 +360,34 @@ export type Database = {
       }
       shared_previews: {
         Row: {
+          conversation_id: string | null
           created_at: string | null
-          expires_at: string | null
           html_content: string
           id: string
+          share_id: string
           title: string | null
-          token: string
           user_id: string
-          view_count: number | null
+          views: number | null
         }
         Insert: {
+          conversation_id?: string | null
           created_at?: string | null
-          expires_at?: string | null
           html_content: string
           id?: string
+          share_id?: string
           title?: string | null
-          token?: string
           user_id: string
-          view_count?: number | null
+          views?: number | null
         }
         Update: {
+          conversation_id?: string | null
           created_at?: string | null
-          expires_at?: string | null
           html_content?: string
           id?: string
+          share_id?: string
           title?: string | null
-          token?: string
           user_id?: string
-          view_count?: number | null
+          views?: number | null
         }
         Relationships: []
       }
@@ -684,7 +684,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      increment_preview_views: { Args: { p_token: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "user"
