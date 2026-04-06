@@ -44,6 +44,7 @@ const SLASH_COMMANDS = [
   { cmd: "/inspire", label: "Build a page inspired by an existing website's design", icon: "✨" },
   { cmd: "/audit", label: "Analyze any webpage for conversion optimization", icon: "📈" },
   { cmd: "/compete", label: "Analyze a competitor's site and generate a better version", icon: "⚔️" },
+  { cmd: "/document", label: "Create a formatted document from research results", icon: "📝" },
 ];
 
 const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSlashCommand, onInspire, isInspirationLoading, prefill }: ChatInputProps) => {

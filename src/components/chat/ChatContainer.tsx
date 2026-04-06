@@ -141,13 +141,17 @@ const ChatContainer = ({
       const result: FirecrawlResult = { type: 'scrape', url, title, markdown: md, wordCount };
       setFirecrawlResults((prev) => [...prev, result]);
 
+      // Persist as a message so the AI has context for follow-ups
+      const summaryContent = `📄 **Scraped: ${title || url}**\n- URL: ${url}\n- Words: ${wordCount}\n\n${md.slice(0, 3000)}${md.length > 3000 ? '\n\n…(truncated)' : ''}`;
+      onSendMessage(summaryContent, { ghlMode: false });
+
     } catch (err: any) {
       toast({ title: 'Scrape failed', description: err.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setIsFirecrawling(false);
       setFirecrawlStatus('');
     }
-  }, []);
+  }, [onSendMessage]);
 
   const handleCrawl = useCallback(async (url: string) => {
     setIsFirecrawling(true);
@@ -164,13 +168,18 @@ const ChatContainer = ({
       }));
       const result: FirecrawlResult = { type: 'crawl', url, pages, total: data?.total || pages.length };
       setFirecrawlResults((prev) => [...prev, result]);
+
+      // Persist as a message so the AI has context for follow-ups
+      const pagesList = pages.slice(0, 20).map((p: any, i: number) => `${i + 1}. ${p.title || p.url} - ${p.url}`).join('\n');
+      const summaryContent = `🕷️ **Crawled: ${url}**\nFound ${pages.length} pages:\n\n${pagesList}`;
+      onSendMessage(summaryContent, { ghlMode: false });
     } catch (err: any) {
       toast({ title: 'Crawl failed', description: err.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setIsFirecrawling(false);
       setFirecrawlStatus('');
     }
-  }, []);
+  }, [onSendMessage]);
 
   const handleSearch = useCallback(async (query: string) => {
     setIsFirecrawling(true);
@@ -188,13 +197,18 @@ const ChatContainer = ({
       }));
       const result: FirecrawlResult = { type: 'search', query, results };
       setFirecrawlResults((prev) => [...prev, result]);
+
+      // Persist as a message so the AI has context for follow-ups
+      const resultsList = results.slice(0, 10).map((r: any, i: number) => `${i + 1}. **${r.title || r.url}**\n   ${r.url}\n   ${r.description || ''}`).join('\n\n');
+      const summaryContent = `🔍 **Search results for "${query}"** (${results.length} results):\n\n${resultsList}`;
+      onSendMessage(summaryContent, { ghlMode: false });
     } catch (err: any) {
       toast({ title: 'Search failed', description: err.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setIsFirecrawling(false);
       setFirecrawlStatus('');
     }
-  }, []);
+  }, [onSendMessage]);
 
   const handleSendToAI = useCallback((content: string) => {
     onSendMessage(content);
@@ -256,14 +270,48 @@ const ChatContainer = ({
       }
     }
     
-    // If there are scraped results, prepend them as context so the AI knows about them
+    // Handle /document command — generate an HTML document from gathered research
+    const documentMatch = trimmedContent.match(/^\/document\s*(.*)/i);
+    if (documentMatch) {
+      const topic = documentMatch[1].trim() || 'Research Report';
+      if (firecrawlResults.length > 0) {
+        // Build context from all gathered results
+        const allContext = firecrawlResults.map((r) => {
+          if (r.type === 'scrape') return `[SCRAPED: ${r.url}]\nTitle: ${r.title || 'Untitled'}\n${(r.markdown || '').slice(0, 4000)}`;
+          if (r.type === 'search') return `[SEARCH: "${r.query}"]\n${r.results.map((s, i) => `${i + 1}. ${s.title} - ${s.url}\n   ${s.description || ''}`).join('\n')}`;
+          if (r.type === 'crawl') return `[CRAWL: ${r.url}]\n${r.pages.map((p, i) => `${i + 1}. ${p.title || p.url}`).join('\n')}`;
+          return '';
+        }).filter(Boolean).join('\n\n---\n\n');
+
+        const docPrompt = `Create a professional, well-formatted HTML document titled "${topic}" using the following research data. Make it look like a polished report with a clean header, organized sections with headings, bullet points, and a summary. Use inline CSS for styling (modern typography, good spacing, professional colors). Output as three code blocks: html, css, javascript.\n\nRESEARCH DATA:\n${allContext}`;
+        onSendMessage(docPrompt, options);
+      } else {
+        const docPrompt = `Create a professional, well-formatted HTML document titled "${topic}". Make it look like a polished report with a clean header, organized sections with headings, bullet points, and a summary. Use inline CSS for styling (modern typography, good spacing, professional colors). Output as three code blocks: html, css, javascript.`;
+        onSendMessage(docPrompt, options);
+      }
+      return;
+    }
+
+    // If there are firecrawl results, prepend ALL types as context for follow-up messages
     if (firecrawlResults.length > 0 && !trimmedContent.startsWith('/')) {
-      const scrapeContext = firecrawlResults
-        .filter((r): r is import('./FirecrawlResults').ScrapeResult => r.type === 'scrape' && !!r.markdown)
-        .map((r) => `[SCRAPED PAGE: ${r.url}]\nTitle: ${r.title || 'Untitled'}\n\n${(r.markdown || '').slice(0, 6000)}`)
-        .join('\n\n---\n\n');
-      if (scrapeContext) {
-        const enrichedContent = `The user previously scraped the following page(s). Use this content to fulfill their request:\n\n${scrapeContext}\n\n---\n\nUser's request: ${trimmedContent}`;
+      const contextParts: string[] = [];
+
+      for (const r of firecrawlResults) {
+        if (r.type === 'scrape' && r.markdown) {
+          contextParts.push(`[SCRAPED PAGE: ${r.url}]\nTitle: ${r.title || 'Untitled'}\n\n${r.markdown.slice(0, 6000)}`);
+        } else if (r.type === 'search') {
+          const searchResults = r.results.map((s, i) => `${i + 1}. ${s.title || s.url} - ${s.url}\n   ${s.description || ''}`).join('\n');
+          contextParts.push(`[SEARCH RESULTS: "${r.query}"]\n${searchResults}`);
+        } else if (r.type === 'crawl') {
+          const crawlPages = r.pages.map((p, i) => `${i + 1}. ${p.title || p.url} - ${p.url}`).join('\n');
+          contextParts.push(`[CRAWL RESULTS: ${r.url}]\n${r.pages.length} pages found:\n${crawlPages}`);
+        } else if (r.type === 'browse') {
+          contextParts.push(`[BROWSED: ${r.url}]\nTitle: ${r.title || 'Unknown'}\n${r.description || ''}\n${r.extractedData ? JSON.stringify(r.extractedData, null, 2) : ''}`);
+        }
+      }
+
+      if (contextParts.length > 0) {
+        const enrichedContent = `The user previously gathered the following data. Use this to fulfill their request:\n\n${contextParts.join('\n\n---\n\n')}\n\n---\n\nUser's request: ${trimmedContent}`;
         onSendMessage(enrichedContent, options);
         return;
       }
