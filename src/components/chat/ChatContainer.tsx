@@ -336,7 +336,18 @@ const ChatContainer = ({
                 const codeFiles = msgHasCode ? extractCodeFromResponse(message.content) : {};
                 return (
                   <div key={message.id}>
-                    <ChatMessage message={message} />
+                    <ChatMessage
+                      message={message}
+                      onInsertImage={activeCode ? (imageUrl: string) => {
+                        // Insert image into activeCode HTML
+                        const imgTag = `<img src="${imageUrl}" alt="AI generated" style="width:100%;max-width:800px;border-radius:8px;margin:1rem auto;display:block;" />`;
+                        const updatedHtml = activeCode.html.replace(/<\/body>/i, `${imgTag}</body>`) || activeCode.html + imgTag;
+                        onSendMessage(`I've inserted the image into the page`, { ghlMode: false });
+                      } : undefined}
+                      onRegenerateImage={(prompt: string) => {
+                        handleSendMessage(`/image ${prompt}`);
+                      }}
+                    />
                     <MessageFeedback
                       messageId={message.id}
                       messageContent={message.content}
