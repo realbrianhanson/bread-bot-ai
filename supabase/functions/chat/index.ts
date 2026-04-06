@@ -163,7 +163,7 @@ serve(async (req) => {
       });
     }
 
-    const { messages, ghlMode, designMd: clientDesignMd, marketingMd } = await req.json();
+    const { messages, ghlMode, designMd: clientDesignMd, marketingMd, conversationCategory } = await req.json();
 
     console.log('Calling Anthropic API with', messages.length, 'messages, ghlMode:', !!ghlMode, 'hasDesignMd:', !!clientDesignMd, 'hasMarketingMd:', !!marketingMd);
 
@@ -393,10 +393,115 @@ This app has browser automation. For browsing tasks, tell users: /browse [task d
       console.error('[CHAT] Honcho context failed (proceeding without):', err);
     }
 
+    // --- Industry auto-detection when no design template is selected ---
+    const industryOverrides: Record<string, { heroGradient: string; primary: string; accent: string; fontMood: string; extraInstruction: string }> = {
+      'beauty-spa': {
+        heroGradient: 'linear-gradient(135deg, #FFF5F5 0%, #FED7E2 100%)',
+        primary: '#D4AF37', accent: '#E8B4B8', fontMood: 'elegant serif',
+        extraInstruction: 'Use soft shadows, organic shapes, calming warm palette. Serif headings with sans-serif body. Premium spa aesthetic.'
+      },
+      'saas': {
+        heroGradient: 'linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #312E81 100%)',
+        primary: '#4F46E5', accent: '#06B6D4', fontMood: 'modern geometric sans',
+        extraInstruction: 'Clean, minimal, technical. Dark hero, light content sections. Emphasize features grid and pricing table.'
+      },
+      'real-estate': {
+        heroGradient: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+        primary: '#C9A84C', accent: '#2D6A4F', fontMood: 'premium serif headings',
+        extraInstruction: 'Luxury feel with gold accents. Large property images. Trust signals prominent. Clean, high-end aesthetic.'
+      },
+      'restaurant': {
+        heroGradient: 'linear-gradient(135deg, #1B1B1B 0%, #2D2D2D 100%)',
+        primary: '#C84B31', accent: '#ECBC55', fontMood: 'warm display font',
+        extraInstruction: 'Warm, inviting, food-focused. Rich dark backgrounds with warm accents. Menu-style layouts. Large food photography areas.'
+      },
+      'healthcare': {
+        heroGradient: 'linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)',
+        primary: '#2563EB', accent: '#059669', fontMood: 'clean trustworthy sans',
+        extraInstruction: 'Clean, clinical, trustworthy. Blue primary for trust. Green for health/positive. Lots of whitespace. Simple navigation.'
+      },
+      'coaching': {
+        heroGradient: 'linear-gradient(135deg, #0F172A 0%, #1E1B4B 100%)',
+        primary: '#7C3AED', accent: '#F59E0B', fontMood: 'bold motivational sans',
+        extraInstruction: 'Bold, energetic, transformation-focused. Strong CTAs. Testimonials prominent. Before/after framing. Authority positioning.'
+      },
+      'fintech': {
+        heroGradient: 'linear-gradient(135deg, #0C0A09 0%, #1C1917 100%)',
+        primary: '#10B981', accent: '#3B82F6', fontMood: 'precise monospace-inspired',
+        extraInstruction: 'Dark, premium, data-driven. Green for growth/money. Trust badges essential. Clean number displays. Security messaging.'
+      },
+      'ecommerce': {
+        heroGradient: 'linear-gradient(135deg, #FFFFFF 0%, #F9FAFB 100%)',
+        primary: '#111827', accent: '#EF4444', fontMood: 'clean shopping sans',
+        extraInstruction: 'Product-focused, clean grid layouts. High contrast CTAs. Trust badges near purchase buttons. Light background to let products stand out.'
+      },
+      'portfolio': {
+        heroGradient: 'linear-gradient(135deg, #0F172A 0%, #020617 100%)',
+        primary: '#F8FAFC', accent: '#A78BFA', fontMood: 'editorial mixed serif sans',
+        extraInstruction: 'Creative, showcase-focused. Large image areas. Minimal UI, maximum content visibility. Elegant transitions.'
+      },
+      'event': {
+        heroGradient: 'linear-gradient(135deg, #0F172A 0%, #312E81 100%)',
+        primary: '#8B5CF6', accent: '#F59E0B', fontMood: 'bold event display',
+        extraInstruction: 'Urgency-driven. Countdown timer. Speaker photos. Bold headlines. Strong registration CTA. FOMO elements.'
+      },
+    };
+
+    let detectedCategory: string | null = conversationCategory || null;
+
+    // Only auto-detect if no design template is manually selected AND no cached category
+    if (!clientDesignMd && !detectedCategory) {
+      const latestUserMsg = messages[messages.length - 1]?.content || '';
+      if (latestUserMsg && latestUserMsg.length > 10) {
+        try {
+          const classificationPrompt = `Classify this website request into ONE category. Return ONLY the category name, nothing else.\nCategories: saas, agency, ecommerce, healthcare, restaurant, real-estate, legal, beauty-spa, fitness, education, coaching, fintech, portfolio, nonprofit, event, local-business, general\nRequest: "${latestUserMsg}"`;
+
+          const classRes = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'x-api-key': anthropicApiKey,
+              'anthropic-version': '2023-06-01',
+              'content-type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'claude-haiku-4-5-20251001',
+              max_tokens: 20,
+              messages: [{ role: 'user', content: classificationPrompt }],
+            }),
+          });
+
+          if (classRes.ok) {
+            const classData = await classRes.json();
+            const raw = classData?.content?.[0]?.text?.trim().toLowerCase().replace(/[^a-z-]/g, '') || '';
+            if (raw && raw !== 'general') {
+              detectedCategory = raw;
+              console.log('[CHAT] Auto-detected industry category:', detectedCategory);
+            }
+          }
+        } catch (err) {
+          console.error('[CHAT] Industry classification failed (proceeding without):', err);
+        }
+      }
+    }
+
     // Enrich the system prompt with memory context
-    const enrichedPrompt = honchoContext
+    let enrichedPrompt = honchoContext
       ? systemPrompt + '\n\nUSER CONTEXT (from memory — use this to personalize your responses):\n' + honchoContext
       : systemPrompt;
+
+    // Apply industry-specific design overrides if detected and no manual template
+    if (!clientDesignMd && detectedCategory) {
+      const override = industryOverrides[detectedCategory];
+      if (override) {
+        enrichedPrompt += '\n\nINDUSTRY-SPECIFIC DESIGN ADJUSTMENTS (auto-detected: ' + detectedCategory + '):\n';
+        enrichedPrompt += '- Hero background: ' + override.heroGradient + '\n';
+        enrichedPrompt += '- Primary color: ' + override.primary + '\n';
+        enrichedPrompt += '- Accent color: ' + override.accent + '\n';
+        enrichedPrompt += '- Typography mood: ' + override.fontMood + '\n';
+        enrichedPrompt += '- Design direction: ' + override.extraInstruction + '\n';
+        enrichedPrompt += 'These adjustments override the default template colors for this specific industry. All contrast and readability rules still apply.';
+      }
+    }
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -447,8 +552,28 @@ This app has browser automation. For browsing tasks, tell users: /browse [task d
         .catch(err => console.error('[CHAT] Honcho background store error:', err));
     }
 
-    // Stream the response
-    return new Response(response.body, {
+    // Stream the response, prepending detected category as a custom SSE event
+    const categoryEvent = detectedCategory
+      ? new TextEncoder().encode(`event: category\ndata: ${JSON.stringify({ category: detectedCategory })}\n\n`)
+      : null;
+
+    const bodyStream = new ReadableStream({
+      async start(controller) {
+        if (categoryEvent) controller.enqueue(categoryEvent);
+        const reader = response.body!.getReader();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            controller.enqueue(value);
+          }
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(bodyStream, {
       headers: {
         ...corsHeaders,
         'Content-Type': 'text/event-stream',

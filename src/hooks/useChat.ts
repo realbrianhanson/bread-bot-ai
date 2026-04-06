@@ -135,12 +135,14 @@ export const useChat = (projectId?: string) => {
   const { canSendMessage, refreshSubscription } = useSubscription();
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesRef = useRef<Message[]>([]);
+  const conversationCategoryRef = useRef<string | null>(null);
 
   // Load messages from database
   useEffect(() => {
     if (!user || !projectId) {
       setMessages([]);
       messagesRef.current = [];
+      conversationCategoryRef.current = null;
       setIsHistoryLoading(false);
       return;
     }
@@ -677,7 +679,7 @@ Format the output with clear headers, scores in bold, and specific actionable re
               'Content-Type': 'application/json',
               Authorization: `Bearer ${session.access_token}`,
             },
-            body: JSON.stringify({ messages: messagesForAPI, ghlMode: options?.ghlMode || false, designMd, marketingMd: finalMarketingMd }),
+            body: JSON.stringify({ messages: messagesForAPI, ghlMode: options?.ghlMode || false, designMd, marketingMd: finalMarketingMd, conversationCategory: conversationCategoryRef.current }),
             signal: abortControllerRef.current.signal,
           }
         );
@@ -701,6 +703,8 @@ Format the output with clear headers, scores in bold, and specific actionable re
             const lines = chunk.split('\n');
 
             for (const line of lines) {
+              // Handle custom category SSE event for auto-detection caching
+              if (line.startsWith('event: category')) continue;
               if (line.startsWith('data: ')) {
                 const data = line.slice(6);
 
@@ -708,6 +712,12 @@ Format the output with clear headers, scores in bold, and specific actionable re
 
                 try {
                   const parsed = JSON.parse(data);
+
+                  // Cache detected category from auto-detection
+                  if (parsed.category && !conversationCategoryRef.current) {
+                    conversationCategoryRef.current = parsed.category;
+                    continue;
+                  }
 
                   if (parsed.type === 'content_block_delta') {
                     const delta = parsed.delta?.text || '';
