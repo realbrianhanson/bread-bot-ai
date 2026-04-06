@@ -603,7 +603,25 @@ ${previewScrollRecoveryScript}
 
   const Toolbar = () => (
     <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 bg-background/50 shrink-0 z-20">
-      <span className="text-xs font-medium">Live Preview</span>
+      <div className="flex items-center gap-1">
+        <span className="text-xs font-medium">Live Preview</span>
+        {competitorHtml && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={compareMode ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setCompareMode(!compareMode)}
+                className="h-6 px-2 text-[10px] gap-1 ml-1"
+              >
+                <Columns2 className="h-3 w-3" />
+                {compareMode ? 'Exit Compare' : 'Compare'}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Compare with competitor's page</TooltipContent>
+          </Tooltip>
+        )}
+      </div>
       <div className="flex gap-1">
         <Tooltip>
           <TooltipTrigger asChild>
