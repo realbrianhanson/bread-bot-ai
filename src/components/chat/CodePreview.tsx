@@ -723,24 +723,52 @@ ${previewScrollRecoveryScript}
   };
 
   // Static/vanilla: use iframe srcdoc directly (no Sandpack)
+  const CompareView = () => (
+    <div className="flex-1 relative min-h-0 flex">
+      <div className="w-1/2 flex flex-col border-r border-border/50">
+        <div className="px-2 py-1 bg-muted/50 text-[10px] font-medium text-muted-foreground text-center border-b border-border/30">Competitor</div>
+        <iframe
+          srcDoc={competitorHtml || ''}
+          className="flex-1 w-full border-0"
+          sandbox="allow-scripts"
+          title="Competitor Preview"
+        />
+      </div>
+      <div className="w-1/2 flex flex-col">
+        <div className="px-2 py-1 bg-primary/10 text-[10px] font-medium text-primary text-center border-b border-border/30">Your Version ✨</div>
+        <iframe
+          key={key}
+          srcDoc={buildCombinedHTML()}
+          className="flex-1 w-full border-0"
+          sandbox="allow-scripts allow-same-origin"
+          title="Your Preview"
+        />
+      </div>
+    </div>
+  );
+
   if (isStatic || useFallback) {
     return (
       <>
         <FullscreenOverlay />
         <div className="absolute inset-0 flex flex-col bg-background">
           <Toolbar />
-          <div ref={previewViewportRef} className="flex-1 relative min-h-0 overflow-y-auto overflow-x-hidden">
-            <iframe
-              key={key}
-              ref={enforceScrollableIframe}
-              srcDoc={buildCombinedHTML()}
-              className="block"
-              style={{ width: '100%', height: '100%', border: '0', overflowY: 'auto', overflowX: 'auto' }}
-              sandbox="allow-scripts allow-same-origin"
-              scrolling="yes"
-              title="Preview"
-            />
-          </div>
+          {compareMode && competitorHtml ? (
+            <CompareView />
+          ) : (
+            <div ref={previewViewportRef} className="flex-1 relative min-h-0 overflow-y-auto overflow-x-hidden">
+              <iframe
+                key={key}
+                ref={enforceScrollableIframe}
+                srcDoc={buildCombinedHTML()}
+                className="block"
+                style={{ width: '100%', height: '100%', border: '0', overflowY: 'auto', overflowX: 'auto' }}
+                sandbox="allow-scripts allow-same-origin"
+                scrolling="yes"
+                title="Preview"
+              />
+            </div>
+          )}
           <SaveTemplateDialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate} files={previewFiles} />
         </div>
       </>
