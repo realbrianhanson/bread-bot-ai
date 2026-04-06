@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import {
   Copy, Check, Rocket, Monitor, Tablet, Smartphone, RefreshCw,
   Maximize2, X, ChevronRight, Info, Loader2, CheckCircle2,
-  ExternalLink, RotateCcw, Globe, Share2, Link,
+  ExternalLink, RotateCcw, Globe, Link,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -431,6 +431,21 @@ const GHLCodeOutput = ({
         </Button>
 
         <Button
+          variant="outline"
+          size="sm"
+          className={cn(
+            'h-8 gap-1.5 text-xs transition-all',
+            shareCopied
+              ? 'border-green-500/50 bg-green-500/10 text-green-400'
+              : 'border-border/30 bg-background/10 hover:bg-background/20'
+          )}
+          onClick={handleSharePreview}
+          disabled={isSharing}
+        >
+          {isSharing ? <Loader2 className="h-3 w-3 animate-spin" /> : shareCopied ? <Check className="h-3 w-3" /> : <Link className="h-3 w-3" />}
+          {shareCopied ? 'Copied!' : 'Share'}
+        </Button>
+
           size="sm"
           className="h-8 gap-1.5 text-xs bg-accent text-accent-foreground hover:bg-accent/90 shadow-[0_0_12px_hsl(var(--accent)/0.3)] font-semibold"
           onClick={() => setShowAutoDeploy(true)}
