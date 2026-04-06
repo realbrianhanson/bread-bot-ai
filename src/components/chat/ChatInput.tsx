@@ -127,6 +127,22 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+    const remaining = MAX_FILES - attachedFiles.length;
+    const valid = files.slice(0, remaining).filter((f) => {
+      if (f.size > MAX_IMAGE_SIZE) {
+        console.warn(`Image ${f.name} exceeds 5MB limit`);
+        return false;
+      }
+      return true;
+    });
+    setAttachedFiles((prev) => [...prev, ...valid]);
+    if (imageInputRef.current) imageInputRef.current.value = '';
+  };
+  };
+
   const removeFile = (index: number) => {
     setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
   };
