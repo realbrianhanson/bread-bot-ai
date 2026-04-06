@@ -44,6 +44,14 @@ function formatResultText(result: FirecrawlResult): { title: string; body: strin
     };
   }
 
+  if (result.type === 'browse') {
+    const r = result as any;
+    return {
+      title: r.title || `Browsed: ${r.url}`,
+      body: `URL: ${r.url}\nDate: ${ts}\n\n${r.description || ''}\n${r.extractedData ? JSON.stringify(r.extractedData, null, 2) : ''}`,
+    };
+  }
+
   return { title: 'Export', body: '' };
 }
 
