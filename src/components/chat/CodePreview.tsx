@@ -532,19 +532,39 @@ ${previewScrollRecoveryScript}
         || html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
       const title = titleMatch?.[1]?.trim() || 'Untitled Page';
 
-      const { data, error } = await supabase
+      // Check for existing share
+      const { data: existing } = await supabase
         .from('shared_previews')
-        .insert({ user_id: user.id, html_content: html, title })
         .select('share_id')
-        .single();
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (error) throw error;
+      let shareId: string;
+      if (existing) {
+        await supabase
+          .from('shared_previews')
+          .update({ html_content: html, title })
+          .eq('share_id', existing.share_id);
+        shareId = existing.share_id;
+      } else {
+        const { data, error } = await supabase
+          .from('shared_previews')
+          .insert({ user_id: user.id, html_content: html, title })
+          .select('share_id')
+          .single();
+        if (error) throw error;
+        shareId = data.share_id;
+      }
 
-      const shareUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/share-preview?token=${data.share_id}`;
+      const shareUrl = `${window.location.origin}/preview/${shareId}`;
       await navigator.clipboard.writeText(shareUrl);
-      toast.success('Share link copied!', {
+      setCopied(true);
+      toast.success('Preview link copied!', {
         description: 'Anyone with this link can view your page.',
       });
+      setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Share error:', err);
       toast.error('Failed to create share link.');
