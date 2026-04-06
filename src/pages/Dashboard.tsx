@@ -51,7 +51,7 @@ const Dashboard = () => {
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const { messages, isHistoryLoading, isLoading, isStreaming, isInspirationLoading, activeCode, codeHistoryIndex, canUndo, canRedo, undoCode, redoCode, sendMessage, sendInspirationMessage, stopStreaming, clearActiveCode } = useChat(activeConversationId || undefined);
+  const { messages, isHistoryLoading, isLoading, isStreaming, isInspirationLoading, activeCode, codeVersion, codeHistoryIndex, canUndo, canRedo, undoCode, redoCode, sendMessage, sendInspirationMessage, stopStreaming, clearActiveCode } = useChat(activeConversationId || undefined);
   const { publish, isPublishing, publishedSlug } = usePublish(activeCode, activeConversationId || undefined);
   const { conversations, createConversation, deleteConversation, renameConversation, autoTitleConversation } = useConversations();
   const { currentTask, isExecuting, executeTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask();
