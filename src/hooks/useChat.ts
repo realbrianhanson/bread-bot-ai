@@ -908,7 +908,7 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
         refreshSubscription();
       }
     },
-    [user, projectId, canSendMessage, refreshSubscription, executeCode, sendInspirationMessage]
+    [user, projectId, canSendMessage, refreshSubscription, executeCode, sendInspirationMessage, activeCode]
   );
 
   const stopStreaming = useCallback(() => {
@@ -920,6 +920,9 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
     }
   }, []);
 
+  const clearActiveCode = useCallback(() => {
+    setActiveCode(null);
+  }, []);
 
   return {
     messages,
@@ -927,9 +930,11 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
     isLoading,
     isStreaming,
     isInspirationLoading,
+    activeCode,
     sendMessage,
     sendInspirationMessage,
     stopStreaming,
+    clearActiveCode,
   };
 };
 
