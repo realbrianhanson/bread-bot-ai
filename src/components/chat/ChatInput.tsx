@@ -58,6 +58,7 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
   const [marketingCategory, setMarketingCategory] = useState<string | undefined>();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (prefill !== undefined && prefill !== '') {
