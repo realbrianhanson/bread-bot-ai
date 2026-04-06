@@ -196,7 +196,7 @@ export interface BrowserTask {
   notifications?: NotifyMessageData[];
 }
 
-export const useBrowserTask = () => {
+export const useBrowserTask = (projectId?: string) => {
   const [currentTask, setCurrentTask] = useState<BrowserTask | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);

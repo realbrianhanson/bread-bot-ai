@@ -136,6 +136,17 @@ export const useChat = (projectId?: string) => {
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesRef = useRef<Message[]>([]);
 
+  useEffect(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    setIsLoading(false);
+    setIsStreaming(false);
+    setIsInspirationLoading(false);
+  }, [projectId]);
+
   // Load messages from database
   useEffect(() => {
     if (!user || !projectId) {
