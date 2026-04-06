@@ -14,6 +14,7 @@ import Pricing from "./pages/Pricing";
 import NotFound from "./pages/NotFound";
 import LeadCapture from "./pages/LeadCapture";
 import SharedPreview from "./pages/SharedPreview";
+import PublishedPage from "./pages/PublishedPage";
 
 const queryClient = new QueryClient();
 
