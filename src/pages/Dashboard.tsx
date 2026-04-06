@@ -44,12 +44,15 @@ import { ResultsDashboard } from "@/components/results/ResultsDashboard";
 import { supabase } from "@/integrations/supabase/client";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { usePublish } from "@/hooks/usePublish";
+import PublishedPagesList from "@/components/chat/PublishedPagesList";
 
 const Dashboard = () => {
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const { messages, isHistoryLoading, isLoading, isStreaming, isInspirationLoading, activeCode, codeHistoryIndex, canUndo, canRedo, undoCode, redoCode, sendMessage, sendInspirationMessage, stopStreaming, clearActiveCode } = useChat(activeConversationId || undefined);
+  const { publish, isPublishing, publishedSlug } = usePublish(activeCode, activeConversationId || undefined);
   const { conversations, createConversation, deleteConversation, renameConversation, autoTitleConversation } = useConversations();
   const { currentTask, isExecuting, executeTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask();
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
@@ -472,7 +475,7 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="flex-1 min-h-0 relative">
-                <CodePreview key={`${activeConversationId || 'mobile-preview'}-${mobilePreviewKey}`} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} />
+                <CodePreview key={`${activeConversationId || 'mobile-preview'}-${mobilePreviewKey}`} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} />
               </div>
             )}
           </>
@@ -497,6 +500,7 @@ const Dashboard = () => {
                     onRenameConversation={renameConversation}
                   />
                 </div>
+                <PublishedPagesList />
                 <div className="p-3 border-b border-border/50">
                   <ProfileSelector onProfileSelect={setSelectedProfileId} />
                 </div>
@@ -572,9 +576,12 @@ const Dashboard = () => {
                   canRedo={canRedo}
                   onUndo={undoCode}
                   onRedo={redoCode}
+                  onPublish={activeCode ? publish : undefined}
+                  isPublishing={isPublishing}
+                  publishedSlug={publishedSlug}
                 />
               ) : (
-                <CodePreview key={activeConversationId || 'desktop-preview'} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} />
+                <CodePreview key={activeConversationId || 'desktop-preview'} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} />
               )}
             </ResizablePanel>
           </ResizablePanelGroup>

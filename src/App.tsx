@@ -14,6 +14,7 @@ import Pricing from "./pages/Pricing";
 import NotFound from "./pages/NotFound";
 import LeadCapture from "./pages/LeadCapture";
 import SharedPreview from "./pages/SharedPreview";
+import PublishedPage from "./pages/PublishedPage";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,7 @@ function AnimatedRoutes() {
         <Route path="/pricing" element={<PageWrapper><Pricing /></PageWrapper>} />
         <Route path="/lead" element={<PageWrapper><LeadCapture /></PageWrapper>} />
         <Route path="/preview/:shareId" element={<SharedPreview />} />
+        <Route path="/p/:slug" element={<PublishedPage />} />
         <Route
           path="/dashboard"
           element={
