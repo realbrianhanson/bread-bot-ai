@@ -614,6 +614,18 @@ const Dashboard = () => {
           <EmptyState />
         )}
       </div>
+
+      {/* Onboarding Wizard */}
+      <AnimatePresence>
+        {showOnboarding && (
+          <OnboardingWizard
+            onComplete={() => setShowOnboarding(false)}
+            onPrefill={(text) => {
+              handleQuickStart(text);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
