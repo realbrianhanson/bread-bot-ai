@@ -450,8 +450,13 @@ const Dashboard = () => {
                   onSlashCommand={handleSlashCommand}
                   onInspire={sendInspirationMessage}
                   isInspirationLoading={isInspirationLoading}
-                  activeCode={activeCode}
-                  onClearActiveCode={clearActiveCode}
+                   activeCode={activeCode}
+                   onClearActiveCode={clearActiveCode}
+                   codeHistoryIndex={codeHistoryIndex}
+                   canUndo={canUndo}
+                   canRedo={canRedo}
+                   onUndo={undoCode}
+                   onRedo={redoCode}
                 />
                 {/* Floating preview button on mobile chat view */}
                 {hasPreviewContent && (
@@ -508,8 +513,13 @@ const Dashboard = () => {
                     onSlashCommand={handleSlashCommand}
                     onInspire={sendInspirationMessage}
                     isInspirationLoading={isInspirationLoading}
-                    activeCode={activeCode}
-                    onClearActiveCode={clearActiveCode}
+                     activeCode={activeCode}
+                     onClearActiveCode={clearActiveCode}
+                     codeHistoryIndex={codeHistoryIndex}
+                     canUndo={canUndo}
+                     canRedo={canRedo}
+                     onUndo={undoCode}
+                     onRedo={redoCode}
                   />
                 </div>
               </div>
