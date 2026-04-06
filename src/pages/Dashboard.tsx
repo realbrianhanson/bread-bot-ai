@@ -49,7 +49,7 @@ const Dashboard = () => {
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const { messages, isHistoryLoading, isLoading, isStreaming, isInspirationLoading, activeCode, sendMessage, sendInspirationMessage, stopStreaming, clearActiveCode } = useChat(activeConversationId || undefined);
+  const { messages, isHistoryLoading, isLoading, isStreaming, isInspirationLoading, activeCode, codeHistoryIndex, canUndo, canRedo, undoCode, redoCode, sendMessage, sendInspirationMessage, stopStreaming, clearActiveCode } = useChat(activeConversationId || undefined);
   const { conversations, createConversation, deleteConversation, renameConversation, autoTitleConversation } = useConversations();
   const { currentTask, isExecuting, executeTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask();
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
@@ -450,8 +450,13 @@ const Dashboard = () => {
                   onSlashCommand={handleSlashCommand}
                   onInspire={sendInspirationMessage}
                   isInspirationLoading={isInspirationLoading}
-                  activeCode={activeCode}
-                  onClearActiveCode={clearActiveCode}
+                   activeCode={activeCode}
+                   onClearActiveCode={clearActiveCode}
+                   codeHistoryIndex={codeHistoryIndex}
+                   canUndo={canUndo}
+                   canRedo={canRedo}
+                   onUndo={undoCode}
+                   onRedo={redoCode}
                 />
                 {/* Floating preview button on mobile chat view */}
                 {hasPreviewContent && (
@@ -467,7 +472,7 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="flex-1 min-h-0 relative">
-                <CodePreview key={`${activeConversationId || 'mobile-preview'}-${mobilePreviewKey}`} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} />
+                <CodePreview key={`${activeConversationId || 'mobile-preview'}-${mobilePreviewKey}`} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} />
               </div>
             )}
           </>
@@ -508,8 +513,13 @@ const Dashboard = () => {
                     onSlashCommand={handleSlashCommand}
                     onInspire={sendInspirationMessage}
                     isInspirationLoading={isInspirationLoading}
-                    activeCode={activeCode}
-                    onClearActiveCode={clearActiveCode}
+                     activeCode={activeCode}
+                     onClearActiveCode={clearActiveCode}
+                     codeHistoryIndex={codeHistoryIndex}
+                     canUndo={canUndo}
+                     canRedo={canRedo}
+                     onUndo={undoCode}
+                     onRedo={redoCode}
                   />
                 </div>
               </div>
@@ -558,9 +568,13 @@ const Dashboard = () => {
                   currentTaskScreenshots={currentTask?.screenshots}
                   isExecutingTask={isExecuting}
                   projectId={activeConversationId || undefined}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
+                  onUndo={undoCode}
+                  onRedo={redoCode}
                 />
               ) : (
-                <CodePreview key={activeConversationId || 'desktop-preview'} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} />
+                <CodePreview key={activeConversationId || 'desktop-preview'} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} />
               )}
             </ResizablePanel>
           </ResizablePanelGroup>

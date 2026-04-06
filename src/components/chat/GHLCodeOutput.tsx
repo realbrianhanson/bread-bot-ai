@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import {
   Copy, Check, Rocket, Monitor, Tablet, Smartphone, RefreshCw,
   Maximize2, X, ChevronRight, Info, Loader2, CheckCircle2,
-  ExternalLink, RotateCcw, Globe, Link,
+  ExternalLink, RotateCcw, Globe, Link, Undo2, Redo2,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -32,6 +32,10 @@ interface GHLCodeOutputProps {
   currentTaskScreenshots?: string[];
   isExecutingTask?: boolean;
   projectId?: string;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 type ViewportSize = 'desktop' | 'tablet' | 'mobile';
@@ -66,6 +70,10 @@ const GHLCodeOutput = ({
   currentTaskScreenshots,
   isExecutingTask,
   projectId,
+  canUndo = false,
+  canRedo = false,
+  onUndo,
+  onRedo,
 }: GHLCodeOutputProps) => {
   const [viewport, setViewport] = useState<ViewportSize>('desktop');
   const [copied, setCopied] = useState(false);
@@ -241,6 +249,14 @@ const GHLCodeOutput = ({
         </div>
 
         <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 mr-1">
+            <Button variant="ghost" size="icon" className={`h-6 w-6 text-muted-foreground/60 hover:text-foreground ${!canUndo ? 'opacity-30 pointer-events-none' : ''}`} onClick={onUndo} disabled={!canUndo}>
+              <Undo2 className="h-3 w-3" />
+            </Button>
+            <Button variant="ghost" size="icon" className={`h-6 w-6 text-muted-foreground/60 hover:text-foreground ${!canRedo ? 'opacity-30 pointer-events-none' : ''}`} onClick={onRedo} disabled={!canRedo}>
+              <Redo2 className="h-3 w-3" />
+            </Button>
+          </div>
           <div className="flex items-center rounded-lg border border-border/30 bg-background/10 p-0.5 mr-1">
             {viewportButtons.map(({ key, icon: Icon, label }) => (
               <button

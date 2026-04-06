@@ -131,7 +131,35 @@ export const useChat = (projectId?: string) => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isInspirationLoading, setIsInspirationLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
-  const [activeCode, setActiveCode] = useState<{ html: string; css: string; js: string } | null>(null);
+  const [activeCode, setActiveCodeRaw] = useState<{ html: string; css: string; js: string } | null>(null);
+  const [codeHistory, setCodeHistory] = useState<Array<{ html: string; css: string; js: string }>>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
+  // Wrap setActiveCode to track history
+  const setActiveCode = useCallback((newCode: { html: string; css: string; js: string } | null) => {
+    if (newCode === null) {
+      setActiveCodeRaw(null);
+      setCodeHistory([]);
+      setHistoryIndex(-1);
+      return;
+    }
+    setActiveCodeRaw((prev) => {
+      // Push previous onto history
+      if (prev) {
+        setCodeHistory((h) => {
+          // Trim any "future" entries when new code arrives after an undo
+          const trimmed = h.slice(0, historyIndex + 1 < 0 ? h.length : historyIndex + 1);
+          return [...trimmed, prev];
+        });
+        setHistoryIndex((i) => (i < 0 ? 0 : i + 1));
+      } else {
+        // First code, no previous to push
+        setCodeHistory([]);
+        setHistoryIndex(0);
+      }
+      return newCode;
+    });
+  }, [historyIndex]);
   const { user } = useAuth();
   const { canSendMessage, refreshSubscription } = useSubscription();
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -921,8 +949,53 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
   }, []);
 
   const clearActiveCode = useCallback(() => {
-    setActiveCode(null);
+    setActiveCodeRaw(null);
+    setCodeHistory([]);
+    setHistoryIndex(-1);
   }, []);
+
+  const canUndo = historyIndex > 0 || (historyIndex === 0 && codeHistory.length > 0);
+  const canRedo = activeCode !== null && historyIndex < codeHistory.length - 1;
+
+  const undoCode = useCallback(() => {
+    if (!canUndo) return;
+    // Current activeCode goes to the "future" — push it onto history at current position
+    setActiveCodeRaw((current) => {
+      if (!current) return current;
+      setCodeHistory((h) => {
+        const newHistory = [...h];
+        // Store current at historyIndex position (replacing or appending)
+        if (historyIndex < newHistory.length) {
+          newHistory[historyIndex] = current;
+        } else {
+          newHistory.push(current);
+        }
+        return newHistory;
+      });
+      const prevIndex = historyIndex - 1 >= 0 ? historyIndex - 1 : 0;
+      const prevCode = codeHistory[prevIndex];
+      setHistoryIndex(prevIndex);
+      return prevCode || current;
+    });
+  }, [canUndo, historyIndex, codeHistory]);
+
+  const redoCode = useCallback(() => {
+    if (!canRedo) return;
+    setActiveCodeRaw((current) => {
+      if (!current) return current;
+      const nextIndex = historyIndex + 1;
+      const nextCode = codeHistory[nextIndex];
+      if (!nextCode) return current;
+      // Store current at historyIndex
+      setCodeHistory((h) => {
+        const newHistory = [...h];
+        newHistory[historyIndex] = current;
+        return newHistory;
+      });
+      setHistoryIndex(nextIndex);
+      return nextCode;
+    });
+  }, [canRedo, historyIndex, codeHistory]);
 
   return {
     messages,
@@ -931,6 +1004,12 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
     isStreaming,
     isInspirationLoading,
     activeCode,
+    codeHistoryIndex: historyIndex,
+    codeHistoryLength: codeHistory.length,
+    canUndo,
+    canRedo,
+    undoCode,
+    redoCode,
     sendMessage,
     sendInspirationMessage,
     stopStreaming,

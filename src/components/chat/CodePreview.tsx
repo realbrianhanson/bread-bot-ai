@@ -1,5 +1,5 @@
 import { SandpackProvider, SandpackLayout, SandpackPreview } from '@codesandbox/sandpack-react';
-import { Maximize2, Minimize2, RefreshCw, Copy, Download, Check, BookmarkPlus, X, Share2, Loader2 } from 'lucide-react';
+import { Maximize2, Minimize2, RefreshCw, Copy, Download, Check, BookmarkPlus, X, Share2, Loader2, Undo2, Redo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -14,6 +14,10 @@ interface CodePreviewProps {
   mainFile: string;
   template?: 'react-ts' | 'vanilla' | 'static';
   responseContent?: string;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 const SandpackWithFallback = ({ files, template, onFallback }: {
@@ -88,7 +92,7 @@ const SandpackWithFallback = ({ files, template, onFallback }: {
   );
 };
 
-const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent = '' }: CodePreviewProps) => {
+const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent = '', canUndo = false, canRedo = false, onUndo, onRedo }: CodePreviewProps) => {
   const [key, setKey] = useState(0);
   const [copied, setCopied] = useState(false);
   const [useFallback, setUseFallback] = useState(false);
@@ -596,6 +600,22 @@ ${previewScrollRecoveryScript}
     <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 bg-background/50 shrink-0 z-20">
       <span className="text-xs font-medium">Live Preview</span>
       <div className="flex gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={onUndo} disabled={!canUndo} className={`h-6 w-6 ${!canUndo ? 'opacity-30 pointer-events-none' : ''}`}>
+              <Undo2 className="h-3 w-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">Undo</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={onRedo} disabled={!canRedo} className={`h-6 w-6 ${!canRedo ? 'opacity-30 pointer-events-none' : ''}`}>
+              <Redo2 className="h-3 w-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">Redo</TooltipContent>
+        </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" onClick={handleSharePreview} disabled={isSharing} className="h-6 w-6">
