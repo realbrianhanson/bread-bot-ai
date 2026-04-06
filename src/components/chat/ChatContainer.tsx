@@ -141,13 +141,17 @@ const ChatContainer = ({
       const result: FirecrawlResult = { type: 'scrape', url, title, markdown: md, wordCount };
       setFirecrawlResults((prev) => [...prev, result]);
 
+      // Persist as a message so the AI has context for follow-ups
+      const summaryContent = `📄 **Scraped: ${title || url}**\n- URL: ${url}\n- Words: ${wordCount}\n\n${md.slice(0, 3000)}${md.length > 3000 ? '\n\n…(truncated)' : ''}`;
+      onSendMessage(summaryContent, { ghlMode: false });
+
     } catch (err: any) {
       toast({ title: 'Scrape failed', description: err.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setIsFirecrawling(false);
       setFirecrawlStatus('');
     }
-  }, []);
+  }, [onSendMessage]);
 
   const handleCrawl = useCallback(async (url: string) => {
     setIsFirecrawling(true);
