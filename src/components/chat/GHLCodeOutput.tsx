@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import {
   Copy, Check, Rocket, Monitor, Tablet, Smartphone, RefreshCw,
   Maximize2, X, ChevronRight, Info, Loader2, CheckCircle2,
-  ExternalLink, RotateCcw, Globe,
+  ExternalLink, RotateCcw, Globe, Share2, Link,
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -68,6 +69,8 @@ const GHLCodeOutput = ({
 }: GHLCodeOutputProps) => {
   const [viewport, setViewport] = useState<ViewportSize>('desktop');
   const [copied, setCopied] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const [showManualDeploy, setShowManualDeploy] = useState(false);
   const [showAutoDeploy, setShowAutoDeploy] = useState(false);
   const [showCode, setShowCode] = useState(false);
@@ -94,6 +97,65 @@ const GHLCodeOutput = ({
 
   const handleFullscreen = () => {
     iframeRef.current?.requestFullscreen?.();
+  };
+
+  const handleSharePreview = async () => {
+    setIsSharing(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { toast.error('Please sign in to share previews.'); return; }
+
+      const titleMatch = code.match(/<title[^>]*>([^<]+)<\/title>/i) || code.match(/<h1[^>]*>([^<]+)<\/h1>/i);
+      const title = titleMatch?.[1]?.trim() || 'Untitled Page';
+
+      // Check for existing share for this conversation (use projectId as conversation key)
+      const conversationKey = projectId || undefined;
+      let shareId: string;
+
+      if (conversationKey) {
+        const { data: existing } = await supabase
+          .from('shared_previews')
+          .select('share_id')
+          .eq('user_id', user.id)
+          .eq('conversation_id', conversationKey)
+          .maybeSingle();
+
+        if (existing) {
+          await supabase
+            .from('shared_previews')
+            .update({ html_content: code, title })
+            .eq('share_id', existing.share_id);
+          shareId = existing.share_id;
+        } else {
+          const { data, error } = await supabase
+            .from('shared_previews')
+            .insert({ user_id: user.id, html_content: code, title, conversation_id: conversationKey })
+            .select('share_id')
+            .single();
+          if (error) throw error;
+          shareId = data.share_id;
+        }
+      } else {
+        const { data, error } = await supabase
+          .from('shared_previews')
+          .insert({ user_id: user.id, html_content: code, title })
+          .select('share_id')
+          .single();
+        if (error) throw error;
+        shareId = data.share_id;
+      }
+
+      const shareUrl = `${window.location.origin}/preview/${shareId}`;
+      await navigator.clipboard.writeText(shareUrl);
+      setShareCopied(true);
+      toast.success('Preview link copied!', { description: 'Anyone with this link can view your page.' });
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch (err) {
+      console.error('Share error:', err);
+      toast.error('Failed to create share link.');
+    } finally {
+      setIsSharing(false);
+    }
   };
 
   const handleAutoDeploy = useCallback(async () => {
