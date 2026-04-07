@@ -945,11 +945,18 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
             : content.trim();
         }
 
+        const truncateForContext = (text: string): string => {
+          if (text.length > 500 && /```/.test(text)) {
+            return text.slice(0, 200) + '\n\n[Code output truncated for context - full code is preserved in the page]';
+          }
+          return text;
+        };
+
         const messagesForAPI = messagesRef.current
           .concat([{ ...(userMessage as Message), content: enrichedContent }])
           .map((msg) => ({
             role: msg.role,
-            content: msg.content,
+            content: msg.role === 'assistant' ? truncateForContext(msg.content) : msg.content,
           }));
 
         // Fetch design template content
