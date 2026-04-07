@@ -866,6 +866,7 @@ Output the superior page as three code blocks: html, css, javascript — complet
 
       setIsLoading(true);
       setIsStreaming(true);
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
       try {
         // Process file attachments
