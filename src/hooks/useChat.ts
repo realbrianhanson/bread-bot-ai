@@ -1177,6 +1177,7 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
           });
         }
       } finally {
+        clearTimeout(timeoutId);
         setIsLoading(false);
         setIsStreaming(false);
         abortControllerRef.current = null;
