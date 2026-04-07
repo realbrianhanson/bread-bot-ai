@@ -947,18 +947,25 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
             : content.trim();
         }
 
-        const truncateForContext = (text: string): string => {
-          if (text.length > 500 && /```/.test(text)) {
+        const truncateForContext = (text: string, role: string): string => {
+          // Truncate assistant messages with code blocks
+          if (role === 'assistant' && text.length > 500 && /```/.test(text)) {
             return text.slice(0, 200) + '\n\n[Code output truncated for context - full code is preserved in the page]';
+          }
+          // Truncate user messages that contain large enriched context (firecrawl data, etc.)
+          if (role === 'user' && text.length > 3000) {
+            return text.slice(0, 1500) + '\n\n[Context truncated for token efficiency]';
           }
           return text;
         };
 
-        const messagesForAPI = messagesRef.current
+        // Keep only last 10 messages for context to avoid token bloat
+        const recentMessages = messagesRef.current.slice(-10);
+        const messagesForAPI = recentMessages
           .concat([{ ...(userMessage as Message), content: enrichedContent }])
           .map((msg) => ({
             role: msg.role,
-            content: msg.role === 'assistant' ? truncateForContext(msg.content) : msg.content,
+            content: truncateForContext(msg.content, msg.role),
           }));
 
         // Fetch design template content
