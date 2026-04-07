@@ -908,7 +908,7 @@ Output the superior page as three code blocks: html, css, javascript — complet
         }
 
         abortControllerRef.current = new AbortController();
-        const timeoutId = setTimeout(() => abortControllerRef.current?.abort(), 90000);
+        timeoutId = setTimeout(() => abortControllerRef.current?.abort(), 90000);
 
         // Build the enriched content for the API
         // Detect "start over" phrases to clear activeCode
