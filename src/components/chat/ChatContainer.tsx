@@ -22,7 +22,7 @@ interface ChatContainerProps {
   messages: Message[];
   isLoading: boolean;
   isStreaming: boolean;
-  onSendMessage: (content: string, options?: { ghlMode?: boolean }) => void;
+  onSendMessage: (content: string, options?: { ghlMode?: boolean; extraContext?: string }) => void;
   onStopStreaming: () => void;
   currentTask?: BrowserTask | null;
   isExecutingTask?: boolean;
@@ -48,6 +48,74 @@ interface ChatContainerProps {
   onRedo?: () => void;
 }
 
+const TASK_SOURCE_URL_REGEX = /https?:\/\/[^\s"'`<>]+/g;
+
+const extractTaskSourceUrls = (value: unknown, urls: Set<string> = new Set()): string[] => {
+  if (!value) return Array.from(urls);
+
+  if (typeof value === 'string') {
+    const matches = value.match(TASK_SOURCE_URL_REGEX) || [];
+    matches.forEach((match) => urls.add(match.replace(/[),.;]+$/, '')));
+    return Array.from(urls);
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach((item) => extractTaskSourceUrls(item, urls));
+    return Array.from(urls);
+  }
+
+  if (typeof value === 'object') {
+    Object.values(value as Record<string, unknown>).forEach((item) => extractTaskSourceUrls(item, urls));
+  }
+
+  return Array.from(urls);
+};
+
+const buildBrowserTaskContext = (task?: BrowserTask | null) => {
+  if (!task) return null;
+
+  const hasMeaningfulOutput =
+    Boolean(task.taskSummary?.trim()) ||
+    Boolean(task.error_message?.trim()) ||
+    Boolean(task.extractedData && Object.keys(task.extractedData).length > 0);
+
+  if (!hasMeaningfulOutput) return null;
+
+  const sections: string[] = [];
+
+  if (task.taskDescription?.trim()) {
+    sections.push(`Original browser task: ${task.taskDescription.trim()}`);
+  }
+
+  if (task.taskSummary?.trim()) {
+    sections.push(`Task summary:\n${task.taskSummary.trim().slice(0, 1000)}`);
+  }
+
+  if (task.extractedData && Object.keys(task.extractedData).length > 0) {
+    sections.push(`Extracted data:\n${JSON.stringify(task.extractedData, null, 2).slice(0, 1200)}`);
+  }
+
+  if (task.error_message?.trim() && task.status !== 'completed') {
+    sections.push(`Task error:\n${task.error_message.trim().slice(0, 500)}`);
+  }
+
+  const sourceUrls = extractTaskSourceUrls([
+    task.liveUrl,
+    task.actions,
+    task.steps,
+    task.extractedData,
+    task.taskSummary,
+    task.deliverables,
+  ]).slice(0, 12);
+
+  if (sourceUrls.length > 0) {
+    sections.push(`Possible source URLs:\n${sourceUrls.map((url, index) => `${index + 1}. ${url}`).join('\n')}`);
+  }
+
+  if (sections.length === 0) return null;
+
+  return `[RECENT BROWSER TASK]\nStatus: ${task.status}\n\n${sections.join('\n\n')}`;
+};
 const ChatContainer = ({
   messages,
   isLoading,
@@ -72,10 +140,10 @@ const ChatContainer = ({
   activeCode,
   onClearActiveCode,
   codeHistoryIndex,
-  canUndo,
-  canRedo,
-  onUndo,
-  onRedo,
+  canUndo: _canUndo,
+  canRedo: _canRedo,
+  onUndo: _onUndo,
+  onRedo: _onRedo,
 }: ChatContainerProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -392,9 +460,8 @@ const ChatContainer = ({
                     <ChatMessage
                       message={message}
                       onInsertImage={activeCode ? (imageUrl: string) => {
-                        // Insert image into activeCode HTML
                         const imgTag = `<img src="${imageUrl}" alt="AI generated" style="width:100%;max-width:800px;border-radius:8px;margin:1rem auto;display:block;" />`;
-                        const updatedHtml = activeCode.html.replace(/<\/body>/i, `${imgTag}</body>`) || activeCode.html + imgTag;
+                        void imgTag;
                         onSendMessage(`I've inserted the image into the page`, { ghlMode: false });
                       } : undefined}
                       onRegenerateImage={(prompt: string) => {
