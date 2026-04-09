@@ -392,7 +392,7 @@ export const useChat = (projectId?: string) => {
   );
 
   const sendMessage = useCallback(
-    async (content: string, options?: { ghlMode?: boolean; files?: File[]; designTemplateId?: string | null; customDesignMd?: string; marketingMd?: string; marketingCategory?: string }) => {
+    async (content: string, options?: { ghlMode?: boolean; files?: File[]; designTemplateId?: string | null; customDesignMd?: string; marketingMd?: string; marketingCategory?: string; extraContext?: string }) => {
       if (!user || (!content.trim() && !(options?.files?.length))) return;
 
       if (!canSendMessage()) {
@@ -968,9 +968,13 @@ USER'S EDIT REQUEST: ${content.trim()}
 
 IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript) with the requested changes applied. Do not omit unchanged sections.`;
         } else {
-          enrichedContent = fileContext
+          const baseContent = fileContext
             ? `${fileContext}\n\nUser's message: ${content.trim()}`
             : content.trim();
+
+          enrichedContent = options?.extraContext
+            ? `${options.extraContext}\n\nUser's message: ${baseContent}`
+            : baseContent;
         }
 
         const truncateForContext = (text: string, role: string): string => {
