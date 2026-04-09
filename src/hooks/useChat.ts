@@ -431,7 +431,13 @@ export const useChat = (projectId?: string) => {
           setMessages((prev) => [...prev, { id: statusId, role: 'assistant' as const, content: `📈 **Analyzing page for conversion optimization...**\nScraping \`${auditUrl}\``, created_at: new Date().toISOString() }]);
 
           try {
-            await supabase.from('messages').insert({ user_id: user.id, project_id: projectId, role: 'user', content: content.trim() });
+            const { data: savedUserMsg } = await supabase.from('messages').insert({ user_id: user.id, project_id: projectId, role: 'user', content: content.trim() }).select().single();
+            if (savedUserMsg) {
+              setMessages((prev) => {
+                if (prev.some(m => m.id === (savedUserMsg as Message).id)) return prev;
+                return [...prev, savedUserMsg as Message];
+              });
+            }
 
             const { data: scrapeData, error: scrapeError } = await supabase.functions.invoke('firecrawl-scrape', {
               body: { url: auditUrl, options: { formats: ['markdown', 'html'], onlyMainContent: false } },
@@ -560,7 +566,13 @@ Format the output with clear headers, scores in bold, and specific actionable re
           setMessages((prev) => [...prev, { id: statusId, role: 'assistant' as const, content: `⚔️ **Competitor Analysis**\nScraping \`${compUrl}\`...`, created_at: new Date().toISOString() }]);
 
           try {
-            await supabase.from('messages').insert({ user_id: user.id, project_id: projectId, role: 'user', content: content.trim() });
+            const { data: savedUserMsg2 } = await supabase.from('messages').insert({ user_id: user.id, project_id: projectId, role: 'user', content: content.trim() }).select().single();
+            if (savedUserMsg2) {
+              setMessages((prev) => {
+                if (prev.some(m => m.id === (savedUserMsg2 as Message).id)) return prev;
+                return [...prev, savedUserMsg2 as Message];
+              });
+            }
 
             const { data: scrapeData, error: scrapeError } = await supabase.functions.invoke('firecrawl-scrape', {
               body: { url: compUrl, options: { formats: ['markdown', 'html'], onlyMainContent: false } },
@@ -798,12 +810,18 @@ Output the superior page as three code blocks: html, css, javascript — complet
         setIsLoading(true);
         setIsStreaming(true);
         try {
-          await supabase.from('messages').insert({
+          const { data: savedUserMsg3 } = await supabase.from('messages').insert({
             user_id: user.id,
             project_id: projectId,
             role: 'user',
             content: content.trim(),
-          });
+          }).select().single();
+          if (savedUserMsg3) {
+            setMessages((prev) => {
+              if (prev.some(m => m.id === (savedUserMsg3 as Message).id)) return prev;
+              return [...prev, savedUserMsg3 as Message];
+            });
+          }
 
           const { data: { session } } = await supabase.auth.getSession();
           if (!session) throw new Error('No active session');
@@ -900,6 +918,14 @@ Output the superior page as three code blocks: html, css, javascript — complet
         if (userMessageError) {
           console.error('Error saving user message:', userMessageError);
           throw new Error('Failed to save message');
+        }
+
+        // Immediately show user message in chat
+        if (userMessage) {
+          setMessages((prev) => {
+            if (prev.some(m => m.id === (userMessage as Message).id)) return prev;
+            return [...prev, userMessage as Message];
+          });
         }
 
         const { data: { session } } = await supabase.auth.getSession();
