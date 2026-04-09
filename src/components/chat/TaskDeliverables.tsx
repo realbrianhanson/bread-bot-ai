@@ -17,11 +17,14 @@ import {
   FileCode,
   ChevronDown,
   Link2,
+  Loader2,
+  CloudUpload,
 } from 'lucide-react';
 import { TaskDeliverable } from '@/hooks/useBrowserTask';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState } from 'react';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TaskDeliverablesProps {
   deliverables: TaskDeliverable[];
@@ -61,6 +64,8 @@ const getDeliverableIcon = (type: TaskDeliverable['type']) => {
 const TaskDeliverables = ({ deliverables, taskSummary, extractedData }: TaskDeliverablesProps) => {
   const [isOpen, setIsOpen] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isDownloadingDocx, setIsDownloadingDocx] = useState(false);
+  const [isPushingToDrive, setIsPushingToDrive] = useState(false);
 
   const fileDeliverables = deliverables.filter(d => d.type === 'file');
   const otherDeliverables = deliverables.filter(d => d.type !== 'file');
@@ -98,6 +103,97 @@ const TaskDeliverables = ({ deliverables, taskSummary, extractedData }: TaskDeli
     for (const d of fileDeliverables) {
       if (d.url) window.open(d.url, '_blank');
     }
+  };
+
+  const handleDownloadDocx = async () => {
+    const content = buildExportContent();
+    if (!content) return;
+
+    setIsDownloadingDocx(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-file', {
+        body: {
+          type: 'docx',
+          content,
+          title: 'Task Results',
+          filename: `task-results-${Date.now()}`,
+        },
+      });
+      if (error) throw error;
+      if (data?.fileUrl) {
+        window.open(data.fileUrl, '_blank');
+        toast({ title: 'Downloaded', description: 'Word document downloaded successfully' });
+      }
+    } catch (err: any) {
+      // Fallback: download as plain text
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `task-results-${Date.now()}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: 'Downloaded', description: 'Downloaded as text (DOCX generation unavailable)' });
+    } finally {
+      setIsDownloadingDocx(false);
+    }
+  };
+
+  const handlePushToGoogleDrive = async () => {
+    const content = buildExportContent();
+    if (!content) return;
+
+    setIsPushingToDrive(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-google-doc', {
+        body: {
+          title: `Task Results — ${new Date().toLocaleDateString()}`,
+          content,
+        },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, '_blank');
+        toast({ title: 'Pushed to Google Drive', description: 'Your results are now in Google Docs' });
+      } else if (data?.error) {
+        throw new Error(data.error);
+      }
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (msg.includes('not connected') || msg.includes('connect your Google')) {
+        toast({ title: 'Google not connected', description: 'Connect your Google account in Settings first.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Error', description: msg || 'Failed to push to Google Drive', variant: 'destructive' });
+      }
+    } finally {
+      setIsPushingToDrive(false);
+    }
+  };
+
+  /** Build a combined markdown string from all task deliverables for export */
+  const buildExportContent = (): string => {
+    const parts: string[] = [];
+
+    if (taskSummary) {
+      parts.push('# Task Summary\n\n' + taskSummary);
+    }
+
+    if (extractedData && Object.keys(extractedData).length > 0) {
+      parts.push('# Extracted Data\n\n```json\n' + JSON.stringify(extractedData, null, 2) + '\n```');
+    }
+
+    if (deliverables.length > 0) {
+      const delLines = deliverables.map((d) => {
+        if (d.content) return `## ${d.name}\n\n${d.content}`;
+        if (d.url) return `## ${d.name}\n\nFile: ${d.url}`;
+        return `## ${d.name}`;
+      });
+      parts.push(delLines.join('\n\n'));
+    }
+
+    return parts.join('\n\n---\n\n');
   };
 
   if (deliverables.length === 0 && !taskSummary && !extractedData) return null;
@@ -185,14 +281,38 @@ const TaskDeliverables = ({ deliverables, taskSummary, extractedData }: TaskDeli
             {taskSummary && (
               <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
                 <div className="flex items-start justify-between gap-2">
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-green-500 mb-1">Summary</p>
                     <div className="text-sm text-foreground prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-li:my-1 prose-ol:my-1.5 prose-ul:my-1.5 prose-headings:mt-3 prose-headings:mb-1" style={{ whiteSpace: 'pre-wrap' }}>
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{taskSummary}</ReactMarkdown>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleCopy(taskSummary, 'summary')}>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={() => handleCopy(taskSummary, 'summary')}>
                     {copiedId === 'summary' ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                  </Button>
+                </div>
+
+                {/* Export actions row */}
+                <div className="flex flex-wrap gap-1.5 mt-2.5 pt-2.5 border-t border-green-500/15">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs gap-1.5"
+                    disabled={isDownloadingDocx}
+                    onClick={handleDownloadDocx}
+                  >
+                    {isDownloadingDocx ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileText className="h-3 w-3" />}
+                    Download DOCX
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs gap-1.5"
+                    disabled={isPushingToDrive}
+                    onClick={handlePushToGoogleDrive}
+                  >
+                    {isPushingToDrive ? <Loader2 className="h-3 w-3 animate-spin" /> : <CloudUpload className="h-3 w-3" />}
+                    Push to Google Drive
                   </Button>
                 </div>
               </div>
