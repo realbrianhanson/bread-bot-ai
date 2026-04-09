@@ -405,7 +405,16 @@ const ChatContainer = ({
       {/* Messages */}
       <div ref={scrollRef} onScroll={handleScroll} className="flex-1 p-4 overflow-y-auto scroll-smooth">
         <div className="space-y-3.5 max-w-3xl mx-auto pb-4">
-          {messages.length === 0 && firecrawlResults.length === 0 ? (
+          {isLoading && messages.length === 0 && firecrawlResults.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center justify-center py-16"
+            >
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground">Loading chat history…</p>
+            </motion.div>
+          ) : messages.length === 0 && firecrawlResults.length === 0 ? (
             isGhlMode ? (
               <GHLTemplateGallery
                 inline
