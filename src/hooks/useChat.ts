@@ -810,12 +810,18 @@ Output the superior page as three code blocks: html, css, javascript — complet
         setIsLoading(true);
         setIsStreaming(true);
         try {
-          await supabase.from('messages').insert({
+          const { data: savedUserMsg3 } = await supabase.from('messages').insert({
             user_id: user.id,
             project_id: projectId,
             role: 'user',
             content: content.trim(),
-          });
+          }).select().single();
+          if (savedUserMsg3) {
+            setMessages((prev) => {
+              if (prev.some(m => m.id === (savedUserMsg3 as Message).id)) return prev;
+              return [...prev, savedUserMsg3 as Message];
+            });
+          }
 
           const { data: { session } } = await supabase.auth.getSession();
           if (!session) throw new Error('No active session');
