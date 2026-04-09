@@ -229,7 +229,7 @@ const ChatContainer = ({
     }
   }, []);
 
-  const handleSendMessage = (content: string, options?: { ghlMode?: boolean }) => {
+  const handleSendMessage = (content: string, options?: { ghlMode?: boolean; extraContext?: string }) => {
     const trimmedContent = content.trim();
     
     if (trimmedContent.startsWith('/browse')) {
@@ -292,10 +292,14 @@ const ChatContainer = ({
       return;
     }
 
-    // If there are firecrawl results, prepend ALL types as context for follow-up messages
-    if (firecrawlResults.length > 0 && !trimmedContent.startsWith('/')) {
-      const contextParts: string[] = [];
+    const contextParts: string[] = [];
+    const browserTaskContext = !trimmedContent.startsWith('/') ? buildBrowserTaskContext(currentTask) : null;
 
+    if (browserTaskContext) {
+      contextParts.push(browserTaskContext);
+    }
+
+    if (!trimmedContent.startsWith('/')) {
       for (const r of firecrawlResults) {
         if (r.type === 'scrape' && r.markdown) {
           contextParts.push(`[SCRAPED PAGE: ${r.url}]\nTitle: ${r.title || 'Untitled'}\n\n${r.markdown.slice(0, 6000)}`);
@@ -309,13 +313,14 @@ const ChatContainer = ({
           contextParts.push(`[BROWSED: ${r.url}]\nTitle: ${r.title || 'Unknown'}\n${r.description || ''}\n${r.extractedData ? JSON.stringify(r.extractedData, null, 2) : ''}`);
         }
       }
-
-      if (contextParts.length > 0) {
-        const enrichedContent = `The user previously gathered the following data. Use this to fulfill their request:\n\n${contextParts.join('\n\n---\n\n')}\n\n---\n\nUser's request: ${trimmedContent}`;
-        onSendMessage(enrichedContent, options);
-        return;
-      }
     }
+
+    if (!trimmedContent.startsWith('/') && contextParts.length > 0) {
+      const extraContext = `The user is asking a follow-up question about work already done in this chat. Use the context below to answer accurately, and mention the source URLs if they ask where the data came from.\n\n${contextParts.join('\n\n---\n\n')}`;
+      onSendMessage(trimmedContent, { ...options, extraContext });
+      return;
+    }
+
     onSendMessage(content, options);
   };
 

@@ -90,7 +90,7 @@ const Dashboard = () => {
       .catch(() => setMemoryActive(false));
   }, []);
 
-  const handleSendWithPlanner = async (content: string, options?: { ghlMode?: boolean }) => {
+  const handleSendWithPlanner = async (content: string, options?: { ghlMode?: boolean; extraContext?: string }) => {
     if (content.trimStart().startsWith("/plan ")) {
       const prompt = content.replace(/^\/plan\s+/, "");
       await generatePlan(prompt);
