@@ -1,88 +1,21 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
+import {
+  Document,
+  Packer,
+  Paragraph,
+  TextRun,
+  HeadingLevel,
+  AlignmentType,
+  LevelFormat,
+  ExternalHyperlink,
+  BorderStyle,
+} from "npm:docx@9.5.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
-
-function markdownToHtml(markdown: string): string {
-  let html = markdown;
-  // Headers
-  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-  // Bold & italic
-  html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-  // Code blocks
-  html = html.replace(/```[\w]*\n([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-  html = html.replace(/`(.+?)`/g, '<code>$1</code>');
-  // Unordered lists
-  html = html.replace(/^[\-\*] (.+)$/gm, '<li>$1</li>');
-  html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
-  // Ordered lists
-  html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
-  // Links
-  html = html.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
-  // Horizontal rules
-  html = html.replace(/^---$/gm, '<hr>');
-  // Paragraphs (lines not already wrapped)
-  html = html.replace(/^(?!<[hupol]|<li|<hr|<pre)(.+)$/gm, '<p>$1</p>');
-  return html;
-}
-
-function generateHtmlDocument(title: string, content: string): string {
-  const bodyHtml = markdownToHtml(content);
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${escapeHtml(title)}</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    font-size: 11pt; line-height: 1.7; color: #1e293b;
-    max-width: 800px; margin: 0 auto; padding: 60px 40px;
-  }
-  h1 { font-size: 28pt; font-weight: 800; margin: 0 0 8px; color: #0f172a; }
-  h2 { font-size: 18pt; font-weight: 700; margin: 40px 0 16px; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
-  h3 { font-size: 14pt; font-weight: 600; margin: 28px 0 12px; color: #1e293b; }
-  p { margin: 0 0 14px; }
-  ul, ol { margin: 0 0 16px; padding-left: 24px; }
-  li { margin-bottom: 6px; }
-  a { color: #4f46e5; text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 10pt; font-family: 'SF Mono', 'Fira Code', monospace; }
-  pre { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 0 0 16px; overflow-x: auto; }
-  pre code { background: none; padding: 0; }
-  hr { border: none; border-top: 1px solid #e2e8f0; margin: 32px 0; }
-  table { width: 100%; border-collapse: collapse; margin: 0 0 16px; }
-  th, td { padding: 10px 14px; border: 1px solid #e2e8f0; text-align: left; font-size: 10pt; }
-  th { background: #f8fafc; font-weight: 600; }
-  .title-page { text-align: center; padding: 120px 0 80px; }
-  .title-page .date { color: #64748b; font-size: 11pt; margin-top: 12px; }
-  @media print {
-    body { padding: 0; max-width: none; }
-    .title-page { page-break-after: always; }
-    h2 { page-break-before: auto; }
-    pre, table { page-break-inside: avoid; }
-  }
-</style>
-</head>
-<body>
-<div class="title-page">
-  <h1>${escapeHtml(title)}</h1>
-  <p class="date">Generated on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-</div>
-${bodyHtml}
-</body>
-</html>`;
-}
 
 function escapeHtml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -100,6 +33,262 @@ function generateCsv(data: Record<string, unknown>[]): string {
     rows.push(headers.map(h => escapeCsv(row[h])).join(','));
   }
   return rows.join('\n');
+}
+
+/** Parse markdown content into docx Paragraph elements */
+function markdownToDocxParagraphs(markdown: string): Paragraph[] {
+  const paragraphs: Paragraph[] = [];
+  const lines = markdown.split('\n');
+  let i = 0;
+
+  // Numbering config references will be set on the document
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Skip empty lines
+    if (!line.trim()) {
+      i++;
+      continue;
+    }
+
+    // Code block — collect until closing ```
+    if (line.trim().startsWith('```')) {
+      i++;
+      const codeLines: string[] = [];
+      while (i < lines.length && !lines[i].trim().startsWith('```')) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      i++; // skip closing ```
+      paragraphs.push(
+        new Paragraph({
+          border: {
+            top: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+            bottom: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+            left: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+            right: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+          },
+          shading: { fill: "F1F5F9" },
+          spacing: { before: 120, after: 120 },
+          children: [
+            new TextRun({
+              text: codeLines.join('\n'),
+              font: "Courier New",
+              size: 20,
+            }),
+          ],
+        })
+      );
+      continue;
+    }
+
+    // Headings
+    const h1Match = line.match(/^# (.+)$/);
+    if (h1Match) {
+      paragraphs.push(new Paragraph({
+        heading: HeadingLevel.HEADING_1,
+        spacing: { before: 360, after: 200 },
+        children: parseInlineFormatting(h1Match[1]),
+      }));
+      i++;
+      continue;
+    }
+
+    const h2Match = line.match(/^## (.+)$/);
+    if (h2Match) {
+      paragraphs.push(new Paragraph({
+        heading: HeadingLevel.HEADING_2,
+        spacing: { before: 280, after: 160 },
+        children: parseInlineFormatting(h2Match[1]),
+      }));
+      i++;
+      continue;
+    }
+
+    const h3Match = line.match(/^### (.+)$/);
+    if (h3Match) {
+      paragraphs.push(new Paragraph({
+        heading: HeadingLevel.HEADING_3,
+        spacing: { before: 240, after: 120 },
+        children: parseInlineFormatting(h3Match[1]),
+      }));
+      i++;
+      continue;
+    }
+
+    // Horizontal rule
+    if (line.trim() === '---' || line.trim() === '***') {
+      paragraphs.push(new Paragraph({
+        border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "E2E8F0", space: 1 } },
+        spacing: { before: 200, after: 200 },
+        children: [],
+      }));
+      i++;
+      continue;
+    }
+
+    // Bullet list item
+    const bulletMatch = line.match(/^[\-\*] (.+)$/);
+    if (bulletMatch) {
+      paragraphs.push(new Paragraph({
+        numbering: { reference: "bullets", level: 0 },
+        spacing: { before: 60, after: 60 },
+        children: parseInlineFormatting(bulletMatch[1]),
+      }));
+      i++;
+      continue;
+    }
+
+    // Numbered list item
+    const numMatch = line.match(/^\d+\.\s+(.+)$/);
+    if (numMatch) {
+      paragraphs.push(new Paragraph({
+        numbering: { reference: "numbers", level: 0 },
+        spacing: { before: 60, after: 60 },
+        children: parseInlineFormatting(numMatch[1]),
+      }));
+      i++;
+      continue;
+    }
+
+    // Regular paragraph
+    paragraphs.push(new Paragraph({
+      spacing: { before: 80, after: 80 },
+      children: parseInlineFormatting(line),
+    }));
+    i++;
+  }
+
+  return paragraphs;
+}
+
+/** Parse inline markdown formatting (**bold**, *italic*, `code`, [links](url)) */
+function parseInlineFormatting(text: string): (TextRun | ExternalHyperlink)[] {
+  const children: (TextRun | ExternalHyperlink)[] = [];
+  // Regex to match bold, italic, code, and links
+  const regex = /(\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|\[(.+?)\]\((.+?)\))/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    // Add plain text before match
+    if (match.index > lastIndex) {
+      children.push(new TextRun({ text: text.slice(lastIndex, match.index), size: 22 }));
+    }
+
+    if (match[2]) {
+      // Bold + italic
+      children.push(new TextRun({ text: match[2], bold: true, italics: true, size: 22 }));
+    } else if (match[3]) {
+      // Bold
+      children.push(new TextRun({ text: match[3], bold: true, size: 22 }));
+    } else if (match[4]) {
+      // Italic
+      children.push(new TextRun({ text: match[4], italics: true, size: 22 }));
+    } else if (match[5]) {
+      // Code
+      children.push(new TextRun({ text: match[5], font: "Courier New", size: 20, shading: { fill: "F1F5F9" } }));
+    } else if (match[6] && match[7]) {
+      // Link
+      children.push(new ExternalHyperlink({
+        children: [new TextRun({ text: match[6], style: "Hyperlink", size: 22 })],
+        link: match[7],
+      }));
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Remaining text
+  if (lastIndex < text.length) {
+    children.push(new TextRun({ text: text.slice(lastIndex), size: 22 }));
+  }
+
+  if (children.length === 0) {
+    children.push(new TextRun({ text, size: 22 }));
+  }
+
+  return children;
+}
+
+async function generateDocx(title: string, content: string): Promise<Uint8Array> {
+  const bodyParagraphs = markdownToDocxParagraphs(content);
+
+  const doc = new Document({
+    styles: {
+      default: {
+        document: { run: { font: "Arial", size: 22 } },
+      },
+      paragraphStyles: [
+        {
+          id: "Heading1", name: "Heading 1", basedOn: "Normal", next: "Normal", quickFormat: true,
+          run: { size: 36, bold: true, font: "Arial", color: "0F172A" },
+          paragraph: { spacing: { before: 360, after: 200 } },
+        },
+        {
+          id: "Heading2", name: "Heading 2", basedOn: "Normal", next: "Normal", quickFormat: true,
+          run: { size: 28, bold: true, font: "Arial", color: "0F172A" },
+          paragraph: { spacing: { before: 280, after: 160 } },
+        },
+        {
+          id: "Heading3", name: "Heading 3", basedOn: "Normal", next: "Normal", quickFormat: true,
+          run: { size: 24, bold: true, font: "Arial", color: "1E293B" },
+          paragraph: { spacing: { before: 240, after: 120 } },
+        },
+      ],
+    },
+    numbering: {
+      config: [
+        {
+          reference: "bullets",
+          levels: [{
+            level: 0, format: LevelFormat.BULLET, text: "\u2022", alignment: AlignmentType.LEFT,
+            style: { paragraph: { indent: { left: 720, hanging: 360 } } },
+          }],
+        },
+        {
+          reference: "numbers",
+          levels: [{
+            level: 0, format: LevelFormat.DECIMAL, text: "%1.", alignment: AlignmentType.LEFT,
+            style: { paragraph: { indent: { left: 720, hanging: 360 } } },
+          }],
+        },
+      ],
+    },
+    sections: [
+      {
+        properties: {
+          page: {
+            size: { width: 12240, height: 15840 },
+            margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
+          },
+        },
+        children: [
+          // Title
+          new Paragraph({
+            heading: HeadingLevel.TITLE,
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 200 },
+            children: [new TextRun({ text: title, bold: true, size: 48, font: "Arial" })],
+          }),
+          // Date
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 600 },
+            children: [new TextRun({
+              text: `Generated on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
+              size: 22, color: "64748B",
+            })],
+          }),
+          // Body
+          ...bodyParagraphs,
+        ],
+      },
+    ],
+  });
+
+  const buffer = await Packer.toBuffer(doc);
+  return new Uint8Array(buffer);
 }
 
 serve(async (req) => {
@@ -137,15 +326,15 @@ serve(async (req) => {
       });
     }
 
-    let fileContent: string;
+    let fileBytes: Uint8Array;
     let ext: string;
     let contentType: string;
 
     switch (type) {
       case 'docx': {
-        fileContent = generateHtmlDocument(title || filename, content || '');
-        ext = 'html';
-        contentType = 'text/html; charset=utf-8';
+        fileBytes = await generateDocx(title || filename, content || '');
+        ext = 'docx';
+        contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
         break;
       }
       case 'csv': {
@@ -154,31 +343,30 @@ serve(async (req) => {
             status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
-        fileContent = generateCsv(data);
+        fileBytes = new TextEncoder().encode(generateCsv(data));
         ext = 'csv';
         contentType = 'text/csv; charset=utf-8';
         break;
       }
       case 'xlsx': {
-        // For MVP, generate CSV (universally openable in Excel)
         if (!data || !Array.isArray(data)) {
           return new Response(JSON.stringify({ error: 'data array required for XLSX' }), {
             status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
-        fileContent = generateCsv(data);
+        fileBytes = new TextEncoder().encode(generateCsv(data));
         ext = 'csv';
         contentType = 'text/csv; charset=utf-8';
         break;
       }
       case 'json': {
-        fileContent = JSON.stringify(data || content || {}, null, 2);
+        fileBytes = new TextEncoder().encode(JSON.stringify(data || content || {}, null, 2));
         ext = 'json';
         contentType = 'application/json; charset=utf-8';
         break;
       }
       case 'markdown': {
-        fileContent = content || '';
+        fileBytes = new TextEncoder().encode(content || '');
         ext = 'md';
         contentType = 'text/markdown; charset=utf-8';
         break;
@@ -189,7 +377,6 @@ serve(async (req) => {
         });
     }
 
-    const fileBytes = new TextEncoder().encode(fileContent);
     const storagePath = `${user.id}/${taskId || 'direct'}/${filename}.${ext}`;
 
     const { error: uploadError } = await supabaseClient.storage
@@ -208,7 +395,7 @@ serve(async (req) => {
 
     const { data: signedData, error: signedError } = await supabaseClient.storage
       .from('generated-files')
-      .createSignedUrl(storagePath, 86400); // 24 hours
+      .createSignedUrl(storagePath, 86400);
 
     if (signedError) {
       console.error('[GENERATE-FILE] Signed URL error:', signedError);
