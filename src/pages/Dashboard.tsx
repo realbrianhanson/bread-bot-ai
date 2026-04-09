@@ -568,27 +568,29 @@ const Dashboard = () => {
                   />
                 </div>
               ) : currentTask ? (
-                <LiveBrowserView
-                  liveUrl={currentTask.liveUrl} status={currentTask.status}
-                  screenshots={currentTask.screenshots} actions={currentTask.actions}
-                  steps={currentTask.steps} taskId={currentTask.id}
-                  onStopTask={stopTask} onPauseTask={pauseTask} onResumeTask={resumeTask}
-                  isStopping={isStopping} isPausing={isPausing} isResuming={isResuming}
-                  requiresLogin={currentTask.requiresLogin} loginUrl={currentTask.loginUrl} loginSite={currentTask.loginSite}
-                  interventionReason={currentTask.interventionReason} interventionMessage={currentTask.interventionMessage}
-                  interventionType={currentTask.interventionType} currentPhase={currentTask.currentPhase}
-                  deliverables={currentTask.deliverables} extractedData={currentTask.extractedData}
-                  taskSummary={currentTask.taskSummary} plannedSteps={currentTask.plannedSteps}
-                  currentPlanStepId={currentTask.currentPlanStepId} todoItems={currentTask.todoItems}
-                  isPlanning={currentTask.isPlanning} siteKnowledge={currentTask.siteKnowledge}
-                  nextSteps={currentTask.nextSteps} challenges={currentTask.challenges}
-                  processReport={currentTask.processReport} taskDescription={currentTask.taskDescription}
-                  onSelectNextStep={(step) => step.prompt && executeTask(step.prompt, activeConversationId || undefined, selectedProfileId || undefined)}
-                  suggestedTakeover={currentTask.suggestedTakeover} takeoverMessage={currentTask.takeoverMessage}
-                  shellSessions={currentTask.shellSessions} activeShellSessionId={currentTask.activeShellSessionId}
-                  deployments={currentTask.deployments} notifications={currentTask.notifications}
-                  onAcceptTakeover={pauseTask} onDeclineTakeover={() => {}}
-                />
+                <div className="h-full overflow-y-auto">
+                  <LiveBrowserView
+                    liveUrl={currentTask.liveUrl} status={currentTask.status}
+                    screenshots={currentTask.screenshots} actions={currentTask.actions}
+                    steps={currentTask.steps} taskId={currentTask.id}
+                    onStopTask={stopTask} onPauseTask={pauseTask} onResumeTask={resumeTask}
+                    isStopping={isStopping} isPausing={isPausing} isResuming={isResuming}
+                    requiresLogin={currentTask.requiresLogin} loginUrl={currentTask.loginUrl} loginSite={currentTask.loginSite}
+                    interventionReason={currentTask.interventionReason} interventionMessage={currentTask.interventionMessage}
+                    interventionType={currentTask.interventionType} currentPhase={currentTask.currentPhase}
+                    deliverables={currentTask.deliverables} extractedData={currentTask.extractedData}
+                    taskSummary={currentTask.taskSummary} plannedSteps={currentTask.plannedSteps}
+                    currentPlanStepId={currentTask.currentPlanStepId} todoItems={currentTask.todoItems}
+                    isPlanning={currentTask.isPlanning} siteKnowledge={currentTask.siteKnowledge}
+                    nextSteps={currentTask.nextSteps} challenges={currentTask.challenges}
+                    processReport={currentTask.processReport} taskDescription={currentTask.taskDescription}
+                    onSelectNextStep={(step) => step.prompt && executeTask(step.prompt, activeConversationId || undefined, selectedProfileId || undefined)}
+                    suggestedTakeover={currentTask.suggestedTakeover} takeoverMessage={currentTask.takeoverMessage}
+                    shellSessions={currentTask.shellSessions} activeShellSessionId={currentTask.activeShellSessionId}
+                    deployments={currentTask.deployments} notifications={currentTask.notifications}
+                    onAcceptTakeover={pauseTask} onDeclineTakeover={() => {}}
+                  />
+                </div>
               ) : isGhlMode && ghlCode ? (
                 <GHLCodeOutput
                   code={ghlCode}
