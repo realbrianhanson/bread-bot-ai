@@ -211,7 +211,7 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
                 i === selectedSlashIndex ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
               )}
             >
-              <span className="text-base">{cmd.icon}</span>
+              <cmd.Icon className="h-4 w-4 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
                 <span className="font-mono text-xs text-primary">{cmd.cmd}</span>
                 <span className="text-muted-foreground text-xs ml-2">{cmd.label}</span>
