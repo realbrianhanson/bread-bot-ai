@@ -52,6 +52,7 @@ import PublishedPagesList from "@/components/chat/PublishedPagesList";
 const Dashboard = () => {
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
+  const legacyOnboardingKey = "garlicbread-onboarding-done";
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const { messages, isHistoryLoading, isLoading, isStreaming, isInspirationLoading, activeCode, codeVersion, codeHistoryIndex, canUndo, canRedo, undoCode, redoCode, sendMessage, sendInspirationMessage, stopStreaming, clearActiveCode } = useChat(activeConversationId || undefined);
   const { publish, isPublishing, publishedSlug } = usePublish(activeCode, activeConversationId || undefined);
@@ -68,20 +69,43 @@ const Dashboard = () => {
   const lastAutoOpenedPreviewMessageId = useRef<string | null>(null);
   const [mobilePreviewKey, setMobilePreviewKey] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [hasResolvedOnboarding, setHasResolvedOnboarding] = useState(false);
 
   // Check onboarding status
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from('profiles')
-      .select('has_completed_onboarding')
-      .eq('id', user.id)
-      .single()
-      .then(({ data }) => {
-        if (data && !(data as any).has_completed_onboarding) {
-          setShowOnboarding(true);
+    let isActive = true;
+
+    setHasResolvedOnboarding(false);
+
+    const resolveOnboardingState = async () => {
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('has_completed_onboarding')
+          .eq('id', user.id)
+          .single();
+
+        if (!isActive) return;
+        const hasCompletedOnboarding = Boolean((data as any)?.has_completed_onboarding);
+
+        if (hasCompletedOnboarding) {
+          localStorage.setItem(legacyOnboardingKey, "true");
         }
-      });
+
+        setShowOnboarding(!hasCompletedOnboarding);
+      } finally {
+        if (isActive) {
+          setHasResolvedOnboarding(true);
+        }
+      }
+    };
+
+    void resolveOnboardingState();
+
+    return () => {
+      isActive = false;
+    };
   }, [user]);
 
   useEffect(() => {
@@ -296,7 +320,7 @@ const Dashboard = () => {
   return (
     <div className="h-screen w-screen flex flex-col bg-background overflow-hidden">
       <CommandPalette onNewConversation={handleNewConversation} onQuickStart={handleQuickStart} />
-      <OnboardingTour />
+      {hasResolvedOnboarding && !showOnboarding && <OnboardingTour />}
       {/* Header */}
       <header className="shrink-0 h-12 border-b border-border/50 bg-card/80 backdrop-blur-sm z-10 flex items-center justify-between px-3 md:px-4">
         <div className="flex items-center gap-2">
@@ -622,7 +646,10 @@ const Dashboard = () => {
       <AnimatePresence>
         {showOnboarding && (
           <OnboardingWizard
-            onComplete={() => setShowOnboarding(false)}
+            onComplete={() => {
+              localStorage.setItem(legacyOnboardingKey, "true");
+              setShowOnboarding(false);
+            }}
             onPrefill={(text) => {
               handleQuickStart(text);
             }}
