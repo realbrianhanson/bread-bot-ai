@@ -56,7 +56,7 @@ export function OnboardingWizard({ onComplete, onPrefill }: OnboardingWizardProp
     markComplete();
   };
 
-  return (
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -116,7 +116,8 @@ export function OnboardingWizard({ onComplete, onPrefill }: OnboardingWizardProp
           </div>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 }
 
