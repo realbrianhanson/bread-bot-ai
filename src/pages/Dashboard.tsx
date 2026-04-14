@@ -87,7 +87,13 @@ const Dashboard = () => {
           .single();
 
         if (!isActive) return;
-        setShowOnboarding(Boolean(data && !(data as any).has_completed_onboarding));
+        const hasCompletedOnboarding = Boolean((data as any)?.has_completed_onboarding);
+
+        if (hasCompletedOnboarding) {
+          localStorage.setItem(legacyOnboardingKey, "true");
+        }
+
+        setShowOnboarding(!hasCompletedOnboarding);
       } finally {
         if (isActive) {
           setHasResolvedOnboarding(true);
