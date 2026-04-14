@@ -33,11 +33,9 @@ export const normalizeStaticHtml = (html: string) => {
   <title>Preview</title>
 </head>
 <body>
-${/id=["']app["']/.test(contentToWrap) ? contentToWrap : `  <div id="app"></div>\n${contentToWrap}`}
+${contentToWrap}
 </body>
 </html>`;
-  } else if (!/id=["']app["']/.test(normalized)) {
-    normalized = normalized.replace(/<body([^>]*)>/i, '<body$1>\n  <div id="app"></div>\n');
   }
 
   return normalized;
