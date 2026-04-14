@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
-import { Settings, LogOut, MessageSquarePlus, Sparkles, Brain, MessageCircle, Eye, RefreshCw, ArrowLeft, Menu } from "lucide-react";
+import { Settings, LogOut, MessageSquarePlus, Sparkles, Brain, MessageCircle, Eye, RefreshCw, ArrowLeft, Menu, Wheat } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Sheet, SheetContent } from "@/components/ui/sheet";

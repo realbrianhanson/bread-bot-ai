@@ -583,7 +583,7 @@ const GHLCodeOutput = ({
             {MANUAL_DEPLOY_STEPS.map((step, i) => (
               <div key={i} className="flex items-start gap-3">
                 <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 text-sm">
-                  {step.icon}
+                  <step.Icon className="h-4 w-4 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">

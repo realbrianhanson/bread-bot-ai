@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Loader2, ArrowRight, Bot, Zap, Globe } from 'lucide-react';
+import { Loader2, ArrowRight, Bot, Zap, Globe, Wheat } from 'lucide-react';
 import { AuroraBackground } from '@/components/ui/aurora-background';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
