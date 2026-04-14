@@ -273,12 +273,13 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
     body {
       font-family: 'Inter', sans-serif;
     }
-    #root, #app, main, body > :first-child {
+    #root, main {
       min-height: 100vh !important;
       height: auto !important;
       max-height: none !important;
       overflow: visible !important;
     }
+    #app:empty { display: none !important; }
     section, [class*="section"], .hero, .pricing, .features, .cta, .testimonials, .faq, .footer {
       padding-top: clamp(40px, 5vw, 80px) !important;
       padding-bottom: clamp(40px, 5vw, 80px) !important;
