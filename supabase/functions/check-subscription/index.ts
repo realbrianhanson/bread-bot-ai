@@ -37,30 +37,43 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     // Try getClaims first, fall back to getUser for stale tokens
     let userId: string | null = null;
-    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
-    if (!claimsError && claimsData?.claims?.sub) {
-      userId = claimsData.claims.sub;
-    } else {
-      logStep("getClaims failed, trying getUser", { error: claimsError?.message });
-      const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-      if (userError || !userData?.user) {
-        logStep("Auth failed, returning free tier defaults");
-        return new Response(JSON.stringify({
-          subscribed: false,
-          tier: 'free',
-          can_use_own_keys: false,
-          chat_messages_used: 0,
-          browser_tasks_used: 0,
-          code_executions_used: 0,
-          chat_messages_limit: 100,
-          browser_tasks_limit: 10,
-          code_executions_limit: 5,
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        });
+    try {
+      const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
+      if (!claimsError && claimsData?.claims?.sub) {
+        userId = claimsData.claims.sub;
       }
-      userId = userData.user.id;
+    } catch (claimsErr) {
+      logStep("getClaims threw exception", { error: String(claimsErr) });
+    }
+
+    if (!userId) {
+      try {
+        logStep("getClaims failed, trying getUser");
+        const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+        if (!userError && userData?.user) {
+          userId = userData.user.id;
+        }
+      } catch (userErr) {
+        logStep("getUser threw exception", { error: String(userErr) });
+      }
+    }
+
+    if (!userId) {
+      logStep("Auth failed, returning free tier defaults");
+      return new Response(JSON.stringify({
+        subscribed: false,
+        tier: 'free',
+        can_use_own_keys: false,
+        chat_messages_used: 0,
+        browser_tasks_used: 0,
+        code_executions_used: 0,
+        chat_messages_limit: 100,
+        browser_tasks_limit: 10,
+        code_executions_limit: 5,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     }
 
     if (!userId) {
