@@ -1,6 +1,6 @@
 import { useState, KeyboardEvent, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Square, Zap, ToggleLeft, ToggleRight, Paperclip, ImageIcon } from 'lucide-react';
+import { Send, Square, Zap, ToggleLeft, ToggleRight, Paperclip, ImageIcon, Globe, FileText, Bug, Search, Monitor, BarChart3, Sparkles, Microscope, Brain, Clock, ClipboardList, ScrollText, GitBranch, Link, TrendingUp, Swords, FileEdit } from 'lucide-react';
 import { StylePicker } from '@/components/chat/StylePicker';
 import { PurposePicker } from '@/components/chat/PurposePicker';
 import { cn } from '@/lib/utils';
@@ -25,26 +25,26 @@ interface ChatInputProps {
 }
 
 const SLASH_COMMANDS = [
-  { cmd: "/browse", label: "Browser automation", icon: "🌐" },
-  { cmd: "/scrape", label: "Scrape a webpage", icon: "📄" },
-  { cmd: "/crawl", label: "Crawl a website", icon: "🕷️" },
-  { cmd: "/search", label: "Web search", icon: "🔍" },
-  { cmd: "/code", label: "Execute Python code in a sandbox", icon: "💻" },
-  { cmd: "/slides", label: "Generate a presentation from a topic or research", icon: "📊" },
-  { cmd: "/image", label: "Generate an AI image from a text description", icon: "✨" },
-  { cmd: "/research", label: "Deep research with AI", icon: "🔬" },
-  { cmd: "/deep", label: "Deep analysis", icon: "🧠" },
-  { cmd: "/plan", label: "AI task planner", icon: "🧠" },
-  { cmd: "/schedule", label: "Open scheduled tasks", icon: "⏰" },
-  { cmd: "/template", label: "Open templates", icon: "📋" },
-  { cmd: "/history", label: "Open task history", icon: "📜" },
-  { cmd: "/workflow", label: "Open workflows", icon: "🔀" },
-  { cmd: "/results", label: "Open results", icon: "📊" },
-  { cmd: "/webhooks", label: "Open webhooks", icon: "🔗" },
-  { cmd: "/inspire", label: "Build a page inspired by an existing website's design", icon: "✨" },
-  { cmd: "/audit", label: "Analyze any webpage for conversion optimization", icon: "📈" },
-  { cmd: "/compete", label: "Analyze a competitor's site and generate a better version", icon: "⚔️" },
-  { cmd: "/document", label: "Create a formatted document from research results", icon: "📝" },
+  { cmd: "/browse", label: "Browser automation", Icon: Globe },
+  { cmd: "/scrape", label: "Scrape a webpage", Icon: FileText },
+  { cmd: "/crawl", label: "Crawl a website", Icon: Bug },
+  { cmd: "/search", label: "Web search", Icon: Search },
+  { cmd: "/code", label: "Execute Python code in a sandbox", Icon: Monitor },
+  { cmd: "/slides", label: "Generate a presentation from a topic or research", Icon: BarChart3 },
+  { cmd: "/image", label: "Generate an AI image from a text description", Icon: Sparkles },
+  { cmd: "/research", label: "Deep research with AI", Icon: Microscope },
+  { cmd: "/deep", label: "Deep analysis", Icon: Brain },
+  { cmd: "/plan", label: "AI task planner", Icon: Brain },
+  { cmd: "/schedule", label: "Open scheduled tasks", Icon: Clock },
+  { cmd: "/template", label: "Open templates", Icon: ClipboardList },
+  { cmd: "/history", label: "Open task history", Icon: ScrollText },
+  { cmd: "/workflow", label: "Open workflows", Icon: GitBranch },
+  { cmd: "/results", label: "Open results", Icon: BarChart3 },
+  { cmd: "/webhooks", label: "Open webhooks", Icon: Link },
+  { cmd: "/inspire", label: "Build a page inspired by an existing website's design", Icon: Sparkles },
+  { cmd: "/audit", label: "Analyze any webpage for conversion optimization", Icon: TrendingUp },
+  { cmd: "/compete", label: "Analyze a competitor's site and generate a better version", Icon: Swords },
+  { cmd: "/document", label: "Create a formatted document from research results", Icon: FileEdit },
 ];
 
 const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSlashCommand, onInspire, isInspirationLoading, prefill }: ChatInputProps) => {
@@ -253,19 +253,19 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
           )}
           {isPlanCmd && (
             <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 border border-primary/30">
-              <span className="text-[10px]">🧠</span>
+              <Brain className="h-3 w-3 text-primary" />
               <span className="text-[10px] font-medium text-primary">Planner</span>
             </div>
           )}
           {isCodeCmd && (
             <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/10 border border-accent/30">
-              <span className="text-[10px]">💻</span>
+              <Monitor className="h-3 w-3 text-accent" />
               <span className="text-[10px] font-medium text-accent">Sandbox</span>
             </div>
           )}
           {isImageCmd && (
             <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/30">
-              <span className="text-[10px]">✨</span>
+              <Sparkles className="h-3 w-3 text-purple-400" />
               <span className="text-[10px] font-medium text-purple-400">Image Gen</span>
             </div>
           )}
