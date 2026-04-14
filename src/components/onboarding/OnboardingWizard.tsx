@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { X, ArrowRight, ArrowLeft, Sparkles, Globe, Search, FileText, Zap, PartyPopper } from 'lucide-react';
@@ -55,7 +56,7 @@ export function OnboardingWizard({ onComplete, onPrefill }: OnboardingWizardProp
     markComplete();
   };
 
-  return (
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -115,7 +116,8 @@ export function OnboardingWizard({ onComplete, onPrefill }: OnboardingWizardProp
           </div>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 }
 
