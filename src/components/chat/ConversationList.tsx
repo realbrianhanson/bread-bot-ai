@@ -8,7 +8,14 @@ import {
   Check,
   X,
   MessageSquare,
+  MoreVertical,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 import { useState } from 'react';
 import { Conversation } from '@/hooks/useConversations';
 import { format, isToday, isYesterday } from 'date-fns';
@@ -154,30 +161,43 @@ const ConversationList = ({
                         {formatTimestamp(conversation.updated_at || conversation.created_at)}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          startEdit(conversation);
-                        }}
-                        className="h-7 w-7 p-0"
-                      >
-                        <Edit2 className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(conversation.id);
-                        }}
-                        className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => e.stopPropagation()}
+                          className={`h-7 w-7 p-0 shrink-0 ${
+                            activeConversationId === conversation.id
+                              ? 'opacity-100'
+                              : 'opacity-0 group-hover:opacity-100'
+                          } transition-opacity`}
+                        >
+                          <MoreVertical className="h-3.5 w-3.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-36">
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            startEdit(conversation);
+                          }}
+                        >
+                          <Edit2 className="h-3.5 w-3.5 mr-2" />
+                          Rename
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(conversation.id);
+                          }}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 )}
               </div>
