@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Loader2, ArrowRight, Bot, Zap, Globe, Wheat } from 'lucide-react';
+import { Loader2, ArrowRight, Bot, Zap, Globe } from 'lucide-react';
+import { GarlicLogo } from '@/components/ui/logo-icon';
 import { AuroraBackground } from '@/components/ui/aurora-background';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
@@ -65,7 +66,7 @@ export default function Auth() {
 
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
           <div className="flex items-center gap-3">
-            <Wheat className="h-8 w-8 text-primary" />
+            <GarlicLogo size={32} />
             <span className="text-xl font-bold tracking-tight text-foreground">GarlicBread.ai</span>
           </div>
 
@@ -116,7 +117,7 @@ export default function Auth() {
         <div className="w-full max-w-[400px] relative z-10">
           {/* Mobile logo */}
           <div className="flex items-center gap-3 mb-10 lg:hidden">
-            <Wheat className="h-8 w-8 text-primary" />
+            <GarlicLogo size={32} />
             <span className="text-xl font-bold tracking-tight text-foreground">GarlicBread.ai</span>
           </div>
 

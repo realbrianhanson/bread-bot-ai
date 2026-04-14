@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import { AuroraBackground } from '@/components/ui/aurora-background';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { Globe, Bot, Zap, Shield, Wheat } from 'lucide-react';
+import { Globe, Bot, Zap, Shield } from 'lucide-react';
+import { GarlicLogo } from '@/components/ui/logo-icon';
 
 export default function LeadCapture() {
   useEffect(() => {
@@ -30,7 +31,7 @@ export default function LeadCapture() {
 
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
           <div className="flex items-center gap-3">
-            <Wheat className="h-8 w-8 text-primary" />
+            <GarlicLogo size={32} />
             <span className="text-xl font-bold tracking-tight text-foreground">GarlicBread.ai</span>
           </div>
 
@@ -80,7 +81,7 @@ export default function LeadCapture() {
         <div className="w-full max-w-[500px] relative z-10">
           {/* Mobile logo */}
           <div className="flex items-center gap-3 mb-8 lg:hidden">
-            <Wheat className="h-8 w-8 text-primary" />
+            <GarlicLogo size={32} />
             <span className="text-xl font-bold tracking-tight text-foreground">GarlicBread.ai</span>
           </div>
 
