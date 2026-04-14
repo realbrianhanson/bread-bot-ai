@@ -45,16 +45,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     
     try {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      // Refresh the session first to ensure we have a valid token
+      const { data: refreshData } = await supabase.auth.refreshSession();
+      const currentSession = refreshData?.session;
       if (!currentSession?.access_token) {
-        console.log('No valid session, skipping subscription check');
+        console.log('No valid session after refresh, skipping subscription check');
         return;
       }
 
       const { data, error } = await supabase.functions.invoke('check-subscription');
       if (error) {
         console.error('Error checking subscription, falling back to free tier defaults:', error);
-        // Gracefully degrade to free tier defaults instead of breaking
         return;
       }
       
@@ -72,7 +73,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error('Error refreshing subscription, using free tier defaults:', error);
-      // Silently fall back — the UI will show free tier defaults
     }
   };
 
