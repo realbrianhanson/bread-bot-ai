@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import {
   Copy, Check, Rocket, Monitor, Tablet, Smartphone, RefreshCw,
   Maximize2, X, ChevronRight, Info, Loader2, CheckCircle2,
-  ExternalLink, RotateCcw, Globe, Link, Undo2, Redo2, Columns2,
+  ExternalLink, RotateCcw, Globe, Link, Undo2, Redo2, Columns2, FileText, ClipboardList, Plus, Save,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -52,12 +52,12 @@ const VIEWPORT_WIDTHS: Record<ViewportSize, string> = {
 };
 
 const MANUAL_DEPLOY_STEPS = [
-  { icon: '🌐', title: 'Open your GHL dashboard', desc: 'Go to Sites → Funnels or Websites' },
-  { icon: '📄', title: 'Select your funnel page', desc: 'Click Edit Page on the target page' },
-  { icon: '➕', title: 'Add Custom Code element', desc: 'Click + icon → Drag "Custom Code" onto the page' },
-  { icon: '📋', title: 'Paste the code', desc: 'Click the Custom Code element → Paste the copied code' },
-  { icon: '↔️', title: 'Set to Full Width', desc: 'Remove all padding, set section to Full Width' },
-  { icon: '💾', title: 'Save & Preview', desc: 'Click Save → Preview your page' },
+  { Icon: Globe, title: 'Open your GHL dashboard', desc: 'Go to Sites → Funnels or Websites' },
+  { Icon: FileText, title: 'Select your funnel page', desc: 'Click Edit Page on the target page' },
+  { Icon: Plus, title: 'Add Custom Code element', desc: 'Click + icon → Drag "Custom Code" onto the page' },
+  { Icon: ClipboardList, title: 'Paste the code', desc: 'Click the Custom Code element → Paste the copied code' },
+  { Icon: Maximize2, title: 'Set to Full Width', desc: 'Remove all padding, set section to Full Width' },
+  { Icon: Save, title: 'Save & Preview', desc: 'Click Save → Preview your page' },
 ];
 
 const DEPLOY_PROGRESS_STEPS = [
@@ -424,7 +424,7 @@ const GHLCodeOutput = ({
             />
           </div>
           <div className="w-1/2 flex flex-col">
-            <div className="px-2 py-1 bg-primary/10 text-[10px] font-medium text-primary text-center border-b border-border/20">Your Version ✨</div>
+            <div className="px-2 py-1 bg-primary/10 text-[10px] font-medium text-primary text-center border-b border-border/20">Your Version</div>
             <iframe
               key={`${iframeKey}-${codeVersion}`}
               srcDoc={code}

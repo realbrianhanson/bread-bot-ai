@@ -65,7 +65,7 @@ export default function Auth() {
 
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
           <div className="flex items-center gap-3">
-            <span className="text-3xl">🧄</span>
+            <Wheat className="h-8 w-8 text-primary" />
             <span className="text-xl font-bold tracking-tight text-foreground">GarlicBread.ai</span>
           </div>
 
@@ -116,7 +116,7 @@ export default function Auth() {
         <div className="w-full max-w-[400px] relative z-10">
           {/* Mobile logo */}
           <div className="flex items-center gap-3 mb-10 lg:hidden">
-            <span className="text-3xl">🧄</span>
+            <Wheat className="h-8 w-8 text-primary" />
             <span className="text-xl font-bold tracking-tight text-foreground">GarlicBread.ai</span>
           </div>
 

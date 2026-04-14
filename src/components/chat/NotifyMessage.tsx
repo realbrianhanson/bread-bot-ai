@@ -7,7 +7,8 @@ import {
   Info, 
   AlertCircle,
   X,
-  Clock
+  Clock,
+  Paperclip
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -102,7 +103,7 @@ const NotifyMessage = ({
               <div className="mt-2 flex flex-wrap gap-1">
                 {attachments.map((attachment, idx) => (
                   <Badge key={idx} variant="secondary" className="text-xs">
-                    📎 {attachment}
+                    <Paperclip className="h-3 w-3 mr-1 inline" />{attachment}
                   </Badge>
                 ))}
               </div>

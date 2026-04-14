@@ -146,7 +146,7 @@ function StepWelcome() {
         transition={{ delay: 0.25 }}
         className="text-2xl font-bold text-foreground mb-2"
       >
-        Welcome to GarlicBread 🍞
+        Welcome to GarlicBread
       </motion.h2>
       <motion.p
         initial={{ opacity: 0, y: 10 }}

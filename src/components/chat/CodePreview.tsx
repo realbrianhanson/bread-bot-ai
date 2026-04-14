@@ -737,7 +737,7 @@ ${previewScrollRecoveryScript}
         />
       </div>
       <div className="w-1/2 flex flex-col">
-        <div className="px-2 py-1 bg-primary/10 text-[10px] font-medium text-primary text-center border-b border-border/30">Your Version ✨</div>
+        <div className="px-2 py-1 bg-primary/10 text-[10px] font-medium text-primary text-center border-b border-border/30">Your Version</div>
         <iframe
           key={`${key}-${codeVersion}`}
           srcDoc={buildCombinedHTML()}
