@@ -5,7 +5,7 @@ import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Monitor, Clock, Download, X, Maximize2, Minimize2,
+  Monitor, Clock, Download, X, Maximize2, Minimize2, Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -89,7 +89,7 @@ const SandboxComputerView = ({
               variant="secondary"
               className="text-[10px] font-mono bg-[hsl(220_13%_18%)] border-border/30 text-muted-foreground"
             >
-              {language === 'python' ? '🐍 Python' : '⚡ JavaScript'}
+              {language === 'python' ? 'Python' : 'JavaScript'}
             </Badge>
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[hsl(220_13%_16%)]">
               <StatusDot status={status} />

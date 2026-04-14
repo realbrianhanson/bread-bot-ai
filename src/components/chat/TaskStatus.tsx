@@ -10,7 +10,9 @@ import {
   Brain, 
   Search, 
   Hand,
-  Clock
+  Clock,
+  Zap,
+  Eye
 } from 'lucide-react';
 import { TaskStatus as TaskStatusType } from '@/hooks/useBrowserTask';
 
@@ -105,9 +107,9 @@ const TaskStatus = ({ status, message, currentPhase, duration }: TaskStatusProps
             </Badge>
             {currentPhase && status === 'running' && (
               <Badge variant="secondary" className="text-xs">
-                {currentPhase === 'analyzing' && '🧠 Thinking'}
-                {currentPhase === 'executing' && '⚡ Executing'}
-                {currentPhase === 'observing' && '👁 Observing'}
+                {currentPhase === 'analyzing' && <><Brain className="h-3 w-3 inline mr-1" />Thinking</>}
+                {currentPhase === 'executing' && <><Zap className="h-3 w-3 inline mr-1" />Executing</>}
+                {currentPhase === 'observing' && <><Eye className="h-3 w-3 inline mr-1" />Observing</>}
               </Badge>
             )}
             {duration !== undefined && (

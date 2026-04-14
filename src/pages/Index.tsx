@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Globe, Code, FileStack, ArrowRight, Sparkles, Shield, Zap } from "lucide-react";
+import { Globe, Code, FileStack, ArrowRight, Sparkles, Shield, Zap, Wheat } from "lucide-react";
 import { AuroraBackground } from "@/components/ui/aurora-background";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
@@ -50,7 +50,7 @@ const Index = () => {
       {/* Nav */}
       <nav className="relative z-10 flex items-center justify-between px-6 md:px-12 py-5">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🧄</span>
+          <Wheat className="h-6 w-6 text-primary" />
           <span className="text-lg font-bold tracking-tight text-foreground">GarlicBread.ai</span>
         </div>
         <div className="flex items-center gap-2">

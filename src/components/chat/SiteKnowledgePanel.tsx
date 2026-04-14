@@ -2,7 +2,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, Brain, Globe, LogIn, AlertCircle, Clock, Trash2 } from 'lucide-react';
+import { ChevronDown, Brain, Globe, LogIn, AlertCircle, Clock, Trash2, Key, Sparkles, FileEdit } from 'lucide-react';
 import { useState } from 'react';
 
 export interface SiteKnowledge {
@@ -31,12 +31,12 @@ const SiteKnowledgePanel = ({ sites, onDeleteSite, compact = false }: SiteKnowle
     switch (method) {
       case 'oauth':
       case 'sso':
-        return '🔑';
+        return <Key className="h-3 w-3" />;
       case 'magic-link':
-        return '✨';
+        return <Sparkles className="h-3 w-3" />;
       case 'form':
       default:
-        return '📝';
+        return <FileEdit className="h-3 w-3" />;
     }
   };
 

@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
-import { Settings, LogOut, MessageSquarePlus, Sparkles, Brain, MessageCircle, Eye, RefreshCw, ArrowLeft, Menu } from "lucide-react";
+import { Settings, LogOut, MessageSquarePlus, Sparkles, Brain, MessageCircle, Eye, RefreshCw, ArrowLeft, Menu, Wheat } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -165,12 +165,12 @@ const Dashboard = () => {
   // Slash command handler — triggers UI panel opens via toast notifications
   const handleSlashCommand = useCallback((command: string) => {
     const messages: Record<string, string> = {
-      "/schedule": "Open the ⏰ clock icon in the header to manage scheduled tasks",
-      "/template": "Open the 📋 template icon in the header to browse templates",
-      "/history": "Open the 📜 history icon in the header to view past tasks",
-      "/workflow": "Open the 🔀 workflow icon in the header to build workflows",
-      "/results": "Open the 📊 chart icon in the header to view results",
-      "/webhooks": "Open the 🔗 webhook icon in the header to manage webhooks",
+      "/schedule": "Open the clock icon in the header to manage scheduled tasks",
+      "/template": "Open the template icon in the header to browse templates",
+      "/history": "Open the history icon in the header to view past tasks",
+      "/workflow": "Open the workflow icon in the header to build workflows",
+      "/results": "Open the chart icon in the header to view results",
+      "/webhooks": "Open the webhook icon in the header to manage webhooks",
     };
     const msg = messages[command];
     if (msg) {
@@ -283,7 +283,7 @@ const Dashboard = () => {
         {/* Animated logo */}
         <div className="relative">
           <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl animate-pulse-glow" />
-          <span className={`relative ${mobile ? 'text-5xl' : 'text-6xl'} block`}>🧄</span>
+          <Wheat className={`relative ${mobile ? 'h-12 w-12' : 'h-14 w-14'} text-primary`} />
         </div>
 
         <div>
@@ -333,7 +333,7 @@ const Dashboard = () => {
           >
             <Menu className="h-4 w-4" />
           </Button>
-          <span className="text-xl">🧄</span>
+          <Wheat className="h-5 w-5 text-primary" />
           <span className="text-sm font-semibold tracking-tight text-foreground hidden sm:block">GarlicBread.ai</span>
           <PlanBadge size="sm" className="hidden sm:inline-flex" />
           {memoryActive && (

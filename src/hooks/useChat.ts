@@ -343,7 +343,7 @@ export const useChat = (projectId?: string) => {
       setIsLoading(true);
       setIsStreaming(true);
       const statusId = crypto.randomUUID();
-      setMessages((prev) => [...prev, { id: statusId, role: 'assistant' as const, content: `✨ **Building from inspiration**\nAnalyzing design patterns from \`${inspirationUrl}\`...`, created_at: new Date().toISOString() }]);
+      setMessages((prev) => [...prev, { id: statusId, role: 'assistant' as const, content: `**Building from inspiration**\nAnalyzing design patterns from \`${inspirationUrl}\`...`, created_at: new Date().toISOString() }]);
       try {
         await supabase.from('messages').insert({ user_id: user.id, project_id: projectId, role: 'user', content: `Build a page inspired by ${inspirationUrl}\n\nMy content: ${userContent}`, metadata: { type: 'inspiration', inspirationUrl } });
         const { data: scrapeData, error: scrapeError } = await supabase.functions.invoke('firecrawl-scrape', { body: { url: inspirationUrl, options: { formats: ['markdown', 'html'], onlyMainContent: false } } });
@@ -353,7 +353,7 @@ export const useChat = (projectId?: string) => {
         const trimmedHtml = trimHtmlIntelligently(html, 15000);
         const trimmedMarkdown = markdown.slice(0, 5000);
         setIsInspirationLoading(false);
-        setMessages((prev) => prev.map((m) => m.id === statusId ? { ...m, content: `✨ **Design analyzed.** Generating your page...` } : m));
+        setMessages((prev) => prev.map((m) => m.id === statusId ? { ...m, content: `**Design analyzed.** Generating your page...` } : m));
         const inspirationPrompt = `INSPIRATION MODE: The user wants you to build a new page inspired by an existing design.\n\nINSPIRATION PAGE STRUCTURE (from ${inspirationUrl}):\n${trimmedHtml}\n\nINSPIRATION PAGE CONTENT SUMMARY:\n${trimmedMarkdown}\n\nDESIGN INSTRUCTIONS:\n- Analyze the inspiration page's visual design: layout structure, section order, color palette, typography, spacing, component styles\n- Create a NEW page that uses SIMILAR design patterns but with COMPLETELY DIFFERENT content\n- Match the inspiration's: section layout order, card/grid patterns, hero style, CTA placement, visual rhythm, color mood (warm/cool/neutral)\n- Do NOT copy any text, images, or branding from the inspiration page\n- Use the user's content below to fill the new page\n\nTHE USER'S CONTENT/BUSINESS:\n${userContent}\n\nBuild the page now using the design patterns from the inspiration, with the user's content.`;
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error('No active session');
@@ -411,7 +411,7 @@ export const useChat = (projectId?: string) => {
             await sendInspirationMessage(url, userContent, options?.ghlMode || false);
           } else {
             // Just URL — user will be prompted via follow-up
-            toast({ title: '✨ Inspiration Mode', description: `Got it! Now describe what your page should be about.` });
+            toast({ title: 'Inspiration Mode', description: `Got it! Now describe what your page should be about.` });
             // Store URL for next message (we'll handle via prefill or similar)
           }
           return;
@@ -428,7 +428,7 @@ export const useChat = (projectId?: string) => {
           setIsStreaming(true);
 
           const statusId = crypto.randomUUID();
-          setMessages((prev) => [...prev, { id: statusId, role: 'assistant' as const, content: `📈 **Analyzing page for conversion optimization...**\nScraping \`${auditUrl}\``, created_at: new Date().toISOString() }]);
+          setMessages((prev) => [...prev, { id: statusId, role: 'assistant' as const, content: `**Analyzing page for conversion optimization...**\nScraping \`${auditUrl}\``, created_at: new Date().toISOString() }]);
 
           try {
             const { data: savedUserMsg } = await supabase.from('messages').insert({ user_id: user.id, project_id: projectId, role: 'user', content: content.trim() }).select().single();
@@ -449,7 +449,7 @@ export const useChat = (projectId?: string) => {
             const trimmedHtml = trimHtmlIntelligently(html, 15000);
             const trimmedMd = markdown.slice(0, 5000);
 
-            setMessages((prev) => prev.map((m) => m.id === statusId ? { ...m, content: '📈 **Page scraped.** Running CRO analysis...' } : m));
+            setMessages((prev) => prev.map((m) => m.id === statusId ? { ...m, content: '**Page scraped.** Running CRO analysis...' } : m));
 
             const auditPrompt = `You are a conversion rate optimization expert. Analyze the following marketing page and provide actionable recommendations to improve its conversion rate.
 
@@ -563,7 +563,7 @@ Format the output with clear headers, scores in bold, and specific actionable re
           setIsStreaming(true);
 
           const statusId = crypto.randomUUID();
-          setMessages((prev) => [...prev, { id: statusId, role: 'assistant' as const, content: `⚔️ **Competitor Analysis**\nScraping \`${compUrl}\`...`, created_at: new Date().toISOString() }]);
+          setMessages((prev) => [...prev, { id: statusId, role: 'assistant' as const, content: `**Competitor Analysis**\nScraping \`${compUrl}\`...`, created_at: new Date().toISOString() }]);
 
           try {
             const { data: savedUserMsg2 } = await supabase.from('messages').insert({ user_id: user.id, project_id: projectId, role: 'user', content: content.trim() }).select().single();
@@ -584,7 +584,7 @@ Format the output with clear headers, scores in bold, and specific actionable re
             const trimmedCompHtml = trimHtmlIntelligently(compHtml, 15000);
             const trimmedCompMd = compMarkdown.slice(0, 5000);
 
-            setMessages((prev) => prev.map((m) => m.id === statusId ? { ...m, content: '⚔️ **Site scraped.** Analyzing weaknesses & generating a superior page...' } : m));
+            setMessages((prev) => prev.map((m) => m.id === statusId ? { ...m, content: '**Site scraped.** Analyzing weaknesses & generating a superior page...' } : m));
 
             // Step 1: Analyze the competitor (structured extraction via prompt)
             const analysisPrompt = `You are a conversion optimization expert and competitive analyst. Analyze this competitor's landing page and then BUILD A SUPERIOR VERSION.
@@ -719,7 +719,7 @@ Output the superior page as three code blocks: html, css, javascript — complet
         setMessages((prev) => [...prev, {
           id: statusId,
           role: 'assistant' as const,
-          content: '✨ Generating image...',
+          content: 'Generating image...',
           metadata: { type: 'image_generating' },
           created_at: new Date().toISOString(),
         }]);
@@ -1099,7 +1099,7 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
                   // Auto-retry: ask Claude to fix critical issues
                   setMessages((prev) =>
                     prev.map((m) => m.id === tempId
-                      ? { ...m, content: '✨ Auto-improving design quality...' }
+                      ? { ...m, content: 'Auto-improving design quality...' }
                       : m)
                   );
 

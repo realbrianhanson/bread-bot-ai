@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Copy, Check, ChevronDown, ChevronUp, Zap, TrendingUp, Lightbulb } from 'lucide-react';
+import { Copy, Check, ChevronDown, ChevronUp, Zap, TrendingUp, Lightbulb, Sparkles, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
@@ -267,12 +267,12 @@ export default function AuditResults({ content, url, onRebuild, onGenerateCopy }
       <div className="flex flex-wrap gap-2 pt-1">
         {onRebuild && (
           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onRebuild}>
-            ✨ Rebuild This Page
+            <Sparkles className="h-3 w-3 mr-1" /> Rebuild This Page
           </Button>
         )}
         {onGenerateCopy && (
           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onGenerateCopy}>
-            ✍️ Generate Better Copy
+            <Pencil className="h-3 w-3 mr-1" /> Generate Better Copy
           </Button>
         )}
       </div>

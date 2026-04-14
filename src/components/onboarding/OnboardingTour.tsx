@@ -91,7 +91,7 @@ export function OnboardingTour() {
           {step < steps.length - 1 ? (
             <Button onClick={() => setStep(step + 1)}>Next</Button>
           ) : (
-            <Button onClick={finish}>Get Started 🧄</Button>
+            <Button onClick={finish}>Get Started</Button>
           )}
         </AlertDialogFooter>
       </AlertDialogContent>
