@@ -78,20 +78,24 @@ const Dashboard = () => {
 
     setHasResolvedOnboarding(false);
 
-    supabase
-      .from('profiles')
-      .select('has_completed_onboarding')
-      .eq('id', user.id)
-      .single()
-      .then(({ data }) => {
+    const resolveOnboardingState = async () => {
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('has_completed_onboarding')
+          .eq('id', user.id)
+          .single();
+
         if (!isActive) return;
         setShowOnboarding(Boolean(data && !(data as any).has_completed_onboarding));
-      })
-      .finally(() => {
+      } finally {
         if (isActive) {
           setHasResolvedOnboarding(true);
         }
-      });
+      }
+    };
+
+    void resolveOnboardingState();
 
     return () => {
       isActive = false;
