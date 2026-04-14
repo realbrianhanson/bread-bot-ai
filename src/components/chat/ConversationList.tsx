@@ -8,7 +8,14 @@ import {
   Check,
   X,
   MessageSquare,
+  MoreVertical,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 import { useState } from 'react';
 import { Conversation } from '@/hooks/useConversations';
 import { format, isToday, isYesterday } from 'date-fns';
