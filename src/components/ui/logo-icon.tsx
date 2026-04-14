@@ -1,11 +1,20 @@
-import { Wheat } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import garlicSrc from '@/assets/garlic-logo.png';
 
 interface LogoIconProps {
   className?: string;
   size?: number;
 }
 
-export function LogoIcon({ className, size = 24 }: LogoIconProps) {
-  return <Wheat className={cn('text-primary', className)} size={size} />;
+export function GarlicLogo({ className, size = 24 }: LogoIconProps) {
+  return (
+    <img
+      src={garlicSrc}
+      alt="GarlicBread.ai"
+      width={size}
+      height={size}
+      className={cn('inline-block', className)}
+      style={{ width: size, height: size }}
+    />
+  );
 }
