@@ -210,7 +210,7 @@ const ChatContainer = ({
       setFirecrawlResults((prev) => [...prev, result]);
 
       // Persist as a message so the AI has context for follow-ups
-      const summaryContent = `📄 **Scraped: ${title || url}**\n- URL: ${url}\n- Words: ${wordCount}\n\n${md.slice(0, 3000)}${md.length > 3000 ? '\n\n…(truncated)' : ''}`;
+      const summaryContent = `**Scraped: ${title || url}**\n- URL: ${url}\n- Words: ${wordCount}\n\n${md.slice(0, 3000)}${md.length > 3000 ? '\n\n…(truncated)' : ''}`;
       onSendMessage(summaryContent, { ghlMode: false });
 
     } catch (err: any) {
@@ -239,7 +239,7 @@ const ChatContainer = ({
 
       // Persist as a message so the AI has context for follow-ups
       const pagesList = pages.slice(0, 20).map((p: any, i: number) => `${i + 1}. ${p.title || p.url} - ${p.url}`).join('\n');
-      const summaryContent = `🕷️ **Crawled: ${url}**\nFound ${pages.length} pages:\n\n${pagesList}`;
+      const summaryContent = `**Crawled: ${url}**\nFound ${pages.length} pages:\n\n${pagesList}`;
       onSendMessage(summaryContent, { ghlMode: false });
     } catch (err: any) {
       toast({ title: 'Crawl failed', description: err.message || 'Unknown error', variant: 'destructive' });
@@ -268,7 +268,7 @@ const ChatContainer = ({
 
       // Persist as a message so the AI has context for follow-ups
       const resultsList = results.slice(0, 10).map((r: any, i: number) => `${i + 1}. **${r.title || r.url}**\n   ${r.url}\n   ${r.description || ''}`).join('\n\n');
-      const summaryContent = `🔍 **Search results for "${query}"** (${results.length} results):\n\n${resultsList}`;
+      const summaryContent = `**Search results for "${query}"** (${results.length} results):\n\n${resultsList}`;
       onSendMessage(summaryContent, { ghlMode: false });
     } catch (err: any) {
       toast({ title: 'Search failed', description: err.message || 'Unknown error', variant: 'destructive' });
