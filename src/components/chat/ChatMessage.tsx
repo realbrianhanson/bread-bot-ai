@@ -1,6 +1,6 @@
 import { Message } from '@/hooks/useChat';
 import { Button } from '@/components/ui/button';
-import { Copy, Check, Bot, User, CheckCircle2, Sparkles, AlertTriangle, Download, ImagePlus, RefreshCw } from 'lucide-react';
+import { Copy, Check, Bot, User, CheckCircle2, Sparkles, AlertTriangle, Download, ImagePlus, RefreshCw, ThumbsUp, ThumbsDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -15,6 +15,7 @@ import SlidePreview from './SlidePreview';
 import AuditResults from './AuditResults';
 import CompetitorAnalysis from './CompetitorAnalysis';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const MermaidDiagram = lazy(() => import('./MermaidDiagram'));
 
@@ -27,12 +28,37 @@ interface ChatMessageProps {
 const ChatMessage = ({ message, onInsertImage, onRegenerateImage }: ChatMessageProps) => {
   const isUser = message.role === 'user';
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [copiedMessage, setCopiedMessage] = useState(false);
   const [showTime, setShowTime] = useState(false);
+  const [feedback, setFeedback] = useState<'up' | 'down' | null>(
+    (message as any).feedback === 'up' ? 'up' : (message as any).feedback === 'down' ? 'down' : null
+  );
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedCode(id);
     setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const copyFullMessage = () => {
+    navigator.clipboard.writeText(message.content);
+    setCopiedMessage(true);
+    toast({ title: 'Copied to clipboard' });
+    setTimeout(() => setCopiedMessage(false), 2000);
+  };
+
+  const handleFeedback = async (value: 'up' | 'down') => {
+    const newValue = feedback === value ? null : value;
+    setFeedback(newValue);
+    
+    try {
+      await supabase
+        .from('messages')
+        .update({ feedback: newValue } as any)
+        .eq('id', message.id);
+    } catch (err) {
+      console.error('Failed to save feedback:', err);
+    }
   };
 
   const timestamp = message.created_at
@@ -139,7 +165,7 @@ const ChatMessage = ({ message, onInsertImage, onRegenerateImage }: ChatMessageP
             </div>
           )}
 
-          {/* Code execution results — full computer view */}
+          {/* Code execution results */}
           {message.metadata?.type === 'code_execution' && (
             <div className="mt-3 -mx-4 -mb-3">
               <SandboxComputerView
@@ -262,7 +288,7 @@ const ChatMessage = ({ message, onInsertImage, onRegenerateImage }: ChatMessageP
             </div>
           )}
 
-          {/* Screenshots - browse result style */}
+          {/* Screenshots */}
           {message.metadata?.screenshots && message.metadata.screenshots.length > 0 && (
             <div className="mt-3 space-y-2">
               <div className="grid grid-cols-2 gap-2">
@@ -316,6 +342,43 @@ const ChatMessage = ({ message, onInsertImage, onRegenerateImage }: ChatMessageP
             </div>
           )}
         </div>
+
+        {/* Assistant actions: Copy + Feedback */}
+        {!isUser && (
+          <div className="flex items-center gap-1 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={copyFullMessage}
+              className="p-1 rounded-md text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
+              title="Copy message"
+            >
+              {copiedMessage ? <Check className="h-3 w-3 text-primary" /> : <Copy className="h-3 w-3" />}
+            </button>
+            <button
+              onClick={() => handleFeedback('up')}
+              className={cn(
+                'p-1 rounded-md transition-colors',
+                feedback === 'up'
+                  ? 'text-primary bg-primary/10'
+                  : 'text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50'
+              )}
+              title="Good response"
+            >
+              <ThumbsUp className="h-3 w-3" />
+            </button>
+            <button
+              onClick={() => handleFeedback('down')}
+              className={cn(
+                'p-1 rounded-md transition-colors',
+                feedback === 'down'
+                  ? 'text-destructive bg-destructive/10'
+                  : 'text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50'
+              )}
+              title="Bad response"
+            >
+              <ThumbsDown className="h-3 w-3" />
+            </button>
+          </div>
+        )}
 
         {/* Timestamp */}
         {timestamp && (

@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ThumbsUp, ThumbsDown, Sparkles, X } from 'lucide-react';
+import { Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { SaveTemplateDialog } from './SaveTemplateDialog';
 import { hasCodeBlocks, extractCodeFromResponse } from '@/lib/validateWebsite';
 
@@ -36,20 +35,19 @@ export function MessageFeedback({
   offeredIds,
   onOffered,
 }: MessageFeedbackProps) {
-  const [thumbs, setThumbs] = useState<'up' | 'down' | null>(null);
   const [showSuggestion, setShowSuggestion] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
 
-  // Show suggestion on thumbs-up or positive sentiment
+  // Show suggestion on positive sentiment
   useEffect(() => {
     if (!hasCode || !isAssistant || offeredIds.has(messageId) || dismissed) return;
 
-    if (thumbs === 'up' || sentimentTriggered) {
+    if (sentimentTriggered) {
       setShowSuggestion(true);
       onOffered(messageId);
     }
-  }, [thumbs, sentimentTriggered, hasCode, isAssistant, messageId, offeredIds, dismissed, onOffered]);
+  }, [sentimentTriggered, hasCode, isAssistant, messageId, offeredIds, dismissed, onOffered]);
 
   // Auto-dismiss after 15 seconds
   useEffect(() => {
@@ -65,31 +63,6 @@ export function MessageFeedback({
 
   return (
     <>
-      {/* Thumbs up/down buttons */}
-      <div className="flex items-center gap-1 mt-1">
-        <button
-          onClick={() => setThumbs(thumbs === 'up' ? null : 'up')}
-          className={cn(
-            'p-1 rounded-md transition-colors',
-            thumbs === 'up'
-              ? 'text-primary bg-primary/10'
-              : 'text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50'
-          )}
-        >
-          <ThumbsUp className="h-3 w-3" />
-        </button>
-        <button
-          onClick={() => setThumbs(thumbs === 'down' ? null : 'down')}
-          className={cn(
-            'p-1 rounded-md transition-colors',
-            thumbs === 'down'
-              ? 'text-destructive bg-destructive/10'
-              : 'text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50'
-          )}
-        >
-          <ThumbsDown className="h-3 w-3" />
-        </button>
-      </div>
 
       {/* Template save suggestion */}
       <AnimatePresence>
