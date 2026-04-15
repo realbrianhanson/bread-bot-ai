@@ -279,9 +279,9 @@ const Dashboard = () => {
     lastAutoOpenedPreviewMessageId.current = latestGeneratedMessageId;
   }, [hasPreviewContent, isMobile, latestGeneratedMessageId]);
 
-  if (!user) return null;
-
   const recentChats = useMemo(() => conversations.slice(0, 5), [conversations]);
+
+  if (!user) return null;
 
   const EmptyState = ({ mobile = false }: { mobile?: boolean }) => (
     <div className="h-full flex items-center justify-center p-6 overflow-y-auto">
