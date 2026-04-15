@@ -538,24 +538,29 @@ const Dashboard = () => {
       <div className="flex-1 hidden md:flex min-h-0 overflow-hidden">
         {(activeConversationId || messages.length > 0) ? (
           <ResizablePanelGroup direction="horizontal" className="h-full w-full">
-            <ResizablePanel defaultSize={35} minSize={25} maxSize={50}>
-              <div className="h-full flex flex-col border-r border-border/50">
-                <div className="border-b border-border/50 max-h-64 overflow-y-auto shrink-0">
-                  <ConversationList
-                    conversations={conversations}
-                    activeConversationId={activeConversationId}
-                    onSelectConversation={handleSelectConversation}
-                    onNewConversation={handleNewConversation}
-                    onDeleteConversation={handleDeleteConversation}
-                    onRenameConversation={renameConversation}
-                  />
-                </div>
-                <PublishedPagesList />
-                <div className="p-3 border-b border-border/50">
-                  <ProfileSelector onProfileSelect={setSelectedProfileId} />
-                </div>
-                <div className="flex-1 min-h-0">
-                  <ChatContainer
+          {/* Conversation History Sidebar */}
+          <ResizablePanel defaultSize={18} minSize={14} maxSize={28}>
+            <div className="h-full flex flex-col border-r border-border/50">
+              <ConversationList
+                conversations={conversations}
+                activeConversationId={activeConversationId}
+                onSelectConversation={handleSelectConversation}
+                onNewConversation={handleNewConversation}
+                onDeleteConversation={handleDeleteConversation}
+                onRenameConversation={renameConversation}
+              />
+            </div>
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          {/* Chat Panel */}
+          <ResizablePanel defaultSize={22} minSize={18} maxSize={40}>
+            <div className="h-full flex flex-col border-r border-border/50">
+              <PublishedPagesList />
+              <div className="p-3 border-b border-border/50">
+                <ProfileSelector onProfileSelect={setSelectedProfileId} />
+              </div>
+              <div className="flex-1 min-h-0">
+                <ChatContainer
                     key={activeConversationId || 'desktop-chat'}
                     messages={messages} isLoading={isLoading || isHistoryLoading} isStreaming={isStreaming}
                     onSendMessage={handleSendWithPlanner} onStopStreaming={stopStreaming}
@@ -579,7 +584,7 @@ const Dashboard = () => {
               </div>
             </ResizablePanel>
             <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={65} minSize={40} className="relative">
+            <ResizablePanel defaultSize={60} minSize={35} className="relative">
               {plan && plan.status === "reviewing" ? (
                 <div className="h-full overflow-auto p-4">
                   <TaskPlanViewer
