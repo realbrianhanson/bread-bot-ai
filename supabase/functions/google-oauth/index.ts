@@ -140,7 +140,7 @@ serve(async (req) => {
       const { error: dbError } = await supabaseAdmin
         .from('user_integrations')
         .upsert({
-          user_id: state,
+          user_id: userId,
           provider: 'google',
           access_token: tokenData.access_token,
           refresh_token: tokenData.refresh_token || null,
