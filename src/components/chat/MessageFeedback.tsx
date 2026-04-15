@@ -36,20 +36,19 @@ export function MessageFeedback({
   offeredIds,
   onOffered,
 }: MessageFeedbackProps) {
-  const [thumbs, setThumbs] = useState<'up' | 'down' | null>(null);
   const [showSuggestion, setShowSuggestion] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
 
-  // Show suggestion on thumbs-up or positive sentiment
+  // Show suggestion on positive sentiment
   useEffect(() => {
     if (!hasCode || !isAssistant || offeredIds.has(messageId) || dismissed) return;
 
-    if (thumbs === 'up' || sentimentTriggered) {
+    if (sentimentTriggered) {
       setShowSuggestion(true);
       onOffered(messageId);
     }
-  }, [thumbs, sentimentTriggered, hasCode, isAssistant, messageId, offeredIds, dismissed, onOffered]);
+  }, [sentimentTriggered, hasCode, isAssistant, messageId, offeredIds, dismissed, onOffered]);
 
   // Auto-dismiss after 15 seconds
   useEffect(() => {
