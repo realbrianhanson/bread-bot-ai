@@ -66,6 +66,7 @@ const Dashboard = () => {
   const [memoryActive, setMemoryActive] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [mobileView, setMobileView] = useState<'chat' | 'preview'>('chat');
+  const [historySidebarOpen, setHistorySidebarOpen] = useState(true);
   const [queuedPrompt, setQueuedPrompt] = useState<string | null>(null);
   const isMobile = useIsMobile();
   const lastAutoOpenedPreviewMessageId = useRef<string | null>(null);
