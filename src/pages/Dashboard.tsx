@@ -672,6 +672,21 @@ const Dashboard = () => {
                     onAcceptTakeover={pauseTask} onDeclineTakeover={() => {}}
                   />
                 </div>
+              ) : codeEntries.length > 0 || isCodeExecuting ? (
+                <div className="h-full flex flex-col">
+                  <CodeSessionPanel
+                    entries={codeEntries}
+                    isExecuting={isCodeExecuting}
+                    sandboxId={codeSandboxId}
+                    onClear={clearCodeEntries}
+                  />
+                  {/* Still show preview below if available */}
+                  {hasPreviewContent && (
+                    <div className="flex-1 min-h-0 border-t border-border/50">
+                      <CodePreview key={activeConversationId || 'desktop-preview-below'} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
+                    </div>
+                  )}
+                </div>
               ) : isGhlMode && ghlCode ? (
                 <GHLCodeOutput
                   code={ghlCode}
