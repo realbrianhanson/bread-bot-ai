@@ -201,7 +201,7 @@ const ChatInput = ({ onSend, disabled = false, isStreaming = false, onStop, onSl
     <div className="space-y-1 relative">
       {/* Slash command menu */}
       {showSlashMenu && (
-        <div className="absolute bottom-full mb-1 left-0 right-0 bg-popover border border-border rounded-lg shadow-lg overflow-hidden z-50">
+        <div className="absolute bottom-full mb-1 left-0 right-0 bg-popover border border-border rounded-lg shadow-lg z-50 max-h-[60vh] overflow-y-auto">
           {matchingCommands.map((cmd, i) => (
             <button
               key={cmd.cmd}
