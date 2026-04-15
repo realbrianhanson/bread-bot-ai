@@ -651,9 +651,6 @@ const Dashboard = () => {
               localStorage.setItem(legacyOnboardingKey, "true");
               setShowOnboarding(false);
             }}
-            onPrefill={(text) => {
-              handleQuickStart(text);
-            }}
           />
         )}
       </AnimatePresence>
