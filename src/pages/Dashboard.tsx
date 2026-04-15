@@ -62,6 +62,7 @@ const Dashboard = () => {
   const { publish, isPublishing, publishedSlug } = usePublish(activeCode, activeConversationId || undefined);
   const { conversations, createConversation, deleteConversation, renameConversation, autoTitleConversation } = useConversations();
   const { currentTask, isExecuting, executeTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask();
+  const { entries: codeEntries, isExecuting: isCodeExecuting, clearEntries: clearCodeEntries, sandboxId: codeSandboxId } = useCodeExecution(activeConversationId || undefined);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const { plan, isPlanning, generatePlan, updateStep, removeStep, addStep, reorderSteps, clearPlan } = useTaskPlanner();
 
