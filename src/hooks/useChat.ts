@@ -962,7 +962,10 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
         };
 
         // Keep only last 10 messages for context to avoid token bloat
-        const recentMessages = messagesRef.current.slice(-10);
+        // Filter out the current user message (it may already be in messagesRef due to React re-render)
+        const recentMessages = messagesRef.current
+          .filter((m) => m.id !== (userMessage as Message).id)
+          .slice(-10);
         const messagesForAPI = recentMessages
           .concat([{ ...(userMessage as Message), content: enrichedContent }])
           .map((msg) => ({
