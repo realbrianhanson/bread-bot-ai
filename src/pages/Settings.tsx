@@ -156,7 +156,7 @@ export default function Settings() {
 
       for (const { provider, key } of keysToSave) {
         const { error } = await supabase.functions.invoke('manage-api-keys', {
-          body: { action: 'save', provider, apiKey: key },
+          body: { action: 'save', provider, key },
         });
         if (error) throw error;
       }
