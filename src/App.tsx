@@ -15,6 +15,8 @@ import NotFound from "./pages/NotFound";
 import LeadCapture from "./pages/LeadCapture";
 import SharedPreview from "./pages/SharedPreview";
 import PublishedPage from "./pages/PublishedPage";
+import WorkflowsPage from "./pages/Workflows";
+import WorkflowEditor from "./pages/WorkflowEditor";
 
 const queryClient = new QueryClient();
 
