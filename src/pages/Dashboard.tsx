@@ -584,7 +584,7 @@ const Dashboard = () => {
               </div>
             </ResizablePanel>
             <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={65} minSize={40} className="relative">
+            <ResizablePanel defaultSize={60} minSize={35} className="relative">
               {plan && plan.status === "reviewing" ? (
                 <div className="h-full overflow-auto p-4">
                   <TaskPlanViewer
