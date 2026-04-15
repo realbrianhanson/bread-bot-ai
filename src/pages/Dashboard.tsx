@@ -540,19 +540,35 @@ const Dashboard = () => {
       <div className="flex-1 hidden md:flex min-h-0 overflow-hidden">
         {(activeConversationId || messages.length > 0) ? (
           <ResizablePanelGroup direction="horizontal" className="h-full w-full">
-          {/* Conversation History Sidebar */}
-          <ResizablePanel defaultSize={18} minSize={14} maxSize={28}>
-            <div className="h-full flex flex-col border-r border-border/50">
-              <ConversationList
-                conversations={conversations}
-                activeConversationId={activeConversationId}
-                onSelectConversation={handleSelectConversation}
-                onNewConversation={handleNewConversation}
-                onDeleteConversation={handleDeleteConversation}
-                onRenameConversation={renameConversation}
-              />
-            </div>
-          </ResizablePanel>
+          {/* Conversation History Sidebar — collapsible */}
+          {historySidebarOpen ? (
+            <ResizablePanel defaultSize={18} minSize={14} maxSize={28}>
+              <div className="h-full flex flex-col border-r border-border/50">
+                <div className="shrink-0 flex items-center justify-between px-3 py-2 border-b border-border/50">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">History</span>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => setHistorySidebarOpen(false)}>
+                    <PanelLeftClose className="h-4 w-4" />
+                  </Button>
+                </div>
+                <ConversationList
+                  conversations={conversations}
+                  activeConversationId={activeConversationId}
+                  onSelectConversation={handleSelectConversation}
+                  onNewConversation={handleNewConversation}
+                  onDeleteConversation={handleDeleteConversation}
+                  onRenameConversation={renameConversation}
+                />
+              </div>
+            </ResizablePanel>
+          ) : (
+            <ResizablePanel defaultSize={3} minSize={3} maxSize={3}>
+              <div className="h-full flex flex-col items-center py-2 border-r border-border/50 bg-card/50">
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setHistorySidebarOpen(true)}>
+                  <PanelLeftOpen className="h-4 w-4" />
+                </Button>
+              </div>
+            </ResizablePanel>
+          )}
           <ResizableHandle withHandle />
           {/* Chat Panel */}
           <ResizablePanel defaultSize={22} minSize={18} maxSize={40}>
