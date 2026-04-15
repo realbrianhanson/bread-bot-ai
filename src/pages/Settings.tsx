@@ -78,10 +78,16 @@ export default function Settings() {
     return () => window.removeEventListener('message', handler);
   }, [loadGoogleIntegration]);
 
-  const handleConnectGoogle = () => {
+  const handleConnectGoogle = async () => {
     if (!user) return;
     setConnectingGoogle(true);
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-oauth/authorize?user_id=${user.id}`;
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) {
+      setConnectingGoogle(false);
+      return;
+    }
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-oauth/authorize?token=${token}`;
     const popup = window.open(url, 'google-oauth', 'width=600,height=700,popup=yes');
     // Poll for popup close
     const interval = setInterval(() => {
