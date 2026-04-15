@@ -105,6 +105,8 @@ serve(async (req) => {
         headers: { 'Content-Type': 'text/html' },
       });
     }
+    try {
+      const redirectUri = `${supabaseUrl}/functions/v1/google-oauth/callback`;
 
       // Exchange code for tokens
       const tokenRes = await fetch(GOOGLE_TOKEN_URL, {
