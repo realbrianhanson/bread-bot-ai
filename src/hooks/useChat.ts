@@ -908,14 +908,16 @@ Output the superior page as three code blocks: html, css, javascript — complet
         // Process file attachments
         let fileContext = '';
         let fileMetadata: any[] | undefined;
+        let attachmentBlocks: AttachmentBlock[] = [];
         if (options?.files && options.files.length > 0) {
-          const { context, uploadedFiles } = await buildFileContext(
+          const { context, uploadedFiles, contentBlocks } = await buildFileContext(
             options.files,
             user.id,
             projectId || 'general'
           );
           fileContext = context;
           fileMetadata = uploadedFiles;
+          attachmentBlocks = contentBlocks;
         }
 
         const displayContent = content.trim() || (fileMetadata ? `Uploaded ${fileMetadata.length} file(s)` : '');
