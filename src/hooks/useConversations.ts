@@ -17,9 +17,10 @@ export const useConversations = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
+  const userId = user?.id ?? null;
 
   const fetchConversations = useCallback(async () => {
-    if (!user) {
+    if (!userId) {
       setConversations([]);
       setIsLoading(false);
       return;
@@ -29,7 +30,7 @@ export const useConversations = () => {
     const { data, error } = await supabase
       .from('projects')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('updated_at', { ascending: false });
 
     if (error) {
@@ -43,13 +44,13 @@ export const useConversations = () => {
       setConversations(data || []);
     }
     setIsLoading(false);
-  }, [user, toast]);
+  }, [userId, toast]);
 
   // Initial fetch + realtime subscription
   useEffect(() => {
     fetchConversations();
 
-    if (!user) return;
+    if (!userId) return;
 
     const channel = supabase
       .channel('conversations-realtime')
@@ -59,7 +60,7 @@ export const useConversations = () => {
           event: '*',
           schema: 'public',
           table: 'projects',
-          filter: `user_id=eq.${user.id}`,
+          filter: `user_id=eq.${userId}`,
         },
         (payload) => {
           if (payload.eventType === 'INSERT') {
@@ -86,7 +87,7 @@ export const useConversations = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, fetchConversations]);
+  }, [userId, fetchConversations]);
 
   const createConversation = async (name?: string) => {
     if (!user) return null;

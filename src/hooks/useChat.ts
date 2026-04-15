@@ -172,10 +172,11 @@ export const useChat = (projectId?: string) => {
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesRef = useRef<Message[]>([]);
   const conversationCategoryRef = useRef<string | null>(null);
+  const userId = user?.id ?? null;
 
   // Load messages from database
   useEffect(() => {
-    if (!user || !projectId) {
+    if (!userId || !projectId) {
       setMessages([]);
       messagesRef.current = [];
       conversationCategoryRef.current = null;
@@ -192,7 +193,7 @@ export const useChat = (projectId?: string) => {
       const { data, error } = await supabase
         .from('messages')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .eq('project_id', projectId)
         .order('created_at', { ascending: true });
 
@@ -223,7 +224,7 @@ export const useChat = (projectId?: string) => {
     return () => {
       isCancelled = true;
     };
-  }, [user, projectId]);
+  }, [userId, projectId]);
 
   useEffect(() => {
     messagesRef.current = messages;

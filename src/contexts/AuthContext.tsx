@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -40,16 +40,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [codeExecutionsUsed, setCodeExecutionsUsed] = useState(0);
   const [codeExecutionsLimit, setCodeExecutionsLimit] = useState(5);
   const navigate = useNavigate();
+  const userId = user?.id ?? null;
 
-  const refreshSubscription = async () => {
-    if (!user) return;
-    
+  const refreshSubscription = useCallback(async () => {
+    if (!userId) return;
+
     try {
-      // Refresh the session first to ensure we have a valid token
-      const { data: refreshData } = await supabase.auth.refreshSession();
-      const currentSession = refreshData?.session;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const currentSession = sessionData?.session;
       if (!currentSession?.access_token) {
-        console.log('No valid session after refresh, skipping subscription check');
+        console.log('No valid session, skipping subscription check');
         return;
       }
 
@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Error checking subscription, falling back to free tier defaults:', error);
         return;
       }
-      
+
       if (data) {
         setTier(data.tier || 'free');
         setSubscribed(data.subscribed || false);
@@ -74,50 +74,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Error refreshing subscription, using free tier defaults:', error);
     }
-  };
+  }, [userId]);
 
   useEffect(() => {
-    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
-        
-        // Only refresh subscription after sign-in is complete and we have a valid session
+
         if (session?.user && session?.access_token && event === 'SIGNED_IN') {
-          // Add a small delay to ensure token is fully propagated
-          setTimeout(() => refreshSubscription(), 100);
+          setTimeout(() => {
+            void refreshSubscription();
+          }, 100);
         } else if (session?.user && session?.access_token) {
           await refreshSubscription();
         }
       }
     );
 
-    // Check for existing session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-      
+
       if (session?.user && session?.access_token) {
         await refreshSubscription();
       }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [refreshSubscription]);
 
-  // Periodic refresh every 60 seconds
   useEffect(() => {
-    if (!user) return;
-    
+    if (!userId) return;
+
     const interval = setInterval(() => {
-      refreshSubscription();
+      void refreshSubscription();
     }, 60000);
-    
+
     return () => clearInterval(interval);
-  }, [user]);
+  }, [userId, refreshSubscription]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
