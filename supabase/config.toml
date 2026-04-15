@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.share-preview]
 verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
