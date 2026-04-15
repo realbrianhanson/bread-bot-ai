@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { lovable } from '@/integrations/lovable/index';
 import { Button } from '@/components/ui/button';
@@ -12,9 +13,17 @@ import { AuroraBackground } from '@/components/ui/aurora-background';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 export default function Auth() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, user, loading } = useAuth();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  // Redirect to dashboard if already authenticated
+  useEffect(() => {
+    if (!loading && user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, loading, navigate]);
 
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -44,7 +53,15 @@ export default function Auth() {
       });
       if (result.error) {
         toast.error('Google sign-in failed. Please try again.');
+        setIsGoogleLoading(false);
+        return;
       }
+      if (result.redirected) {
+        // Browser will redirect to Google — don't reset loading
+        return;
+      }
+      // Session was set successfully, navigate to dashboard
+      navigate('/dashboard', { replace: true });
     } catch {
       toast.error('Google sign-in failed. Please try again.');
     }
