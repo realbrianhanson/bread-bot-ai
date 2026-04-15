@@ -40,7 +40,7 @@ serve(async (req) => {
     const { data: usageRows } = await supabase.rpc('get_user_tier_and_usage', { p_user_id: user.id });
     const usage = usageRows?.[0];
     if (usage && usage.code_executions_used >= usage.code_executions_limit) {
-      return new Response(JSON.stringify({ error: 'Code execution limit reached. Upgrade for more.' }), { status: 429, headers: jsonHeaders });
+      return new Response(JSON.stringify({ error: 'quota_exceeded', message: 'Code execution limit reached. Upgrade for more.' }), { status: 402, headers: jsonHeaders });
     }
 
     // Resolve E2B key

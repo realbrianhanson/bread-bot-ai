@@ -124,10 +124,11 @@ serve(async (req) => {
 
     if (usage.chat_messages_used >= usage.chat_messages_limit) {
       return new Response(JSON.stringify({ 
-        error: `You've reached your monthly limit of ${usage.chat_messages_limit} messages. Please upgrade your plan to continue.`,
+        error: 'quota_exceeded',
+        message: `You've reached your monthly limit of ${usage.chat_messages_limit} messages. Please upgrade your plan to continue.`,
         limit_exceeded: true 
       }), {
-        status: 429,
+        status: 402,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
