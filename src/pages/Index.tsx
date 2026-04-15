@@ -210,11 +210,11 @@ const Index = () => {
               <span>Launching browser agent... navigating to linkedin.com</span>
             </div>
             <div className="flex items-start gap-2 text-muted-foreground">
-              <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
               <span>Found 10 profiles. Extracting names, titles, and company info...</span>
             </div>
             <div className="flex items-start gap-2 text-muted-foreground">
-              <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
               <span>Done! Results exported to CSV. <span className="text-primary underline cursor-pointer">Download →</span></span>
             </div>
           </div>
