@@ -281,8 +281,10 @@ const Dashboard = () => {
 
   if (!user) return null;
 
+  const recentChats = useMemo(() => conversations.slice(0, 5), [conversations]);
+
   const EmptyState = ({ mobile = false }: { mobile?: boolean }) => (
-    <div className="h-full flex items-center justify-center p-6">
+    <div className="h-full flex items-center justify-center p-6 overflow-y-auto">
       <div className={`${mobile ? 'max-w-sm' : 'max-w-md'} w-full flex flex-col items-center text-center gap-6`}>
         {/* Animated logo */}
         <div className="relative">
@@ -317,6 +319,31 @@ const Dashboard = () => {
             </Button>
           ))}
         </div>
+
+        {/* Recent Chats */}
+        {recentChats.length > 0 && (
+          <div className="w-full text-left">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recent Chats</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              {recentChats.map((conv) => (
+                <button
+                  key={conv.id}
+                  onClick={() => handleSelectConversation(conv.id)}
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors truncate flex items-center gap-2"
+                >
+                  <MessageCircle className="h-3.5 w-3.5 shrink-0 text-primary/50" />
+                  <span className="truncate">{conv.name}</span>
+                  <span className="ml-auto text-[10px] text-muted-foreground/60 shrink-0">
+                    {new Date(conv.updated_at || conv.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
