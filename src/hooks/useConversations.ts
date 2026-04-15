@@ -120,7 +120,10 @@ export const useConversations = () => {
   const deleteConversation = async (id: string) => {
     if (!user) return;
 
-    // Also delete associated messages
+    // Optimistically remove from UI immediately
+    setConversations((prev) => prev.filter((c) => c.id !== id));
+
+    // Delete associated messages first
     await supabase
       .from('messages')
       .delete()
@@ -140,8 +143,9 @@ export const useConversations = () => {
         description: error.message,
         variant: "destructive",
       });
+      // Re-fetch to restore if delete failed
+      fetchConversations();
     }
-    // Realtime will handle removing it from the list
   };
 
   const renameConversation = async (id: string, newName: string) => {
