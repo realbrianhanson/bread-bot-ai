@@ -80,6 +80,22 @@ function AnimatedRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/workflows"
+          element={
+            <ProtectedRoute>
+              <PageWrapper><WorkflowsPage /></PageWrapper>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/workflows/:id"
+          element={
+            <ProtectedRoute>
+              <PageWrapper><WorkflowEditor /></PageWrapper>
+            </ProtectedRoute>
+          }
+        />
         <Route path="*" element={<PageWrapper><NotFound /></PageWrapper>} />
       </Routes>
     </AnimatePresence>
