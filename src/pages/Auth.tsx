@@ -53,7 +53,15 @@ export default function Auth() {
       });
       if (result.error) {
         toast.error('Google sign-in failed. Please try again.');
+        setIsGoogleLoading(false);
+        return;
       }
+      if (result.redirected) {
+        // Browser will redirect to Google — don't reset loading
+        return;
+      }
+      // Session was set successfully, navigate to dashboard
+      navigate('/dashboard', { replace: true });
     } catch {
       toast.error('Google sign-in failed. Please try again.');
     }
