@@ -64,10 +64,11 @@ serve(async (req) => {
 
     if (usage.browser_tasks_used >= usage.browser_tasks_limit) {
       return new Response(JSON.stringify({
-        error: `You've reached your monthly limit of ${usage.browser_tasks_limit} browser tasks. Please upgrade your plan to continue.`,
+        error: 'quota_exceeded',
+        message: `You've reached your monthly limit of ${usage.browser_tasks_limit} browser tasks. Please upgrade your plan to continue.`,
         limit_exceeded: true
       }), {
-        status: 429,
+        status: 402,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
