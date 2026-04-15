@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Save, Eye, EyeOff, Crown, RefreshCw, Settings2, BarChart3, Shield, FileUp, Book, Globe, Bot, CheckCircle2, Unlink, Brain } from 'lucide-react';
+import { ArrowLeft, Save, Eye, EyeOff, Crown, RefreshCw, Settings2, BarChart3, Shield, Book, Globe, Bot, CheckCircle2, Unlink, Brain, Key, Plug, BookOpen } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
@@ -15,34 +15,43 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { AnalyticsDashboard } from '@/components/settings/AnalyticsDashboard';
 import { SecurityScanner } from '@/components/settings/SecurityScanner';
 import { DocumentationSearch } from '@/components/settings/DocumentationSearch';
-import { DocumentParser } from '@/components/settings/DocumentParser';
-import { WebScraper } from '@/components/settings/WebScraper';
 import WorkflowAgentPanel from '@/components/agents/WorkflowAgentPanel';
 import { AgentMemoryPanel } from '@/components/settings/AgentMemoryPanel';
 import { KnowledgeBasePanel } from '@/components/settings/KnowledgeBasePanel';
 
+type KeyProvider = 'browserUse' | 'anthropic' | 'e2b' | 'firecrawl' | 'openai';
+
+const API_KEY_FIELDS: { id: KeyProvider; provider: string; label: string; placeholder: string }[] = [
+  { id: 'browserUse', provider: 'browser_use', label: 'Browser Use API Key', placeholder: 'bu-...' },
+  { id: 'anthropic', provider: 'anthropic', label: 'Anthropic API Key', placeholder: 'sk-ant-...' },
+  { id: 'e2b', provider: 'e2b', label: 'E2B API Key (Code Sandbox)', placeholder: 'e2b_...' },
+  { id: 'firecrawl', provider: 'firecrawl', label: 'Firecrawl API Key', placeholder: 'fc-...' },
+  { id: 'openai', provider: 'openai', label: 'OpenAI API Key', placeholder: 'sk-...' },
+];
+
+function maskKey(key: string): string {
+  if (!key || key.length < 8) return key;
+  const prefix = key.slice(0, key.indexOf('-') + 1 || 3);
+  const suffix = key.slice(-4);
+  return `${prefix}...${suffix}`;
+}
+
 export default function Settings() {
   const { user, signOut } = useAuth();
-  const { 
-    tier, 
-    subscribed, 
-    subscriptionEnd, 
-    canUseOwnKeys,
-    chatMessagesUsed,
-    chatMessagesLimit,
-    browserTasksUsed,
-    browserTasksLimit,
-    codeExecutionsUsed,
-    codeExecutionsLimit,
-    getUsagePercentage,
-    refreshSubscription
+  const {
+    tier, subscribed, subscriptionEnd, canUseOwnKeys,
+    chatMessagesUsed, chatMessagesLimit,
+    browserTasksUsed, browserTasksLimit,
+    codeExecutionsUsed, codeExecutionsLimit,
+    getUsagePercentage, refreshSubscription,
   } = useSubscription();
   const navigate = useNavigate();
-  const [showKeys, setShowKeys] = useState({ browserUse: false, anthropic: false, e2b: false });
-  const [apiKeys, setApiKeys] = useState({
-    browserUse: '',
-    anthropic: '',
-    e2b: '',
+
+  const [showKeys, setShowKeys] = useState<Record<KeyProvider, boolean>>({
+    browserUse: false, anthropic: false, e2b: false, firecrawl: false, openai: false,
+  });
+  const [apiKeys, setApiKeys] = useState<Record<KeyProvider, string>>({
+    browserUse: '', anthropic: '', e2b: '', firecrawl: '', openai: '',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [managingSubscription, setManagingSubscription] = useState(false);
@@ -50,6 +59,7 @@ export default function Settings() {
   const [connectingGoogle, setConnectingGoogle] = useState(false);
   const [pageReady, setPageReady] = useState(false);
 
+  // Google integration
   const loadGoogleIntegration = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase
@@ -58,16 +68,11 @@ export default function Settings() {
       .eq('user_id', user.id)
       .eq('provider', 'google')
       .maybeSingle();
-    if (data) {
-      setGoogleIntegration({ connected: true, provider_email: (data as any).provider_email });
-    } else {
-      setGoogleIntegration({ connected: false, provider_email: null });
-    }
+    setGoogleIntegration(data ? { connected: true, provider_email: (data as any).provider_email } : { connected: false, provider_email: null });
   }, [user]);
 
   useEffect(() => {
     loadGoogleIntegration();
-    // Listen for OAuth popup callback
     const handler = (e: MessageEvent) => {
       if (e.data?.type === 'google-oauth-success') {
         toast.success('Google account connected!');
@@ -83,90 +88,48 @@ export default function Settings() {
     setConnectingGoogle(true);
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
-    if (!token) {
-      setConnectingGoogle(false);
-      return;
-    }
+    if (!token) { setConnectingGoogle(false); return; }
     const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-oauth/authorize?token=${token}`;
     const popup = window.open(url, 'google-oauth', 'width=600,height=700,popup=yes');
-    // Poll for popup close
     const interval = setInterval(() => {
-      if (popup?.closed) {
-        clearInterval(interval);
-        setConnectingGoogle(false);
-        loadGoogleIntegration();
-      }
+      if (popup?.closed) { clearInterval(interval); setConnectingGoogle(false); loadGoogleIntegration(); }
     }, 500);
   };
 
   const handleDisconnectGoogle = async () => {
     if (!user) return;
-    await supabase
-      .from('user_integrations' as any)
-      .delete()
-      .eq('user_id', user.id)
-      .eq('provider', 'google');
+    await supabase.from('user_integrations' as any).delete().eq('user_id', user.id).eq('provider', 'google');
     setGoogleIntegration({ connected: false, provider_email: null });
     toast.success('Google account disconnected');
   };
 
-  useEffect(() => {
-    if (canUseOwnKeys) {
-      loadApiKeys();
-    }
-  }, [canUseOwnKeys]);
+  // API Keys
+  useEffect(() => { if (canUseOwnKeys) loadApiKeys(); }, [canUseOwnKeys]);
 
   const loadApiKeys = async () => {
     if (!user) return;
-
-    const { data, error } = await supabase
-      .from('api_keys')
-      .select('provider, encrypted_key')
-      .eq('user_id', user.id);
-
-    if (error) {
-      toast.error('Failed to load API keys');
-      return;
+    const { data, error } = await supabase.from('api_keys').select('provider, encrypted_key').eq('user_id', user.id);
+    if (error) { toast.error('Failed to load API keys'); return; }
+    const keys: Record<KeyProvider, string> = { browserUse: '', anthropic: '', e2b: '', firecrawl: '', openai: '' };
+    for (const item of data || []) {
+      const field = API_KEY_FIELDS.find(f => f.provider === item.provider);
+      if (field) keys[field.id] = item.encrypted_key;
     }
-
-    const keys = data?.reduce((acc, item) => {
-      if (item.provider === 'browser_use') {
-        acc.browserUse = item.encrypted_key;
-      } else if (item.provider === 'anthropic') {
-        acc.anthropic = item.encrypted_key;
-      } else if (item.provider === 'e2b') {
-        acc.e2b = item.encrypted_key;
-      }
-      return acc;
-    }, { browserUse: '', anthropic: '', e2b: '' });
-
-    setApiKeys(keys || { browserUse: '', anthropic: '', e2b: '' });
+    setApiKeys(keys);
   };
 
   const handleSaveApiKeys = async () => {
     if (!user) return;
     setIsLoading(true);
-
     try {
-      const keysToSave = [
-        { provider: 'browser_use', key: apiKeys.browserUse },
-        { provider: 'anthropic', key: apiKeys.anthropic },
-        { provider: 'e2b', key: apiKeys.e2b },
-      ].filter(k => k.key);
-
+      const keysToSave = API_KEY_FIELDS.filter(f => apiKeys[f.id]).map(f => ({ provider: f.provider, key: apiKeys[f.id] }));
       for (const { provider, key } of keysToSave) {
-        const { error } = await supabase.functions.invoke('manage-api-keys', {
-          body: { action: 'save', provider, key },
-        });
+        const { error } = await supabase.functions.invoke('manage-api-keys', { body: { action: 'save', provider, key } });
         if (error) throw error;
       }
-
       toast.success('API keys saved successfully');
-    } catch (error) {
-      toast.error('Failed to save API keys');
-    } finally {
-      setIsLoading(false);
-    }
+    } catch { toast.error('Failed to save API keys'); }
+    finally { setIsLoading(false); }
   };
 
   const handleManageSubscription = async () => {
@@ -174,22 +137,15 @@ export default function Settings() {
     try {
       const { data, error } = await supabase.functions.invoke('customer-portal');
       if (error) throw error;
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      }
-    } catch (error) {
-      console.error('Portal error:', error);
-      toast.error('Unable to open subscription portal');
-    } finally {
-      setManagingSubscription(false);
-    }
+      if (data?.url) window.open(data.url, '_blank');
+    } catch { toast.error('Unable to open subscription portal'); }
+    finally { setManagingSubscription(false); }
   };
 
   const getTierBadgeVariant = () => {
-    if (tier === 'lifetime') return 'default';
-    if (tier === 'pro') return 'secondary';
-    if (tier === 'starter') return 'outline';
-    return 'outline';
+    if (tier === 'lifetime') return 'default' as const;
+    if (tier === 'pro') return 'secondary' as const;
+    return 'outline' as const;
   };
 
   useEffect(() => {
@@ -212,12 +168,7 @@ export default function Settings() {
     <div className="min-h-screen bg-background" style={{ background: 'linear-gradient(135deg, hsl(var(--gradient-from) / 0.03), hsl(var(--gradient-to) / 0.02))' }}>
       <header className="border-b border-white/10 glass">
         <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/dashboard')}
-            className="text-white hover:bg-white/10"
-          >
+          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')} className="text-white hover:bg-white/10">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-2xl font-bold text-white">Settings</h1>
@@ -225,19 +176,19 @@ export default function Settings() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <Tabs defaultValue="account" className="space-y-6">
-          <TabsList className="glass-strong border-white/20 flex w-full max-w-4xl overflow-x-auto no-scrollbar md:grid md:grid-cols-8">
-            <TabsTrigger value="account" className="flex items-center gap-2 shrink-0">
-              <Settings2 className="h-4 w-4" />
-              <span className="hidden sm:inline">Account</span>
+        <Tabs defaultValue="plan" className="space-y-6">
+          <TabsList className="glass-strong border-white/20 flex w-full max-w-5xl overflow-x-auto no-scrollbar md:grid md:grid-cols-10">
+            <TabsTrigger value="plan" className="flex items-center gap-2 shrink-0">
+              <Crown className="h-4 w-4" />
+              <span className="hidden sm:inline">Plan</span>
             </TabsTrigger>
-            <TabsTrigger value="agents" className="flex items-center gap-2 shrink-0">
-              <Bot className="h-4 w-4" />
-              <span className="hidden sm:inline">Agents</span>
+            <TabsTrigger value="keys" className="flex items-center gap-2 shrink-0">
+              <Key className="h-4 w-4" />
+              <span className="hidden sm:inline">Keys</span>
             </TabsTrigger>
-            <TabsTrigger value="memory" className="flex items-center gap-2 shrink-0">
-              <Brain className="h-4 w-4" />
-              <span className="hidden sm:inline">Memory</span>
+            <TabsTrigger value="integrations" className="flex items-center gap-2 shrink-0">
+              <Plug className="h-4 w-4" />
+              <span className="hidden sm:inline">Integrations</span>
             </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-2 shrink-0">
               <BarChart3 className="h-4 w-4" />
@@ -247,31 +198,37 @@ export default function Settings() {
               <Shield className="h-4 w-4" />
               <span className="hidden sm:inline">Security</span>
             </TabsTrigger>
-            <TabsTrigger value="scraper" className="flex items-center gap-2 shrink-0">
-              <Globe className="h-4 w-4" />
-              <span className="hidden sm:inline">Scraper</span>
-            </TabsTrigger>
-            <TabsTrigger value="documents" className="flex items-center gap-2 shrink-0">
-              <FileUp className="h-4 w-4" />
-              <span className="hidden sm:inline">Documents</span>
-            </TabsTrigger>
             <TabsTrigger value="docs" className="flex items-center gap-2 shrink-0">
               <Book className="h-4 w-4" />
               <span className="hidden sm:inline">Docs</span>
             </TabsTrigger>
+            <TabsTrigger value="agents" className="flex items-center gap-2 shrink-0">
+              <Bot className="h-4 w-4" />
+              <span className="hidden sm:inline">Agents</span>
+            </TabsTrigger>
+            <TabsTrigger value="memory" className="flex items-center gap-2 shrink-0">
+              <Brain className="h-4 w-4" />
+              <span className="hidden sm:inline">Memory</span>
+            </TabsTrigger>
+            <TabsTrigger value="knowledge" className="flex items-center gap-2 shrink-0">
+              <BookOpen className="h-4 w-4" />
+              <span className="hidden sm:inline">Knowledge</span>
+            </TabsTrigger>
+            <TabsTrigger value="account" className="flex items-center gap-2 shrink-0">
+              <Settings2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Account</span>
+            </TabsTrigger>
           </TabsList>
 
-          {/* Account Tab */}
-          <TabsContent value="account" className="max-w-2xl space-y-6">
+          {/* Plan & Usage */}
+          <TabsContent value="plan" className="max-w-2xl space-y-6">
             <Card className="glass-strong border-white/20">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   {tier === 'lifetime' && <Crown className="h-5 w-5 text-yellow-500" />}
-                  Subscription
+                  Plan & Usage
                 </CardTitle>
-                <CardDescription>
-                  Manage your subscription and usage
-                </CardDescription>
+                <CardDescription>Current billing period usage and subscription management</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-center justify-between">
@@ -282,160 +239,110 @@ export default function Settings() {
                         {tier === 'lifetime' ? 'Lifetime' : tier.charAt(0).toUpperCase() + tier.slice(1)}
                       </Badge>
                       {subscribed && subscriptionEnd && tier !== 'lifetime' && (
-                        <p className="text-xs text-muted-foreground">
-                          Renews {new Date(subscriptionEnd).toLocaleDateString()}
-                        </p>
+                        <p className="text-xs text-muted-foreground">Renews {new Date(subscriptionEnd).toLocaleDateString()}</p>
                       )}
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => refreshSubscription()}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => refreshSubscription()}>
                     <RefreshCw className="h-4 w-4" />
                   </Button>
                 </div>
 
                 <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <Label>Chat Messages</Label>
-                      <span className="text-muted-foreground">
-                        {chatMessagesUsed} / {chatMessagesLimit}
-                      </span>
+                  {[
+                    { label: 'Chat Messages', used: chatMessagesUsed, limit: chatMessagesLimit },
+                    { label: 'Browser Tasks', used: browserTasksUsed, limit: browserTasksLimit },
+                    { label: 'Code Executions', used: codeExecutionsUsed, limit: codeExecutionsLimit },
+                  ].map(q => (
+                    <div key={q.label}>
+                      <div className="flex justify-between text-sm mb-2">
+                        <Label>{q.label}</Label>
+                        <span className="text-muted-foreground">{q.used} / {q.limit}</span>
+                      </div>
+                      <Progress value={getUsagePercentage(q.used, q.limit)} />
                     </div>
-                    <Progress value={getUsagePercentage(chatMessagesUsed, chatMessagesLimit)} />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <Label>Browser Tasks</Label>
-                      <span className="text-muted-foreground">
-                        {browserTasksUsed} / {browserTasksLimit}
-                      </span>
-                    </div>
-                    <Progress value={getUsagePercentage(browserTasksUsed, browserTasksLimit)} />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <Label>Code Executions</Label>
-                      <span className="text-muted-foreground">
-                        {codeExecutionsUsed} / {codeExecutionsLimit}
-                      </span>
-                    </div>
-                    <Progress value={getUsagePercentage(codeExecutionsUsed, codeExecutionsLimit)} />
-                  </div>
+                  ))}
                 </div>
 
                 <div className="flex gap-2">
                   {subscribed && tier !== 'lifetime' && (
-                    <Button
-                      variant="outline"
-                      onClick={handleManageSubscription}
-                      disabled={managingSubscription}
-                      className="flex-1"
-                    >
+                    <Button variant="outline" onClick={handleManageSubscription} disabled={managingSubscription} className="flex-1">
                       Manage Subscription
                     </Button>
                   )}
-                  {tier === 'free' || !subscribed ? (
-                    <Button
-                      onClick={() => navigate('/pricing')}
-                      className="flex-1"
-                    >
-                      Upgrade Plan
-                    </Button>
-                  ) : null}
+                  {(tier === 'free' || !subscribed) && (
+                    <Button onClick={() => navigate('/pricing')} className="flex-1">Upgrade Plan</Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
 
-            {canUseOwnKeys && (
-              <Card className="glass-strong border-white/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Crown className="h-5 w-5 text-yellow-500" />
-                    API Keys (Lifetime Tier)
-                  </CardTitle>
-                  <CardDescription>
-                    Use your own API keys for unlimited usage
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="browser-use-key">Browser Use API Key</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="browser-use-key"
-                        type={showKeys.browserUse ? 'text' : 'password'}
-                        value={apiKeys.browserUse}
-                        onChange={(e) => setApiKeys({ ...apiKeys, browserUse: e.target.value })}
-                        placeholder="Enter your Browser Use API key"
-                      />
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setShowKeys({ ...showKeys, browserUse: !showKeys.browserUse })}
-                      >
-                        {showKeys.browserUse ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="anthropic-key">Anthropic API Key</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="anthropic-key"
-                        type={showKeys.anthropic ? 'text' : 'password'}
-                        value={apiKeys.anthropic}
-                        onChange={(e) => setApiKeys({ ...apiKeys, anthropic: e.target.value })}
-                        placeholder="Enter your Anthropic API key"
-                      />
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setShowKeys({ ...showKeys, anthropic: !showKeys.anthropic })}
-                      >
-                        {showKeys.anthropic ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="e2b-key">E2B API Key (Code Sandbox)</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="e2b-key"
-                        type={showKeys.e2b ? 'text' : 'password'}
-                        value={apiKeys.e2b}
-                        onChange={(e) => setApiKeys({ ...apiKeys, e2b: e.target.value })}
-                        placeholder="Enter your E2B API key"
-                      />
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setShowKeys({ ...showKeys, e2b: !showKeys.e2b })}
-                      >
-                        {showKeys.e2b ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <Button onClick={handleSaveApiKeys} disabled={isLoading} className="w-full">
-                    <Save className="mr-2 h-4 w-4" />
-                    Save API Keys
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Integrations */}
+          {/* API Keys */}
+          <TabsContent value="keys" className="max-w-2xl">
             <Card className="glass-strong border-white/20">
               <CardHeader>
-                <CardTitle>Integrations</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Key className="h-5 w-5" />
+                  API Keys
+                </CardTitle>
+                <CardDescription>
+                  {canUseOwnKeys
+                    ? 'Use your own API keys for unlimited usage. Keys are encrypted before storage.'
+                    : 'Upgrade to Lifetime tier to use your own API keys.'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {!canUseOwnKeys ? (
+                  <div className="text-center py-8 space-y-3">
+                    <Key className="h-10 w-10 mx-auto text-muted-foreground/30" />
+                    <p className="text-sm text-muted-foreground">Custom API keys are available on the Lifetime plan.</p>
+                    <Button size="sm" variant="outline" onClick={() => navigate('/pricing')}>View Plans</Button>
+                  </div>
+                ) : (
+                  <>
+                    {API_KEY_FIELDS.map(field => (
+                      <div key={field.id} className="space-y-2">
+                        <Label htmlFor={`key-${field.id}`}>{field.label}</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id={`key-${field.id}`}
+                            type={showKeys[field.id] ? 'text' : 'password'}
+                            value={apiKeys[field.id]}
+                            onChange={(e) => setApiKeys(prev => ({ ...prev, [field.id]: e.target.value }))}
+                            placeholder={field.placeholder}
+                          />
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setShowKeys(prev => ({ ...prev, [field.id]: !prev[field.id] }))}
+                          >
+                            {showKeys[field.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                        {apiKeys[field.id] && !showKeys[field.id] && (
+                          <p className="text-[10px] text-muted-foreground font-mono">{maskKey(apiKeys[field.id])}</p>
+                        )}
+                      </div>
+                    ))}
+                    <Button onClick={handleSaveApiKeys} disabled={isLoading} className="w-full">
+                      <Save className="mr-2 h-4 w-4" />
+                      Save API Keys
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Integrations */}
+          <TabsContent value="integrations" className="max-w-2xl">
+            <Card className="glass-strong border-white/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Plug className="h-5 w-5" />
+                  Integrations
+                </CardTitle>
                 <CardDescription>Connect external services to extend agent capabilities</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -454,9 +361,7 @@ export default function Settings() {
                       {googleIntegration.connected ? (
                         <div className="flex items-center gap-1.5">
                           <CheckCircle2 className="h-3 w-3 text-green-500" />
-                          <span className="text-xs text-muted-foreground">
-                            {googleIntegration.provider_email || 'Connected'}
-                          </span>
+                          <span className="text-xs text-muted-foreground">{googleIntegration.provider_email || 'Connected'}</span>
                         </div>
                       ) : (
                         <p className="text-xs text-muted-foreground">Create docs from research results</p>
@@ -476,7 +381,40 @@ export default function Settings() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
 
+          {/* Analytics */}
+          <TabsContent value="analytics" className="max-w-4xl">
+            <AnalyticsDashboard />
+          </TabsContent>
+
+          {/* Security */}
+          <TabsContent value="security" className="max-w-2xl">
+            <SecurityScanner />
+          </TabsContent>
+
+          {/* Docs */}
+          <TabsContent value="docs" className="max-w-2xl">
+            <DocumentationSearch />
+          </TabsContent>
+
+          {/* Agents */}
+          <TabsContent value="agents" className="max-w-5xl">
+            <WorkflowAgentPanel />
+          </TabsContent>
+
+          {/* Memory */}
+          <TabsContent value="memory" className="max-w-2xl">
+            <AgentMemoryPanel />
+          </TabsContent>
+
+          {/* Knowledge Base */}
+          <TabsContent value="knowledge" className="max-w-2xl">
+            <KnowledgeBasePanel />
+          </TabsContent>
+
+          {/* Account */}
+          <TabsContent value="account" className="max-w-2xl">
             <Card className="glass-strong border-white/20">
               <CardHeader>
                 <CardTitle>Account</CardTitle>
@@ -492,40 +430,6 @@ export default function Settings() {
                 </Button>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          {/* Agents Tab */}
-          <TabsContent value="agents" className="max-w-5xl">
-            <WorkflowAgentPanel />
-          </TabsContent>
-
-          {/* Memory Tab */}
-          <TabsContent value="memory" className="max-w-2xl space-y-6">
-            <AgentMemoryPanel />
-            <KnowledgeBasePanel />
-          </TabsContent>
-
-          {/* Analytics Tab */}
-          <TabsContent value="analytics" className="max-w-4xl">
-            <AnalyticsDashboard />
-          </TabsContent>
-
-          {/* Security Tab */}
-          <TabsContent value="security" className="max-w-2xl">
-            <SecurityScanner />
-          </TabsContent>
-          <TabsContent value="scraper" className="max-w-2xl">
-            <WebScraper />
-          </TabsContent>
-
-          {/* Documents Tab */}
-          <TabsContent value="documents" className="max-w-2xl">
-            <DocumentParser />
-          </TabsContent>
-
-          {/* Docs Tab */}
-          <TabsContent value="docs" className="max-w-2xl">
-            <DocumentationSearch />
           </TabsContent>
         </Tabs>
       </main>
