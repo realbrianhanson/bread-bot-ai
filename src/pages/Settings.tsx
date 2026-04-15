@@ -148,37 +148,17 @@ export default function Settings() {
     setIsLoading(true);
 
     try {
-      if (apiKeys.browserUse) {
-        await supabase
-          .from('api_keys')
-          .upsert({
-            user_id: user.id,
-            provider: 'browser_use',
-            encrypted_key: apiKeys.browserUse,
-            is_active: true,
-          });
-      }
+      const keysToSave = [
+        { provider: 'browser_use', key: apiKeys.browserUse },
+        { provider: 'anthropic', key: apiKeys.anthropic },
+        { provider: 'e2b', key: apiKeys.e2b },
+      ].filter(k => k.key);
 
-      if (apiKeys.anthropic) {
-        await supabase
-          .from('api_keys')
-          .upsert({
-            user_id: user.id,
-            provider: 'anthropic',
-            encrypted_key: apiKeys.anthropic,
-            is_active: true,
-          });
-      }
-
-      if (apiKeys.e2b) {
-        await supabase
-          .from('api_keys')
-          .upsert({
-            user_id: user.id,
-            provider: 'e2b',
-            encrypted_key: apiKeys.e2b,
-            is_active: true,
-          });
+      for (const { provider, key } of keysToSave) {
+        const { error } = await supabase.functions.invoke('manage-api-keys', {
+          body: { action: 'save', provider, apiKey: key },
+        });
+        if (error) throw error;
       }
 
       toast.success('API keys saved successfully');
