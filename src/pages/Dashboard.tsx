@@ -285,58 +285,60 @@ const Dashboard = () => {
 
   const EmptyState = ({ mobile = false }: { mobile?: boolean }) => (
     <div className="h-full flex items-center justify-center p-6 overflow-y-auto">
-      <div className={`${mobile ? 'max-w-sm' : 'max-w-md'} w-full flex flex-col items-center text-center gap-6`}>
-        {/* Animated logo */}
-        <div className="relative">
-          <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl animate-pulse-glow" />
-          <GarlicLogo size={mobile ? 48 : 56} className="relative" />
+      <div className={`w-full ${mobile ? 'max-w-sm flex flex-col gap-6' : 'max-w-3xl grid grid-cols-2 gap-10 items-start'}`}>
+        {/* Left: CTA + Quick Starts */}
+        <div className="flex flex-col items-center text-center gap-6">
+          <div className="relative">
+            <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl animate-pulse-glow" />
+            <GarlicLogo size={mobile ? 48 : 56} className="relative" />
+          </div>
+
+          <div>
+            <h2 className={`${mobile ? 'text-xl' : 'text-2xl'} font-bold tracking-tight text-foreground`}>
+              What should I automate?
+            </h2>
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              Describe a browser task, ask me to scrape data, or generate an app.
+            </p>
+          </div>
+
+          <Button onClick={handleNewConversation} size="lg" className="w-full shadow-glow hover:shadow-glow-lg transition-all duration-300">
+            <MessageSquarePlus className="h-4 w-4 mr-2" />
+            Start New Chat
+          </Button>
+
+          <div className="flex flex-col gap-2 w-full">
+            {quickStartExamples.map((example) => (
+              <Button
+                key={example}
+                variant="outline"
+                className="w-full text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/5 justify-start gap-2.5 text-sm transition-all"
+                onClick={() => handleQuickStart(example)}
+              >
+                <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary/60" />
+                {example}
+              </Button>
+            ))}
+          </div>
         </div>
 
-        <div>
-          <h2 className={`${mobile ? 'text-xl' : 'text-2xl'} font-bold tracking-tight text-foreground`}>
-            What should I automate?
-          </h2>
-          <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-            Describe a browser task, ask me to scrape data, or generate an app.
-          </p>
-        </div>
-
-        <Button onClick={handleNewConversation} size="lg" className="w-full shadow-glow hover:shadow-glow-lg transition-all duration-300">
-          <MessageSquarePlus className="h-4 w-4 mr-2" />
-          Start New Chat
-        </Button>
-
-        <div className="flex flex-col gap-2 w-full">
-          {quickStartExamples.map((example) => (
-            <Button
-              key={example}
-              variant="outline"
-              className="w-full text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/5 justify-start gap-2.5 text-sm transition-all"
-              onClick={() => handleQuickStart(example)}
-            >
-              <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary/60" />
-              {example}
-            </Button>
-          ))}
-        </div>
-
-        {/* Recent Chats */}
+        {/* Right: Recent Chats */}
         {recentChats.length > 0 && (
-          <div className="w-full text-left">
-            <div className="flex items-center gap-1.5 mb-2">
+          <div className={`w-full ${mobile ? '' : 'pt-2'}`}>
+            <div className="flex items-center gap-1.5 mb-3">
               <Clock className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recent Chats</span>
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-0.5 rounded-xl border border-border/50 bg-card/50 p-1.5">
               {recentChats.map((conv) => (
                 <button
                   key={conv.id}
                   onClick={() => handleSelectConversation(conv.id)}
-                  className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors truncate flex items-center gap-2"
+                  className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors flex items-center gap-2"
                 >
                   <MessageCircle className="h-3.5 w-3.5 shrink-0 text-primary/50" />
-                  <span className="truncate">{conv.name}</span>
-                  <span className="ml-auto text-[10px] text-muted-foreground/60 shrink-0">
+                  <span className="truncate flex-1">{conv.name}</span>
+                  <span className="text-[10px] text-muted-foreground/60 shrink-0">
                     {new Date(conv.updated_at || conv.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                   </span>
                 </button>
