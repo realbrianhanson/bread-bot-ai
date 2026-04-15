@@ -15,6 +15,8 @@ import NotFound from "./pages/NotFound";
 import LeadCapture from "./pages/LeadCapture";
 import SharedPreview from "./pages/SharedPreview";
 import PublishedPage from "./pages/PublishedPage";
+import WorkflowsPage from "./pages/Workflows";
+import WorkflowEditor from "./pages/WorkflowEditor";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +77,22 @@ function AnimatedRoutes() {
           element={
             <ProtectedRoute>
               <PageWrapper><Settings /></PageWrapper>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/workflows"
+          element={
+            <ProtectedRoute>
+              <PageWrapper><WorkflowsPage /></PageWrapper>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/workflows/:id"
+          element={
+            <ProtectedRoute>
+              <PageWrapper><WorkflowEditor /></PageWrapper>
             </ProtectedRoute>
           }
         />
