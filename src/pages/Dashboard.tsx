@@ -110,10 +110,11 @@ const Dashboard = () => {
   }, [user]);
 
   useEffect(() => {
+    if (!user) return;
     supabase.functions.invoke('honcho-proxy', { body: { action: 'status' } })
       .then(({ data }) => setMemoryActive(data?.available ?? false))
       .catch(() => setMemoryActive(false));
-  }, []);
+  }, [user]);
 
   const handleSendWithPlanner = async (content: string, options?: { ghlMode?: boolean; extraContext?: string }) => {
     if (content.trimStart().startsWith("/plan ")) {
