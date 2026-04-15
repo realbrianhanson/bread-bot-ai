@@ -111,8 +111,7 @@ serve(async (req) => {
       const errorText = await stopResponse.text();
       console.error('Failed to stop Browser Use task:', errorText);
       return new Response(JSON.stringify({ 
-        error: 'Failed to stop task',
-        details: errorText 
+        error: 'Failed to stop task'
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

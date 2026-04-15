@@ -78,10 +78,16 @@ export default function Settings() {
     return () => window.removeEventListener('message', handler);
   }, [loadGoogleIntegration]);
 
-  const handleConnectGoogle = () => {
+  const handleConnectGoogle = async () => {
     if (!user) return;
     setConnectingGoogle(true);
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-oauth/authorize?user_id=${user.id}`;
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) {
+      setConnectingGoogle(false);
+      return;
+    }
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-oauth/authorize?token=${token}`;
     const popup = window.open(url, 'google-oauth', 'width=600,height=700,popup=yes');
     // Poll for popup close
     const interval = setInterval(() => {
@@ -142,37 +148,17 @@ export default function Settings() {
     setIsLoading(true);
 
     try {
-      if (apiKeys.browserUse) {
-        await supabase
-          .from('api_keys')
-          .upsert({
-            user_id: user.id,
-            provider: 'browser_use',
-            encrypted_key: apiKeys.browserUse,
-            is_active: true,
-          });
-      }
+      const keysToSave = [
+        { provider: 'browser_use', key: apiKeys.browserUse },
+        { provider: 'anthropic', key: apiKeys.anthropic },
+        { provider: 'e2b', key: apiKeys.e2b },
+      ].filter(k => k.key);
 
-      if (apiKeys.anthropic) {
-        await supabase
-          .from('api_keys')
-          .upsert({
-            user_id: user.id,
-            provider: 'anthropic',
-            encrypted_key: apiKeys.anthropic,
-            is_active: true,
-          });
-      }
-
-      if (apiKeys.e2b) {
-        await supabase
-          .from('api_keys')
-          .upsert({
-            user_id: user.id,
-            provider: 'e2b',
-            encrypted_key: apiKeys.e2b,
-            is_active: true,
-          });
+      for (const { provider, key } of keysToSave) {
+        const { error } = await supabase.functions.invoke('manage-api-keys', {
+          body: { action: 'save', provider, key },
+        });
+        if (error) throw error;
       }
 
       toast.success('API keys saved successfully');

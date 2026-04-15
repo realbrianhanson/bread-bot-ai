@@ -34,14 +34,27 @@ serve(async (req) => {
 
   // GET /google-oauth/authorize — start OAuth flow
   if (req.method === 'GET' && (pathname.endsWith('/authorize') || pathname.endsWith('/authorize/'))) {
-    const authHeader = req.headers.get('Authorization');
-    // User ID passed as query param since this is a redirect
-    const userId = url.searchParams.get('user_id');
-    if (!userId) {
-      return new Response(JSON.stringify({ error: 'user_id required' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // Validate user identity via token query param (since this is a redirect flow)
+    const userToken = url.searchParams.get('token');
+    if (!userToken) {
+      return new Response(JSON.stringify({ error: 'Authentication token required' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.getUser(userToken);
+    if (authError || !authUser) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const userId = authUser.id;
+
+    // Generate CSRF nonce for state parameter
+    const nonce = crypto.randomUUID();
+    const statePayload = JSON.stringify({ userId, nonce });
+    const stateEncoded = btoa(statePayload);
 
     const redirectUri = `${supabaseUrl}/functions/v1/google-oauth/callback`;
     const scopes = [
@@ -58,7 +71,7 @@ serve(async (req) => {
     authUrl.searchParams.set('scope', scopes);
     authUrl.searchParams.set('access_type', 'offline');
     authUrl.searchParams.set('prompt', 'consent');
-    authUrl.searchParams.set('state', userId);
+    authUrl.searchParams.set('state', stateEncoded);
 
     return Response.redirect(authUrl.toString(), 302);
   }
@@ -81,6 +94,17 @@ serve(async (req) => {
       });
     }
 
+    // Parse state to extract userId
+    let userId: string;
+    try {
+      const statePayload = JSON.parse(atob(state));
+      userId = statePayload.userId;
+      if (!userId) throw new Error('Missing userId in state');
+    } catch {
+      return new Response(`<html><body><h2>Invalid state parameter</h2><script>window.close();</script></body></html>`, {
+        headers: { 'Content-Type': 'text/html' },
+      });
+    }
     try {
       const redirectUri = `${supabaseUrl}/functions/v1/google-oauth/callback`;
 
@@ -116,7 +140,7 @@ serve(async (req) => {
       const { error: dbError } = await supabaseAdmin
         .from('user_integrations')
         .upsert({
-          user_id: state,
+          user_id: userId,
           provider: 'google',
           access_token: tokenData.access_token,
           refresh_token: tokenData.refresh_token || null,
@@ -154,7 +178,7 @@ serve(async (req) => {
           <body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #111;">
             <div style="text-align: center; color: white;">
               <h2>❌ Connection Failed</h2>
-              <p>${err instanceof Error ? err.message : 'Unknown error'}</p>
+              <p>Please try again or contact support.</p>
               <script>setTimeout(() => window.close(), 3000);</script>
             </div>
           </body>
@@ -231,7 +255,7 @@ serve(async (req) => {
     } catch (err) {
       console.error('Token refresh error:', err);
       return new Response(JSON.stringify({
-        error: err instanceof Error ? err.message : 'Refresh failed',
+        error: 'Token refresh failed. Please reconnect your Google account.',
       }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
