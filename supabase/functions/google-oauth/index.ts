@@ -34,14 +34,27 @@ serve(async (req) => {
 
   // GET /google-oauth/authorize — start OAuth flow
   if (req.method === 'GET' && (pathname.endsWith('/authorize') || pathname.endsWith('/authorize/'))) {
-    const authHeader = req.headers.get('Authorization');
-    // User ID passed as query param since this is a redirect
-    const userId = url.searchParams.get('user_id');
-    if (!userId) {
-      return new Response(JSON.stringify({ error: 'user_id required' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // Validate user identity via token query param (since this is a redirect flow)
+    const userToken = url.searchParams.get('token');
+    if (!userToken) {
+      return new Response(JSON.stringify({ error: 'Authentication token required' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.getUser(userToken);
+    if (authError || !authUser) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const userId = authUser.id;
+
+    // Generate CSRF nonce for state parameter
+    const nonce = crypto.randomUUID();
+    const statePayload = JSON.stringify({ userId, nonce });
+    const stateEncoded = btoa(statePayload);
 
     const redirectUri = `${supabaseUrl}/functions/v1/google-oauth/callback`;
     const scopes = [
@@ -58,7 +71,7 @@ serve(async (req) => {
     authUrl.searchParams.set('scope', scopes);
     authUrl.searchParams.set('access_type', 'offline');
     authUrl.searchParams.set('prompt', 'consent');
-    authUrl.searchParams.set('state', userId);
+    authUrl.searchParams.set('state', stateEncoded);
 
     return Response.redirect(authUrl.toString(), 302);
   }
