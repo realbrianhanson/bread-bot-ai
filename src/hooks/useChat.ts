@@ -836,6 +836,7 @@ Output the superior page as three code blocks: html, css, javascript — complet
           setIsStreaming(false);
           refreshSubscription();
         }
+        return;
       }
 
       // Detect conversational code execution patterns
