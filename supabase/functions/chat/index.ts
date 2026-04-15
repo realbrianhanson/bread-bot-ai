@@ -549,7 +549,12 @@ When the user's message includes sections labeled "CURRENT HTML:", "CURRENT CSS:
 
     // Only auto-detect if no design template is manually selected AND no cached category
     if (!clientDesignMd && !detectedCategory) {
-      const latestUserMsg = messages[messages.length - 1]?.content || '';
+      const lastMsg = messages[messages.length - 1];
+      const latestUserMsg = typeof lastMsg?.content === 'string'
+        ? lastMsg.content
+        : Array.isArray(lastMsg?.content)
+          ? lastMsg.content.find((b: any) => b.type === 'text')?.text || ''
+          : '';
       if (latestUserMsg && latestUserMsg.length > 10) {
         try {
           const classificationPrompt = `Classify this website request into ONE category. Return ONLY the category name, nothing else.\nCategories: saas, agency, ecommerce, healthcare, restaurant, real-estate, legal, beauty-spa, fitness, education, coaching, fintech, portfolio, nonprofit, event, local-business, general\nRequest: "${latestUserMsg}"`;
