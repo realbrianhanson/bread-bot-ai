@@ -220,38 +220,8 @@ export const useChat = (projectId?: string) => {
 
     loadMessages();
 
-    const channel = supabase
-      .channel(`messages-changes-${projectId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'messages',
-          filter: `project_id=eq.${projectId}`,
-        },
-        (payload) => {
-          const msg = payload.new as Message;
-          if (payload.eventType !== 'DELETE' && (payload.new as any).user_id !== user.id) return;
-
-          if (payload.eventType === 'INSERT') {
-            setMessages((prev) => {
-              if (prev.some(m => m.id === msg.id)) return prev;
-              return [...prev, msg];
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            const updated = payload.new as Message;
-            setMessages((prev) => prev.map((m) => m.id === updated.id ? updated : m));
-          } else if (payload.eventType === 'DELETE') {
-            setMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
-          }
-        }
-      )
-      .subscribe();
-
     return () => {
       isCancelled = true;
-      supabase.removeChannel(channel);
     };
   }, [user, projectId]);
 
