@@ -165,7 +165,7 @@ serve(async (req) => {
           })
           .eq('id', taskRecord.id);
 
-        return new Response(JSON.stringify({ error: 'Failed to create Browser Use task', details: errorText }), {
+        return new Response(JSON.stringify({ error: 'Failed to create Browser Use task' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
