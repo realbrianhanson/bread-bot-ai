@@ -64,31 +64,6 @@ export function MessageFeedback({
 
   return (
     <>
-      {/* Thumbs up/down buttons */}
-      <div className="flex items-center gap-1 mt-1">
-        <button
-          onClick={() => setThumbs(thumbs === 'up' ? null : 'up')}
-          className={cn(
-            'p-1 rounded-md transition-colors',
-            thumbs === 'up'
-              ? 'text-primary bg-primary/10'
-              : 'text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50'
-          )}
-        >
-          <ThumbsUp className="h-3 w-3" />
-        </button>
-        <button
-          onClick={() => setThumbs(thumbs === 'down' ? null : 'down')}
-          className={cn(
-            'p-1 rounded-md transition-colors',
-            thumbs === 'down'
-              ? 'text-destructive bg-destructive/10'
-              : 'text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50'
-          )}
-        >
-          <ThumbsDown className="h-3 w-3" />
-        </button>
-      </div>
 
       {/* Template save suggestion */}
       <AnimatePresence>
