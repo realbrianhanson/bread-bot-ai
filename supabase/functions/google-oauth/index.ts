@@ -178,7 +178,7 @@ serve(async (req) => {
           <body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #111;">
             <div style="text-align: center; color: white;">
               <h2>❌ Connection Failed</h2>
-              <p>${err instanceof Error ? err.message : 'Unknown error'}</p>
+              <p>Please try again or contact support.</p>
               <script>setTimeout(() => window.close(), 3000);</script>
             </div>
           </body>
