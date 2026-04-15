@@ -820,6 +820,20 @@ Output the superior page as three code blocks: html, css, javascript — complet
         return;
       }
 
+      // Handle /python and /js aliases for code execution
+      if (content.trim().startsWith('/python ') || content.trim().startsWith('/js ')) {
+        const isPython = content.trim().startsWith('/python ');
+        const code = content.trim().slice(isPython ? 8 : 4);
+        setIsLoading(true);
+        try {
+          await executeCode(code, content);
+        } finally {
+          setIsLoading(false);
+          refreshSubscription();
+        }
+        return;
+      }
+
       // Handle /slides command — route to orchestrator with presentation hint
       if (content.trim().startsWith('/slides ')) {
         const topic = content.trim().slice(8);

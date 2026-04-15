@@ -26,9 +26,11 @@ import TaskHistory from "@/components/chat/TaskHistory";
 import BuildHistory from "@/components/chat/BuildHistory";
 import ProfileSelector from "@/components/chat/ProfileSelector";
 import LiveBrowserView from "@/components/chat/LiveBrowserView";
+import CodeSessionPanel from "@/components/chat/CodeSessionPanel";
 import { useChat } from "@/hooks/useChat";
 import { useConversations } from "@/hooks/useConversations";
 import { useBrowserTask } from "@/hooks/useBrowserTask";
+import { useCodeExecution } from "@/hooks/useCodeExecution";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { parseCodeFromMessages } from "@/lib/codeParser";
 import { hasRenderablePreviewContent } from "@/lib/previewContent";
@@ -60,6 +62,7 @@ const Dashboard = () => {
   const { publish, isPublishing, publishedSlug } = usePublish(activeCode, activeConversationId || undefined);
   const { conversations, createConversation, deleteConversation, renameConversation, autoTitleConversation } = useConversations();
   const { currentTask, isExecuting, executeTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask();
+  const { entries: codeEntries, isExecuting: isCodeExecuting, clearEntries: clearCodeEntries, sandboxId: codeSandboxId } = useCodeExecution(activeConversationId || undefined);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const { plan, isPlanning, generatePlan, updateStep, removeStep, addStep, reorderSteps, clearPlan } = useTaskPlanner();
 
@@ -668,6 +671,21 @@ const Dashboard = () => {
                     deployments={currentTask.deployments} notifications={currentTask.notifications}
                     onAcceptTakeover={pauseTask} onDeclineTakeover={() => {}}
                   />
+                </div>
+              ) : codeEntries.length > 0 || isCodeExecuting ? (
+                <div className="h-full flex flex-col">
+                  <CodeSessionPanel
+                    entries={codeEntries}
+                    isExecuting={isCodeExecuting}
+                    sandboxId={codeSandboxId}
+                    onClear={clearCodeEntries}
+                  />
+                  {/* Still show preview below if available */}
+                  {hasPreviewContent && (
+                    <div className="flex-1 min-h-0 border-t border-border/50">
+                      <CodePreview key={activeConversationId || 'desktop-preview-below'} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
+                    </div>
+                  )}
                 </div>
               ) : isGhlMode && ghlCode ? (
                 <GHLCodeOutput
