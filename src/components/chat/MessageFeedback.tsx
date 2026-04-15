@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ThumbsUp, ThumbsDown, Sparkles, X } from 'lucide-react';
+import { Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { SaveTemplateDialog } from './SaveTemplateDialog';
 import { hasCodeBlocks, extractCodeFromResponse } from '@/lib/validateWebsite';
 
