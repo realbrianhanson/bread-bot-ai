@@ -15,9 +15,8 @@ const TaskHistory = ({ onRerunTask }: TaskHistoryProps) => {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
           <History className="h-4 w-4" />
-          Task History
         </Button>
       </SheetTrigger>
       
