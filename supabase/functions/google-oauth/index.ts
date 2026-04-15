@@ -255,7 +255,7 @@ serve(async (req) => {
     } catch (err) {
       console.error('Token refresh error:', err);
       return new Response(JSON.stringify({
-        error: err instanceof Error ? err.message : 'Refresh failed',
+        error: 'Token refresh failed. Please reconnect your Google account.',
       }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
