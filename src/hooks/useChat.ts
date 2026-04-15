@@ -67,14 +67,36 @@ async function parseXLSXPreview(file: File): Promise<{ preview: string; totalRow
   };
 }
 
-async function buildFileContext(files: File[], userId: string, conversationId: string): Promise<{ context: string; uploadedFiles: Array<{ name: string; size: number; type: string; url: string; preview?: string }> }> {
+export interface AttachmentBlock {
+  type: 'image' | 'document';
+  source: { type: 'base64'; media_type: string; data: string };
+}
+
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(',')[1]); // strip data:...;base64, prefix
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function buildFileContext(files: File[], userId: string, conversationId: string): Promise<{
+  context: string;
+  uploadedFiles: Array<{ name: string; size: number; type: string; url: string; preview?: string }>;
+  contentBlocks: AttachmentBlock[];
+}> {
   const parts: string[] = [];
   const uploadedFiles: Array<{ name: string; size: number; type: string; url: string; preview?: string }> = [];
+  const contentBlocks: AttachmentBlock[] = [];
 
   for (const file of files) {
     const storagePath = `${userId}/${conversationId}/${file.name}`;
     const { error: uploadError } = await supabase.storage
-      .from('chat-uploads')
+      .from('attachments')
       .upload(storagePath, file, { upsert: true });
 
     if (uploadError) {
@@ -83,7 +105,7 @@ async function buildFileContext(files: File[], userId: string, conversationId: s
     }
 
     const { data: urlData } = supabase.storage
-      .from('chat-uploads')
+      .from('attachments')
       .getPublicUrl(storagePath);
 
     const url = urlData?.publicUrl || '';
@@ -93,7 +115,7 @@ async function buildFileContext(files: File[], userId: string, conversationId: s
     if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
       try {
         const csv = await parseCSVPreview(file);
-        parts.push(`The user has uploaded a file called ${file.name} (CSV, ${sizeStr}). Here are the first 20 rows of the data:\n\n${csv.preview}\n\nThe full file has ${csv.totalRows} rows and ${csv.totalColumns} columns. The full file is available at ${url}`);
+        parts.push(`The user has uploaded a file called ${file.name} (CSV, ${sizeStr}). Here are the first 20 rows of the data:\n\n${csv.preview}\n\nThe full file has ${csv.totalRows} rows and ${csv.totalColumns} columns.`);
         preview = csv.preview;
       } catch {
         const text = await readFileAsText(file);
@@ -103,26 +125,50 @@ async function buildFileContext(files: File[], userId: string, conversationId: s
     } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
       try {
         const xlsx = await parseXLSXPreview(file);
-        parts.push(`The user has uploaded a file called ${file.name} (XLSX, ${sizeStr}). Here are the first 20 rows of the data:\n\n${xlsx.preview}\n\nThe full file has ${xlsx.totalRows} rows and ${xlsx.totalColumns} columns. The full file is available at ${url}`);
+        parts.push(`The user has uploaded a file called ${file.name} (XLSX, ${sizeStr}). Here are the first 20 rows of the data:\n\n${xlsx.preview}\n\nThe full file has ${xlsx.totalRows} rows and ${xlsx.totalColumns} columns.`);
         preview = xlsx.preview;
       } catch {
         parts.push(`The user has uploaded a file called ${file.name} (XLSX, ${sizeStr}). The file is available at ${url}`);
       }
-    } else if (TEXT_TYPES.includes(file.type) || file.name.endsWith('.md') || file.name.endsWith('.json') || file.name.endsWith('.txt')) {
+    } else if (file.type === 'application/json' || file.name.endsWith('.json')) {
       const text = await readFileAsText(file);
-      parts.push(`The user has uploaded a file called ${file.name} (${file.type || 'text'}, ${sizeStr}). Here is the content:\n\n${text.slice(0, 10000)}`);
+      parts.push(`The user has uploaded a JSON file called ${file.name} (${sizeStr}). Here is the content:\n\n${text.slice(0, 10000)}`);
       preview = text.slice(0, 200);
-    } else if (file.type.startsWith('image/') || /\.(png|jpe?g|webp|svg|gif)$/i.test(file.name)) {
-      parts.push(`The user has uploaded an image called ${file.name} (${file.type}, ${sizeStr}).\n\nIMAGE URL FOR USE IN GENERATED CODE: ${url}\n\nWhen generating HTML, use this exact URL in <img> tags wherever this image should appear. Example: <img src="${url}" alt="${file.name}" class="..." />`);
-      preview = url;
+    } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+      // Send PDF as a document block to Claude
+      try {
+        const b64 = await fileToBase64(file);
+        contentBlocks.push({
+          type: 'document',
+          source: { type: 'base64', media_type: 'application/pdf', data: b64 },
+        });
+        parts.push(`The user has uploaded a PDF document called ${file.name} (${sizeStr}). It has been attached as a document block for you to analyze.`);
+      } catch {
+        parts.push(`The user has uploaded a PDF called ${file.name} (${sizeStr}).`);
+      }
+    } else if (file.type.startsWith('image/') || /\.(png|jpe?g)$/i.test(file.name)) {
+      // Send image as an image block to Claude
+      try {
+        const b64 = await fileToBase64(file);
+        const mediaType = file.type || (file.name.endsWith('.png') ? 'image/png' : 'image/jpeg');
+        contentBlocks.push({
+          type: 'image',
+          source: { type: 'base64', media_type: mediaType, data: b64 },
+        });
+        parts.push(`The user has uploaded an image called ${file.name} (${file.type}, ${sizeStr}). It has been attached as an image block.\n\nIMAGE URL FOR USE IN GENERATED CODE: ${url}\n\nWhen generating HTML, use this exact URL in <img> tags: <img src="${url}" alt="${file.name}" />`);
+        preview = url;
+      } catch {
+        parts.push(`The user has uploaded an image called ${file.name} (${file.type}, ${sizeStr}). URL: ${url}`);
+        preview = url;
+      }
     } else {
-      parts.push(`The user has uploaded a file called ${file.name} (${file.type}, ${sizeStr}). The file is available at ${url}`);
+      parts.push(`The user has uploaded a file called ${file.name} (${file.type}, ${sizeStr}).`);
     }
 
     uploadedFiles.push({ name: file.name, size: file.size, type: file.type, url, preview });
   }
 
-  return { context: parts.join('\n\n---\n\n'), uploadedFiles };
+  return { context: parts.join('\n\n---\n\n'), uploadedFiles, contentBlocks };
 }
 
 export const useChat = (projectId?: string) => {
