@@ -1014,12 +1014,22 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
         const recentMessages = messagesRef.current
           .filter((m) => m.id !== (userMessage as Message).id)
           .slice(-10);
-        const messagesForAPI = recentMessages
-          .concat([{ ...(userMessage as Message), content: enrichedContent }])
-          .map((msg) => ({
+
+        // Build the last user message — multimodal if there are image/PDF attachments
+        const lastUserContent = attachmentBlocks.length > 0
+          ? [
+              ...attachmentBlocks,
+              { type: 'text' as const, text: truncateForContext(enrichedContent, 'user') },
+            ]
+          : truncateForContext(enrichedContent, 'user');
+
+        const messagesForAPI = [
+          ...recentMessages.map((msg) => ({
             role: msg.role,
             content: truncateForContext(msg.content, msg.role),
-          }));
+          })),
+          { role: (userMessage as Message).role, content: lastUserContent },
+        ];
 
         // Fetch design template content
         let designMd: string | undefined = options?.customDesignMd;
