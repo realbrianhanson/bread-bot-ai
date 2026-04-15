@@ -196,8 +196,8 @@ const Index = () => {
         <div className="mt-12 rounded-2xl border border-border/40 bg-card/30 backdrop-blur-sm overflow-hidden animate-fade-in" style={{ animationDelay: '1s' }}>
           <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30">
             <div className="w-3 h-3 rounded-full bg-destructive/60" />
-            <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
-            <div className="w-3 h-3 rounded-full bg-green-500/60" />
+            <div className="w-3 h-3 rounded-full bg-accent/60" />
+            <div className="w-3 h-3 rounded-full bg-primary/60" />
             <span className="ml-2 text-xs text-muted-foreground font-mono">GarlicBread.ai</span>
           </div>
           <div className="p-6 font-mono text-sm space-y-3">
