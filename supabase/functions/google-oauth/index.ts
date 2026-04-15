@@ -94,8 +94,17 @@ serve(async (req) => {
       });
     }
 
+    // Parse state to extract userId
+    let userId: string;
     try {
-      const redirectUri = `${supabaseUrl}/functions/v1/google-oauth/callback`;
+      const statePayload = JSON.parse(atob(state));
+      userId = statePayload.userId;
+      if (!userId) throw new Error('Missing userId in state');
+    } catch {
+      return new Response(`<html><body><h2>Invalid state parameter</h2><script>window.close();</script></body></html>`, {
+        headers: { 'Content-Type': 'text/html' },
+      });
+    }
 
       // Exchange code for tokens
       const tokenRes = await fetch(GOOGLE_TOKEN_URL, {
