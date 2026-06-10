@@ -917,6 +917,8 @@ Output the superior page as three code blocks: html, css, javascript — complet
       setIsLoading(true);
       setIsStreaming(true);
       let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      let assistantContent = '';
+      const tempId = crypto.randomUUID();
 
       try {
         // Process file attachments
