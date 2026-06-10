@@ -44,3 +44,9 @@ verify_jwt = false
 
 [functions.stripe-webhook]
 verify_jwt = false
+
+[functions.sandbox-manager]
+verify_jwt = false
+
+[functions.anthropic-proxy]
+verify_jwt = false
