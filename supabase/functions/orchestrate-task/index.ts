@@ -106,6 +106,29 @@ async function queryHonchoMemory(userId: string, query: string): Promise<string>
 
 const toolDefinitions = [
   {
+    name: 'build_app',
+    description: 'Build a complete React web app or landing page from a description. Spins up a live sandbox where an autonomous build agent writes the code with a real-time preview. Returns immediately with a task id — the build runs in the background for several minutes. Tell the user to watch it live at the App Builder page (/builder). Do NOT wait or poll for completion in this run.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        prompt: { type: 'string', description: 'Detailed description of the app to build: sections, features, style, copy direction' },
+        model: { type: 'string', description: "Builder model: 'claude-sonnet-4-6' (fast, default) or 'claude-fable-5' (max quality)" },
+      },
+      required: ['prompt'],
+    },
+  },
+  {
+    name: 'check_build_status',
+    description: 'Check the status of an app build previously started with build_app. Returns status, live preview URL, and summary.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        taskId: { type: 'string', description: 'The build task id returned by build_app' },
+      },
+      required: ['taskId'],
+    },
+  },
+  {
     name: 'browse_web',
     description: 'Use a real browser to interact with a website — click buttons, fill forms, navigate pages, take screenshots. Use when the task requires human-like browser interaction (logging in, submitting forms, navigating SPAs).',
     input_schema: {
