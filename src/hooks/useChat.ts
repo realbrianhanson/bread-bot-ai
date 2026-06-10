@@ -1255,10 +1255,40 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
           }
         }
       } catch (error: any) {
-        if (error.name === 'AbortError') {
-          console.log('Request aborted');
+        const wasAborted = error.name === 'AbortError';
+        if (wasAborted) {
+          console.log('Request aborted (stall watchdog or user stop)');
         } else {
           console.error('Error sending message:', error);
+        }
+
+        // Salvage partial generation instead of dropping it
+        if (assistantContent && assistantContent.length > 0) {
+          const truncatedContent = assistantContent + '\n\n---\n⚠️ **Generation was interrupted before completing.** Type "continue" and I will pick up exactly where this left off.';
+          setMessages((prev) => {
+            const existing = prev.find((m) => m.id === tempId);
+            if (existing) {
+              return prev.map((m) => m.id === tempId ? { ...m, content: truncatedContent, metadata: { ...(m.metadata || {}), truncated: true } } : m);
+            }
+            return prev;
+          });
+          try {
+            await supabase.from('messages').insert({
+              user_id: user.id,
+              project_id: projectId,
+              role: 'assistant',
+              content: truncatedContent,
+              metadata: { truncated: true },
+            });
+          } catch (saveErr) {
+            console.error('Failed to save partial message:', saveErr);
+          }
+          toast({
+            title: wasAborted ? 'Generation interrupted' : 'Error during generation',
+            description: 'Partial output was kept. Type "continue" to finish it.',
+            variant: 'destructive',
+          });
+        } else if (!wasAborted) {
           toast({
             title: 'Error',
             description: error.message || 'Failed to send message',
