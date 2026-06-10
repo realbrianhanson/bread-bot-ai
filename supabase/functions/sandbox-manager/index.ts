@@ -582,7 +582,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Missing taskId or token' }), { status: 400, headers: jsonHeaders });
       }
       const supabase = serviceClient();
-      const { data: task } = await supabase.from('tasks').select('output_data,status,task_type').eq('id', taskId).single();
+      const { data: task } = await supabase.from('tasks').select('output_data,status,task_type,user_id').eq('id', taskId).single();
       if (!task || task.task_type !== 'app_build' || task.output_data?.build_token !== token) {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: jsonHeaders });
       }
@@ -606,6 +606,16 @@ serve(async (req) => {
       }
 
       await appendLog(supabase, taskId, task.output_data, fields, log);
+      if ((status === 'completed' || status === 'failed') && task.output_data?.sandbox_id && task.user_id) {
+        const snapPromise = snapshotSandbox(taskId, task.user_id, task.output_data.sandbox_id);
+        // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
+        if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+          // @ts-ignore
+          EdgeRuntime.waitUntil(snapPromise);
+        } else {
+          snapPromise.catch((e) => console.error('[SANDBOX-MANAGER] snapshot background error:', e));
+        }
+      }
       return new Response(JSON.stringify({ ok: true }), { headers: jsonHeaders });
     }
 
@@ -685,6 +695,9 @@ serve(async (req) => {
       if (!task) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: jsonHeaders });
 
       const sandboxId = task.output_data?.sandbox_id;
+      if (sandboxId) {
+        try { await snapshotSandbox(taskId, user.id, sandboxId); } catch (_) { /* best-effort snapshot before kill */ }
+      }
       if (sandboxId) {
         try {
           const sbx = await Sandbox.connect(sandboxId, { apiKey: Deno.env.get('E2B_API_KEY') ?? '' });
