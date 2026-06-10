@@ -6,6 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, Hammer, Square, ExternalLink, Loader2, Sparkles, Zap } from 'lucide-react';
+import garlicSpin from '@/assets/garlic-spin.png';
+import { AuroraBackground } from '@/components/ui/aurora-background';
 
 interface BuildLogEntry {
   t: string;
@@ -223,14 +225,27 @@ export default function AppBuilder() {
                 sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
               />
             </>
+          ) : isActive ? (
+            <div className="h-full relative flex items-center justify-center text-center p-8 overflow-hidden">
+              <AuroraBackground className="opacity-70" />
+              <div className="relative z-10">
+                <img
+                  src={garlicSpin}
+                  alt="Building your app..."
+                  className="h-28 w-28 mx-auto mb-4 drop-shadow-lg"
+                  style={{ animation: 'spin 2.5s linear infinite' }}
+                />
+                <p className="text-sm text-foreground max-w-sm font-medium">
+                  Booting your sandbox and dev server — the live preview will appear here.
+                </p>
+              </div>
+            </div>
           ) : (
             <div className="h-full flex items-center justify-center text-center p-8">
               <div>
                 <Hammer className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground max-w-sm">
-                  {isActive
-                    ? 'Booting your sandbox and dev server — the live preview will appear here.'
-                    : 'Describe your app and hit Build. A real Vite dev server preview will appear here, updating live as the agent writes files.'}
+                  Describe your app and hit Build. A real Vite dev server preview will appear here, updating live as the agent writes files.
                 </p>
               </div>
             </div>
