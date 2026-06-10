@@ -106,6 +106,29 @@ async function queryHonchoMemory(userId: string, query: string): Promise<string>
 
 const toolDefinitions = [
   {
+    name: 'build_app',
+    description: 'Build a complete React web app or landing page from a description. Spins up a live sandbox where an autonomous build agent writes the code with a real-time preview. Returns immediately with a task id — the build runs in the background for several minutes. Tell the user to watch it live at the App Builder page (/builder). Do NOT wait or poll for completion in this run.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        prompt: { type: 'string', description: 'Detailed description of the app to build: sections, features, style, copy direction' },
+        model: { type: 'string', description: "Builder model: 'claude-sonnet-4-6' (fast, default) or 'claude-fable-5' (max quality)" },
+      },
+      required: ['prompt'],
+    },
+  },
+  {
+    name: 'check_build_status',
+    description: 'Check the status of an app build previously started with build_app. Returns status, live preview URL, and summary.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        taskId: { type: 'string', description: 'The build task id returned by build_app' },
+      },
+      required: ['taskId'],
+    },
+  },
+  {
     name: 'browse_web',
     description: 'Use a real browser to interact with a website — click buttons, fill forms, navigate pages, take screenshots. Use when the task requires human-like browser interaction (logging in, submitting forms, navigating SPAs).',
     input_schema: {
@@ -698,6 +721,25 @@ async function executeTool(
         const data = await res.json();
         if (data.error) return `Knowledge store error: ${data.error}`;
         return `Successfully saved "${toolInput.title}" to the knowledge base under topic "${toolInput.topic}".`;
+      }
+
+      case 'build_app': {
+        const res = await fetch(`${supabaseUrl}/functions/v1/sandbox-manager`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({ action: 'create', prompt: toolInput.prompt, model: toolInput.model || 'claude-sonnet-4-6' }),
+        });
+        const data = await res.json();
+        if (data.error) return `Build error: ${data.message || data.error}`;
+        return `App build started (task id: ${data.taskId}). It is now building in a live sandbox and will take a few minutes. The user can watch it build in real time on the App Builder page at /builder. Do not wait for it in this run — let the user know it is underway and that the preview will appear there.`;
+      }
+
+      case 'check_build_status': {
+        const supabaseSrv = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', { auth: { persistSession: false } });
+        const { data: bt } = await supabaseSrv.from('tasks').select('status, error_message, output_data').eq('id', toolInput.taskId).eq('user_id', userId).eq('task_type', 'app_build').single();
+        if (!bt) return 'Build not found.';
+        const od = bt.output_data || {};
+        return JSON.stringify({ status: bt.status, phase: od.phase, preview_url: od.preview_url, summary: od.summary, files_changed: od.files_changed, error: bt.error_message });
       }
 
       default:

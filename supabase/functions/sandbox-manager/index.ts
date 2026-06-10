@@ -564,6 +564,103 @@ async function bootstrapBuild(taskId: string, buildToken: string, prompt: string
   }
 }
 
+// ---------- Snapshot & edit-resume ----------
+
+async function snapshotSandbox(taskId: string, userId: string, sandboxId: string) {
+  const supabase = serviceClient();
+  try {
+    const sbx = await Sandbox.connect(sandboxId, { apiKey: Deno.env.get('E2B_API_KEY') ?? '' });
+    const tarRes = await sbx.commands.run("cd /home/user/app && tar -czf /home/user/snapshot.tar.gz --exclude=node_modules --exclude=dist --exclude=.git .", { timeoutMs: 60000 });
+    if (tarRes.exitCode !== 0) throw new Error('tar failed: ' + (tarRes.stderr || '').slice(0, 200));
+    const bytes = await sbx.files.read('/home/user/snapshot.tar.gz', { format: 'bytes' });
+    const path = userId + '/' + taskId + '/snapshot.tar.gz';
+    const { error: upErr } = await supabase.storage.from('app-builds').upload(path, new Blob([bytes], { type: 'application/gzip' }), { contentType: 'application/gzip', upsert: true });
+    if (upErr) throw new Error('upload failed: ' + upErr.message);
+    const { data: t } = await supabase.from('tasks').select('output_data').eq('id', taskId).single();
+    await appendLog(supabase, taskId, t?.output_data, { output_data: { snapshot_path: path, snapshot_at: new Date().toISOString() } }, 'Project files saved');
+    console.log('[SANDBOX-MANAGER] Snapshot saved:', path);
+  } catch (e) {
+    console.error('[SANDBOX-MANAGER] Snapshot failed for', taskId, e);
+    const { data: t } = await supabase.from('tasks').select('output_data').eq('id', taskId).single();
+    await appendLog(supabase, taskId, t?.output_data, {}, 'Snapshot failed (build still usable this session)');
+  }
+}
+
+async function bootstrapEdit(taskId: string, buildToken: string, prompt: string, model: string, parent: { sandbox_id?: string; snapshot_path?: string }) {
+  const supabase = serviceClient();
+  const e2bApiKey = Deno.env.get('E2B_API_KEY') ?? '';
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+
+  const readTask = async () => {
+    const { data } = await supabase.from('tasks').select('output_data,status').eq('id', taskId).single();
+    return data;
+  };
+
+  const framedPrompt = 'You are UPDATING an existing app that was previously built. The full project already exists at /home/user/app. Start by calling list_files, then read the files relevant to the request before changing anything. Use replace_in_file for targeted edits where possible. After your changes, run check_build until it passes, then call finish.\n\nUser change request: ' + prompt;
+
+  let sandbox: Sandbox | null = null;
+  let reused = false;
+  try {
+    let task = await readTask();
+    let od = task?.output_data;
+
+    if (parent.sandbox_id) {
+      try {
+        sandbox = await Sandbox.connect(parent.sandbox_id, { apiKey: e2bApiKey });
+        await sandbox.setTimeout(SANDBOX_TIMEOUT_MS);
+        reused = true;
+        od = await appendLog(supabase, taskId, od, { output_data: { sandbox_id: parent.sandbox_id, phase: 'reusing_sandbox' } }, 'Reusing live sandbox (fast edit)');
+      } catch (_) {
+        sandbox = null;
+      }
+    }
+
+    if (!sandbox) {
+      if (!parent.snapshot_path) throw new Error('No live sandbox and no snapshot to restore from');
+      od = await appendLog(supabase, taskId, od, { output_data: { phase: 'creating_sandbox' } }, 'Creating sandbox');
+      sandbox = await Sandbox.create('base', { apiKey: e2bApiKey, timeoutMs: SANDBOX_TIMEOUT_MS, metadata: { taskId, app: 'garlicbread-build' } });
+      od = await appendLog(supabase, taskId, od, { output_data: { sandbox_id: sandbox.sandboxId, phase: 'restoring_files' } }, 'Restoring saved project files');
+      const { data: blob, error: dlErr } = await supabase.storage.from('app-builds').download(parent.snapshot_path);
+      if (dlErr || !blob) throw new Error('Snapshot download failed: ' + (dlErr?.message || 'no data'));
+      await sandbox.files.write([
+        { path: '/home/user/restore.tar.gz', data: blob },
+        { path: '/home/user/runner.cjs', data: RUNNER_SOURCE },
+      ]);
+      const untar = await sandbox.commands.run('mkdir -p /home/user/app && cd /home/user/app && tar -xzf /home/user/restore.tar.gz', { timeoutMs: 60000 });
+      if (untar.exitCode !== 0) throw new Error('Restore failed: ' + (untar.stderr || '').slice(0, 300));
+      od = await appendLog(supabase, taskId, od, { output_data: { phase: 'installing_deps' } }, 'Installing dependencies (npm install)');
+      const install = await sandbox.commands.run('cd /home/user/app && npm install --no-audit --no-fund', { timeoutMs: 240000 });
+      if (install.exitCode !== 0) throw new Error('npm install failed: ' + (install.stderr || install.stdout || '').slice(0, 500));
+      od = await appendLog(supabase, taskId, od, { output_data: { phase: 'starting_dev_server' } }, 'Starting dev server');
+      await sandbox.commands.run('cd /home/user/app && nohup npm run dev > /home/user/dev-server.log 2>&1 &', { timeoutMs: 15000 });
+    }
+
+    const host = sandbox.getHost(DEV_PORT);
+    const previewUrl = 'https://' + host;
+    od = await appendLog(supabase, taskId, od, { output_data: { preview_url: previewUrl, phase: 'starting_agent' } }, 'Preview live at ' + previewUrl);
+
+    const callbackUrl = supabaseUrl + '/functions/v1/sandbox-manager';
+    const proxyUrl = supabaseUrl + '/functions/v1/anthropic-proxy';
+    const promptB64 = btoa(unescape(encodeURIComponent(framedPrompt)));
+
+    await sandbox.commands.run('nohup node /home/user/runner.cjs > /home/user/runner.log 2>&1 &', {
+      timeoutMs: 15000,
+      envs: { TASK_ID: taskId, BUILD_TOKEN: buildToken, CALLBACK_URL: callbackUrl, PROXY_URL: proxyUrl, MODEL: model, PROMPT_B64: promptB64 },
+    });
+
+    await appendLog(supabase, taskId, od, { status: 'running', output_data: { phase: 'agent_running', reused_sandbox: reused } }, 'Edit agent launched');
+  } catch (err) {
+    console.error('[SANDBOX-MANAGER] Edit bootstrap failed:', err);
+    const task = await readTask();
+    await appendLog(supabase, taskId, task?.output_data, {
+      status: 'failed',
+      error_message: 'Edit bootstrap failed: ' + (err instanceof Error ? err.message : String(err)).slice(0, 500),
+      completed_at: new Date().toISOString(),
+    }, 'Edit bootstrap failed');
+    if (sandbox && !reused) { try { await sandbox.kill(); } catch (_) { /* ignore */ } }
+  }
+}
+
 // ---------- HTTP handler ----------
 
 serve(async (req) => {
@@ -582,7 +679,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Missing taskId or token' }), { status: 400, headers: jsonHeaders });
       }
       const supabase = serviceClient();
-      const { data: task } = await supabase.from('tasks').select('output_data,status,task_type').eq('id', taskId).single();
+      const { data: task } = await supabase.from('tasks').select('output_data,status,task_type,user_id').eq('id', taskId).single();
       if (!task || task.task_type !== 'app_build' || task.output_data?.build_token !== token) {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: jsonHeaders });
       }
@@ -606,6 +703,16 @@ serve(async (req) => {
       }
 
       await appendLog(supabase, taskId, task.output_data, fields, log);
+      if ((status === 'completed' || status === 'failed') && task.output_data?.sandbox_id && task.user_id) {
+        const snapPromise = snapshotSandbox(taskId, task.user_id, task.output_data.sandbox_id);
+        // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
+        if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+          // @ts-ignore
+          EdgeRuntime.waitUntil(snapPromise);
+        } else {
+          snapPromise.catch((e) => console.error('[SANDBOX-MANAGER] snapshot background error:', e));
+        }
+      }
       return new Response(JSON.stringify({ ok: true }), { headers: jsonHeaders });
     }
 
@@ -671,6 +778,69 @@ serve(async (req) => {
       return new Response(JSON.stringify({ taskId: taskRecord.id, status: 'initializing' }), { headers: jsonHeaders });
     }
 
+    if (action === 'edit') {
+      const prompt = (body.prompt || '').trim();
+      const model = ['claude-sonnet-4-6', 'claude-fable-5'].includes(body.model) ? body.model : 'claude-sonnet-4-6';
+      const parentTaskId = body.taskId;
+      if (!prompt || prompt.length < 5) {
+        return new Response(JSON.stringify({ error: 'Edit prompt is required' }), { status: 400, headers: jsonHeaders });
+      }
+      if (!parentTaskId) {
+        return new Response(JSON.stringify({ error: 'taskId of the build to edit is required' }), { status: 400, headers: jsonHeaders });
+      }
+      const { data: parent } = await supabase.from('tasks').select('*').eq('id', parentTaskId).eq('user_id', user.id).single();
+      if (!parent || parent.task_type !== 'app_build') {
+        return new Response(JSON.stringify({ error: 'Build not found' }), { status: 404, headers: jsonHeaders });
+      }
+      if (!parent.output_data?.sandbox_id && !parent.output_data?.snapshot_path) {
+        return new Response(JSON.stringify({ error: 'This build has no saved files to resume from' }), { status: 409, headers: jsonHeaders });
+      }
+
+      const { data: usageData } = await supabase.rpc('get_user_tier_and_usage', { p_user_id: user.id });
+      const usage = usageData?.[0];
+      if (!usage) {
+        return new Response(JSON.stringify({ error: 'Unable to fetch usage data' }), { status: 500, headers: jsonHeaders });
+      }
+      if (usage.chat_messages_used >= usage.chat_messages_limit) {
+        return new Response(JSON.stringify({ error: 'quota_exceeded', message: 'Monthly limit reached. Please upgrade your plan.', limit_exceeded: true }), { status: 402, headers: jsonHeaders });
+      }
+
+      const buildToken = generateToken();
+      const { data: taskRecord, error: taskError } = await supabase
+        .from('tasks')
+        .insert({
+          user_id: user.id,
+          project_id: parent.project_id || null,
+          task_type: 'app_build',
+          status: 'initializing',
+          started_at: new Date().toISOString(),
+          input_data: { prompt: prompt.slice(0, 5000), model, parent_task_id: parentTaskId, edit: true },
+          output_data: { build_token: buildToken, log: [], phase: 'queued', parent_task_id: parentTaskId },
+        })
+        .select()
+        .single();
+
+      if (taskError || !taskRecord) {
+        return new Response(JSON.stringify({ error: 'Failed to create edit record' }), { status: 500, headers: jsonHeaders });
+      }
+
+      await supabase.from('usage_tracking').insert({ user_id: user.id, usage_type: 'chat_message', quantity: 1, task_id: taskRecord.id });
+
+      const editPromise = bootstrapEdit(taskRecord.id, buildToken, prompt, model, {
+        sandbox_id: parent.output_data?.sandbox_id,
+        snapshot_path: parent.output_data?.snapshot_path,
+      });
+      // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
+      if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(editPromise);
+      } else {
+        editPromise.catch((e) => console.error('[SANDBOX-MANAGER] edit background error:', e));
+      }
+
+      return new Response(JSON.stringify({ taskId: taskRecord.id, status: 'initializing' }), { headers: jsonHeaders });
+    }
+
     if (action === 'status') {
       const { taskId } = body;
       const { data: task } = await supabase.from('tasks').select('*').eq('id', taskId).eq('user_id', user.id).single();
@@ -685,6 +855,9 @@ serve(async (req) => {
       if (!task) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: jsonHeaders });
 
       const sandboxId = task.output_data?.sandbox_id;
+      if (sandboxId) {
+        try { await snapshotSandbox(taskId, user.id, sandboxId); } catch (_) { /* best-effort snapshot before kill */ }
+      }
       if (sandboxId) {
         try {
           const sbx = await Sandbox.connect(sandboxId, { apiKey: Deno.env.get('E2B_API_KEY') ?? '' });
