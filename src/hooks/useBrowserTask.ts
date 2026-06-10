@@ -672,20 +672,6 @@ export const useBrowserTask = () => {
           setIsExecuting(false);
           setActivePollingTaskId(null);
           clearInterval(pollInterval);
-
-          if (freshRow.status === 'completed') {
-            toast({ title: 'Task Completed', description: 'Browser automation finished successfully' });
-          } else if (freshRow.status === 'failed') {
-            toast({ title: 'Task Failed', description: freshRow.error_message || 'Browser automation failed', variant: 'destructive' });
-          } else if (freshRow.status === 'stopped') {
-            const stoppedByUser = freshRow.error_message === 'Task stopped by user';
-            toast({ 
-              title: 'Task Stopped', 
-              description: stoppedByUser 
-                ? 'Browser automation was stopped by user' 
-                : 'Browser session ended — the agent may have completed or timed out'
-            });
-          }
         }
       } catch (err) {
         console.error('[POLL] Error polling task status:', err);
