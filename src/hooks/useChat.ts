@@ -1086,13 +1086,15 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
 
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
-        let assistantContent = '';
-        const tempId = crypto.randomUUID();
 
         if (reader) {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
+
+            // Reset inactivity watchdog — only abort if the stream truly stalls for 90s
+            if (timeoutId) clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => abortControllerRef.current?.abort(), 90000);
 
             const chunk = decoder.decode(value);
             const lines = chunk.split('\n');
