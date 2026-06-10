@@ -8,6 +8,8 @@ const corsHeaders = {
 };
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
+const ORCHESTRATOR_MODEL = 'claude-fable-5';
+const ORCHESTRATOR_FALLBACK_MODEL = 'claude-opus-4-8';
 
 // --- Honcho helpers ---
 const HONCHO_API_BASE = 'https://api.honcho.dev/v1';
@@ -838,8 +840,8 @@ serve(async (req) => {
           'content-type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'claude-opus-4-6',
-          max_tokens: 8192,
+          model: ORCHESTRATOR_MODEL,
+          max_tokens: 16384,
           system: enrichedSystemPrompt,
           tools: toolDefinitions,
           messages,
@@ -862,7 +864,31 @@ serve(async (req) => {
         });
       }
 
-      const result = await anthropicResponse.json();
+      let result = await anthropicResponse.json();
+
+      // Fable 5 safety classifiers can refuse with HTTP 200 + stop_reason 'refusal'.
+      // Retry the identical request once on Opus 4.8.
+      if (result.stop_reason === 'refusal') {
+        console.log('[ORCHESTRATE] Fable 5 refusal — retrying with Opus 4.8 fallback');
+        const fallbackResponse = await fetch(ANTHROPIC_API_URL, {
+          method: 'POST',
+          headers: {
+            'x-api-key': anthropicApiKey,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: ORCHESTRATOR_FALLBACK_MODEL,
+            max_tokens: 16384,
+            system: enrichedSystemPrompt,
+            tools: toolDefinitions,
+            messages,
+          }),
+        });
+        if (fallbackResponse.ok) {
+          result = await fallbackResponse.json();
+        }
+      }
       const stopReason = result.stop_reason;
 
       // Append assistant message
