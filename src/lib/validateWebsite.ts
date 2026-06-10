@@ -218,6 +218,22 @@ export function extractCodeFromResponse(content: string): { html: string; css: s
     else if (lang === 'css') css = code;
     else if (lang === 'javascript' || lang === 'js') js = code;
   }
+  // Tolerate a truncated final code block (stream ended before the closing fence)
+  const fenceCount = (content.match(/```/g) || []).length;
+  if (fenceCount % 2 === 1) {
+    const lastFence = content.lastIndexOf('```');
+    const tail = content.slice(lastFence + 3);
+    const nl = tail.indexOf('\n');
+    if (nl !== -1) {
+      const lang = tail.slice(0, nl).trim().toLowerCase();
+      const code = tail.slice(nl + 1).trim();
+      if (code) {
+        if (lang === 'html' && !html) html = code;
+        else if (lang === 'css' && !css) css = code;
+        else if ((lang === 'javascript' || lang === 'js') && !js) js = code;
+      }
+    }
+  }
   if (!html) {
     html = extractHtmlDocument(content) || '';
   }
