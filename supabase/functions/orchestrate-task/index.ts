@@ -842,7 +842,7 @@ serve(async (req) => {
         body: JSON.stringify({
           model: ORCHESTRATOR_MODEL,
           max_tokens: 16384,
-          system: enrichedSystemPrompt,
+          system: [{ type: 'text', text: enrichedSystemPrompt, cache_control: { type: 'ephemeral' } }],
           tools: toolDefinitions,
           messages,
         }),
@@ -880,7 +880,7 @@ serve(async (req) => {
           body: JSON.stringify({
             model: ORCHESTRATOR_FALLBACK_MODEL,
             max_tokens: 16384,
-            system: enrichedSystemPrompt,
+            system: [{ type: 'text', text: enrichedSystemPrompt, cache_control: { type: 'ephemeral' } }],
             tools: toolDefinitions,
             messages,
           }),
