@@ -172,7 +172,7 @@ function safePath(p) {
 
 function cap(s, n) {
   if (typeof s !== 'string') s = String(s);
-  return s.length > n ? s.slice(0, n) + '\n...[truncated]' : s;
+  return s.length > n ? s.slice(0, n) + '\\n...[truncated]' : s;
 }
 
 function listFilesRecursive(dir, base, out) {
@@ -203,14 +203,14 @@ function runCommand(cmd, timeoutMs) {
   } catch (e) {
     const stdout = e.stdout ? String(e.stdout) : '';
     const stderr = e.stderr ? String(e.stderr) : '';
-    return { ok: false, output: cap('EXIT ERROR\nSTDOUT:\n' + stdout + '\nSTDERR:\n' + stderr, 8000) };
+    return { ok: false, output: cap('EXIT ERROR\\nSTDOUT:\\n' + stdout + '\\nSTDERR:\\n' + stderr, 8000) };
   }
 }
 
 function checkBuild() {
   const res = runCommand('npx vite build --logLevel error', 180000);
   if (res.ok) return 'BUILD OK';
-  return 'BUILD FAILED:\n' + res.output;
+  return 'BUILD FAILED:\\n' + res.output;
 }
 
 const TOOLS = [
@@ -275,7 +275,7 @@ const SYSTEM_PROMPT = [
   '- Keep each file under 300 lines; split into components instead.',
   '',
   'Tool results are truncated to 8000 chars. Be efficient: do not re-read files you just wrote.',
-].join('\n');
+].join('\\n');
 
 async function callModel(messages, model) {
   const body = {
@@ -326,7 +326,7 @@ function executeTool(name, input) {
   if (name === 'list_files') {
     const out = [];
     listFilesRecursive(APP_DIR, APP_DIR, out);
-    return out.join('\n') || '(empty)';
+    return out.join('\\n') || '(empty)';
   }
   if (name === 'run_command') {
     const res = runCommand(input.command, 180000);
@@ -376,9 +376,9 @@ async function main() {
       if (buildStatus === 'BUILD OK') {
         finished = true;
         const textBlocks = (result.content || []).filter(function (b) { return b.type === 'text'; });
-        finalSummary = textBlocks.map(function (b) { return b.text; }).join('\n');
+        finalSummary = textBlocks.map(function (b) { return b.text; }).join('\\n');
       } else {
-        messages.push({ role: 'user', content: 'The build is not passing yet. Fix these errors, then call finish:\n' + buildStatus });
+        messages.push({ role: 'user', content: 'The build is not passing yet. Fix these errors, then call finish:\\n' + buildStatus });
         await callback({ step: 'Build verification failed — agent is fixing errors', log: 'Auto-verify caught build errors' });
       }
       continue;
@@ -394,7 +394,7 @@ async function main() {
           finalSummary = (tu.input && tu.input.summary) || 'Build complete.';
           output = 'Confirmed. Build is clean.';
         } else {
-          output = 'Cannot finish — build is failing. Fix these errors first:\n' + buildStatus;
+          output = 'Cannot finish — build is failing. Fix these errors first:\\n' + buildStatus;
           await callback({ step: 'Finish rejected — build errors found', log: 'finish rejected by auto-verify' });
         }
       } else {
