@@ -17,6 +17,7 @@ import SharedPreview from "./pages/SharedPreview";
 import PublishedPage from "./pages/PublishedPage";
 import WorkflowsPage from "./pages/Workflows";
 import WorkflowEditor from "./pages/WorkflowEditor";
+import AppBuilder from "./pages/AppBuilder";
 
 const queryClient = new QueryClient();
 
@@ -93,6 +94,14 @@ function AnimatedRoutes() {
           element={
             <ProtectedRoute>
               <PageWrapper><WorkflowEditor /></PageWrapper>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/builder"
+          element={
+            <ProtectedRoute>
+              <PageWrapper><AppBuilder /></PageWrapper>
             </ProtectedRoute>
           }
         />
