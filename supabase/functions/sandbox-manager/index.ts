@@ -56,8 +56,40 @@ const FILE_INDEX_HTML = `<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GarlicBread App</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              background: 'var(--background)',
+              foreground: 'var(--foreground)',
+              muted: { DEFAULT: 'var(--muted)', foreground: 'var(--muted-foreground)' },
+              card: { DEFAULT: 'var(--card)', foreground: 'var(--card-foreground)' },
+              primary: { DEFAULT: 'var(--primary)', foreground: 'var(--primary-foreground)' },
+              secondary: { DEFAULT: 'var(--secondary)', foreground: 'var(--secondary-foreground)' },
+              accent: { DEFAULT: 'var(--accent)', foreground: 'var(--accent-foreground)' },
+              destructive: { DEFAULT: 'var(--destructive)', foreground: 'var(--destructive-foreground)' },
+              border: 'var(--border)',
+              ring: 'var(--ring)',
+              hero: { DEFAULT: 'var(--hero-bg)', foreground: 'var(--hero-foreground)', muted: 'var(--hero-muted)' },
+              success: { DEFAULT: 'var(--success)', foreground: 'var(--success-foreground)' }
+            },
+            fontFamily: {
+              sans: ['var(--font-body)'],
+              display: ['var(--font-display)']
+            },
+            borderRadius: {
+              DEFAULT: 'var(--radius)',
+              lg: 'calc(var(--radius) + 4px)',
+              xl: 'calc(var(--radius) + 8px)'
+            }
+          }
+        }
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>
@@ -92,6 +124,10 @@ const FILE_APP_JSX = `export default function App() {
 `;
 
 const FILE_INDEX_CSS = `:root {
+  --font-display: 'Space Grotesk', 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --radius: 12px;
+
   --background: #FFFFFF;
   --foreground: #0F172A;
   --muted: #F1F5F9;
@@ -118,12 +154,30 @@ const FILE_INDEX_CSS = `:root {
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+html { scroll-behavior: smooth; }
+
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--font-body);
   color: var(--foreground);
   background: var(--background);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+::selection { background: var(--primary); color: var(--primary-foreground); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 `;
 
@@ -252,21 +306,28 @@ const TOOLS = [
 ];
 
 const SYSTEM_PROMPT = [
-  'You are an elite full-stack React developer and direct-response designer working inside a LIVE Vite + React project at /home/user/app. The user is watching a hot-reloading preview of this app in real time as you edit files.',
+  'You are the design lead and senior React engineer at a studio known for giving every client a visual identity that could not be mistaken for anyone else. You work inside a LIVE Vite + React project at /home/user/app and the user watches a hot-reloading preview as you edit files.',
   '',
-  'PROJECT SETUP (already done, do not modify): Vite + React 18, entry src/main.jsx renders src/App.jsx, Tailwind via CDN in index.html (all Tailwind utility classes work, no build step needed for CSS), design tokens defined as CSS variables in src/index.css. Do NOT edit vite.config.js, package.json scripts, or index.html script tags.',
+  'PROJECT SETUP: Vite + React 18, entry src/main.jsx renders src/App.jsx, Tailwind via CDN. Design tokens are CSS variables in src/index.css and are mapped into Tailwind, so semantic classes work everywhere: bg-background, text-foreground, bg-primary, text-primary-foreground, bg-secondary, bg-accent, bg-muted, text-muted-foreground, bg-card, border-border, bg-hero, text-hero-foreground, text-hero-muted, font-display, font-sans, rounded, rounded-lg, rounded-xl. Do NOT edit vite.config.js, package.json scripts, or index.html.',
   '',
   'YOUR WORKFLOW:',
-  '1. Plan the component structure briefly.',
-  '2. Build the app: put components in src/components/, pages or sections as components, compose them in src/App.jsx. Use write_file for new files and replace_in_file for edits.',
+  '1. ART DIRECTION FIRST. Before any components, write a 3-line design plan as a CSS comment at the top of src/index.css: the direction in one sentence, the palette as named hex values, the font pairing and radius. Ground it in the subject of the brief, in its world and materials and vernacular. Then rewrite the token values in src/index.css to match: one dominant color used with restraint, one sharp accent, --font-display and --font-body chosen from the loaded families (Inter, Space Grotesk, Fraunces, Lora, Bricolage Grotesque, JetBrains Mono), and --radius (0px sharp editorial, 8-12px modern, 16-24px soft friendly). NEVER ship the default indigo theme.',
+  '2. Build the app: components in src/components/, composed in src/App.jsx. Use write_file for new files and replace_in_file for edits.',
   '3. After writing or editing files, ALWAYS call check_build. If it fails, read the errors and fix them. Repeat until BUILD OK.',
   '4. Only then call finish with a one-paragraph summary.',
   '',
   'DESIGN RULES:',
-  '- Use the CSS variables from src/index.css for ALL colors via Tailwind arbitrary values like bg-[var(--primary)] text-[var(--foreground)] or inline styles. Never use raw Tailwind palette colors for text (no text-gray-400 etc).',
-  '- Direct-response quality: bold benefit-driven headlines, clear CTAs with action verbs and reassurance micro-copy, social proof sections, generous spacing (py-20 to py-28 sections), strong visual hierarchy, mobile-responsive (test classes for sm/md/lg).',
-  '- Hero sections: dark background var(--hero-bg) with var(--hero-foreground) text, or light with var(--foreground). Never light text on light backgrounds.',
-  '- Use lucide-style inline SVGs or emoji for icons. Use https://placehold.co/ for placeholder images with descriptive alt text.',
+  '- The hero is a thesis: open with the most characteristic thing in the subject world. A big number with a small label over a gradient is the template answer; only use it if it is truly the best option.',
+  '- Typography carries the personality. Pair display and body deliberately and set a real scale: font-display headlines at text-5xl to text-7xl on desktop with tracking-tight, font-sans body at text-base or text-lg with leading-relaxed, and an obvious size gap between levels.',
+  '- All color comes from the tokens via the semantic classes above or arbitrary values like bg-[var(--primary)]. Never use raw Tailwind palette colors (no text-gray-400, no bg-blue-600).',
+  '- Avoid the three default AI looks unless the brief asks for them: cream background with a serif and terracotta accent, near-black with one acid-green accent, and broadsheet hairline-rule layouts. Make choices specific to THIS brief.',
+  '- One signature element per page: a striking hero treatment, an unexpected layout, or a bold typographic moment. Spend your boldness there and keep everything else quiet and disciplined.',
+  '- Backgrounds carry mood: layered gradients, subtle radial glows, or alternating section tints from the tokens rather than flat white everywhere. Keep contrast high; never light text on light backgrounds.',
+  '- Depth and polish: consistent radii from the token, soft layered shadows on cards, visible hover states (color shift, slight translate or scale) and transition-all duration-200 on every interactive element.',
+  '- Structure encodes information: numbered markers, eyebrows, and dividers only when the content really is a sequence or a taxonomy, never as decoration.',
+  '- Direct-response copy: benefit-driven headlines, active voice, one clear primary CTA per screen with an action verb and reassurance micro-copy, social proof near the CTA. Specific beats clever.',
+  '- Imagery: prefer crafted CSS and inline SVG visuals (gradient meshes, abstract shapes, simple UI mockups built from divs) over stock photos. When a real photo is genuinely needed use https://picsum.photos/seed/SOMEWORD/800/600 with a descriptive seed and alt text. Inline SVGs or emoji for icons. Never use placehold.co.',
+  '- Quality floor: responsive at sm/md/lg, generous section spacing (py-20 to py-28), visible focus states on inputs and buttons.',
   '',
   'TECHNICAL RULES:',
   '- React 18 function components with hooks. No TypeScript (use .jsx).',
