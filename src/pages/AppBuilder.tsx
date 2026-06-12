@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, Hammer, Square, ExternalLink, Loader2, Sparkles, Zap, History, Wand2, Bug } from 'lucide-react';
+import garlicSpin from '@/assets/garlic-spin.png';
 
 interface BuildLogEntry {
   t: string;
@@ -350,18 +351,49 @@ export default function AppBuilder() {
               />
             </>
           ) : (
-            <div className="h-full flex items-center justify-center text-center p-8">
-              <div>
-                <Hammer className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground max-w-sm">
-                  {previewExpired
-                    ? 'This sandbox has expired, but your files are saved. Send an edit to relaunch the live preview with your project restored.'
-                    : isActive
-                    ? 'Booting your sandbox and dev server — the live preview will appear here.'
-                    : 'Describe your app and hit Build. A real Vite dev server preview will appear here, updating live as the agent writes files.'}
-                </p>
+            isActive ? (
+              <div className="h-full relative flex items-center justify-center overflow-hidden">
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background:
+                      'conic-gradient(from 0deg at 50% 50%, #ff006e, #fb5607, #ffbe0b, #8338ec, #3a86ff, #06d6a0, #ff006e)',
+                    filter: 'blur(60px) saturate(1.4)',
+                    animation: 'spin 18s linear infinite',
+                  }}
+                />
+                <div
+                  className="absolute inset-0 opacity-60 mix-blend-overlay"
+                  style={{
+                    background:
+                      'radial-gradient(circle at 20% 30%, #ff00ff 0%, transparent 40%), radial-gradient(circle at 80% 70%, #00ffff 0%, transparent 40%), radial-gradient(circle at 50% 50%, #ffff00 0%, transparent 35%)',
+                    animation: 'spin 25s linear infinite reverse',
+                  }}
+                />
+                <div className="relative z-10 text-center">
+                  <img
+                    src={garlicSpin}
+                    alt="Building"
+                    style={{ animation: 'spin 3s linear infinite' }}
+                    className="h-32 w-32 mx-auto mb-4 drop-shadow-2xl"
+                  />
+                  <p className="text-sm font-semibold text-white drop-shadow-lg">
+                    Cooking up your app...
+                  </p>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="h-full flex items-center justify-center text-center p-8">
+                <div>
+                  <Hammer className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground max-w-sm">
+                    {previewExpired
+                      ? 'This sandbox has expired, but your files are saved. Send an edit to relaunch the live preview with your project restored.'
+                      : 'Describe your app and hit Build. A real Vite dev server preview will appear here, updating live as the agent writes files.'}
+                  </p>
+                </div>
+              </div>
+            )
           )}
         </div>
       </div>
