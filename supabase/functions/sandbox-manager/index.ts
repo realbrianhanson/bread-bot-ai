@@ -902,10 +902,13 @@ async function snapshotSandbox(taskId: string, userId: string, sandboxId: string
   }
 }
 
-async function bootstrapEdit(taskId: string, buildToken: string, prompt: string, model: string, parent: { sandbox_id?: string; snapshot_path?: string }, ctx: { designMd?: string; marketingMd?: string; knowledgeMd?: string } = {}) {
+async function bootstrapEdit(taskId: string, buildToken: string, prompt: string, model: string, parent: { sandbox_id?: string; snapshot_path?: string; form_key?: string }, ctx: { designMd?: string; marketingMd?: string; knowledgeMd?: string } = {}) {
   const supabase = serviceClient();
   const e2bApiKey = Deno.env.get('E2B_API_KEY') ?? '';
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  const formEndpoint = supabaseUrl + '/functions/v1/submit-form';
+  const formKey = parent.form_key || ('fk_' + Array.from(crypto.getRandomValues(new Uint8Array(12)))
+    .map((b) => b.toString(16).padStart(2, '0')).join(''));
 
   const readTask = async () => {
     const { data } = await supabase.from('tasks').select('output_data,status').eq('id', taskId).single();
@@ -966,10 +969,10 @@ async function bootstrapEdit(taskId: string, buildToken: string, prompt: string,
 
     await sandbox.commands.run('nohup node /home/user/runner.cjs > /home/user/runner.log 2>&1 &', {
       timeoutMs: 15000,
-      envs: { TASK_ID: taskId, BUILD_TOKEN: buildToken, CALLBACK_URL: callbackUrl, PROXY_URL: proxyUrl, MODEL: model, PROMPT_B64: promptB64, PREVIEW_URL: previewUrl, DESIGN_MD_B64: designB64, MARKETING_MD_B64: marketingB64, KNOWLEDGE_MD_B64: knowledgeB64, IS_EDIT: '1' },
+      envs: { TASK_ID: taskId, BUILD_TOKEN: buildToken, CALLBACK_URL: callbackUrl, PROXY_URL: proxyUrl, MODEL: model, PROMPT_B64: promptB64, PREVIEW_URL: previewUrl, DESIGN_MD_B64: designB64, MARKETING_MD_B64: marketingB64, KNOWLEDGE_MD_B64: knowledgeB64, IS_EDIT: '1', FORM_KEY: formKey, FORM_ENDPOINT_URL: formEndpoint },
     });
 
-    await appendLog(supabase, taskId, od, { status: 'running', output_data: { phase: 'agent_running', reused_sandbox: reused } }, 'Edit agent launched');
+    await appendLog(supabase, taskId, od, { status: 'running', output_data: { phase: 'agent_running', reused_sandbox: reused, form_key: formKey } }, 'Edit agent launched');
   } catch (err) {
     console.error('[SANDBOX-MANAGER] Edit bootstrap failed:', err);
     const task = await readTask();
