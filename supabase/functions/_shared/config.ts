@@ -20,8 +20,9 @@ export const MODELS = {
   // App builder / creative
   BUILDER_FAST: 'claude-sonnet-4-6',
   BUILDER_QUALITY: 'claude-fable-5',
-  // Orchestrator (multi-tool reasoning)
-  ORCHESTRATOR: 'claude-opus-4-8',
+  // Orchestrator (multi-tool reasoning). Primary + fallback (fallback used on 'refusal' stop_reason)
+  ORCHESTRATOR: 'claude-fable-5',
+  ORCHESTRATOR_FALLBACK: 'claude-opus-4-8',
   // Browser Use v3
   BROWSER_USE: 'bu-ultra',
   // Whisper replacement

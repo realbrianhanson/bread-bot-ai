@@ -7,9 +7,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const ORCHESTRATOR_MODEL = 'claude-fable-5';
-const ORCHESTRATOR_FALLBACK_MODEL = 'claude-opus-4-8';
+import { ANTHROPIC_API_URL, MODELS } from '../_shared/config.ts';
+const ORCHESTRATOR_MODEL = MODELS.ORCHESTRATOR;
+const ORCHESTRATOR_FALLBACK_MODEL = MODELS.ORCHESTRATOR_FALLBACK;
 
 // --- Honcho helpers ---
 const HONCHO_API_BASE = 'https://api.honcho.dev/v1';
