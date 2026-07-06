@@ -598,9 +598,15 @@ async function main() {
       if (buildStatus === 'BUILD OK') {
         const runtime = await verifyRuntime();
         if (runtime.ok) {
-          finished = true;
-          const textBlocks = (result.content || []).filter(function (b) { return b.type === 'text'; });
-          finalSummary = textBlocks.map(function (b) { return b.text; }).join('\\n');
+          const gate = todoGateOk();
+          if (gate.ok) {
+            finished = true;
+            const textBlocks = (result.content || []).filter(function (b) { return b.type === 'text'; });
+            finalSummary = textBlocks.map(function (b) { return b.text; }).join('\\n');
+          } else {
+            messages.push({ role: 'user', content: 'The build compiles and runs, but the TODO checklist is not complete. ' + gate.note });
+            await callback({ step: 'Finish blocked — TODO items still open', log: gate.note.slice(0, 200) });
+          }
         } else {
           messages.push({ role: 'user', content: 'The production build passes but the running preview has problems. Fix these and call check_build then finish again:\\n' + runtime.notes });
           await callback({ step: 'Runtime verification failed — agent is fixing', log: runtime.notes.slice(0, 200) });
@@ -620,9 +626,15 @@ async function main() {
         if (buildStatus === 'BUILD OK') {
           const runtime = await verifyRuntime();
           if (runtime.ok) {
-            finished = true;
-            finalSummary = (tu.input && tu.input.summary) || 'Build complete.';
-            output = 'Confirmed. Build is clean and runtime looks healthy.';
+            const gate = todoGateOk();
+            if (gate.ok) {
+              finished = true;
+              finalSummary = (tu.input && tu.input.summary) || 'Build complete.';
+              output = 'Confirmed. Build is clean, runtime looks healthy, TODO checklist is complete.';
+            } else {
+              output = 'Cannot finish yet — TODO gate: ' + gate.note;
+              await callback({ step: 'Finish rejected — TODO items still open', log: gate.note.slice(0, 200) });
+            }
           } else {
             output = 'Cannot finish yet — runtime verification failed:\\n' + runtime.notes + '\\nFix these and try again.';
             await callback({ step: 'Finish rejected — runtime issues', log: 'runtime verification failed' });
