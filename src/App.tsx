@@ -21,6 +21,7 @@ import AppBuilder from "./pages/AppBuilder";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import ResetPassword from "./pages/ResetPassword";
+import Admin from "./pages/Admin";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const queryClient = new QueryClient();
@@ -109,6 +110,14 @@ function AnimatedRoutes() {
           element={
             <ProtectedRoute>
               <PageWrapper><AppBuilder /></PageWrapper>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <PageWrapper><Admin /></PageWrapper>
             </ProtectedRoute>
           }
         />
