@@ -7,6 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, Hammer, Square, ExternalLink, Loader2, Sparkles, Zap, History, Wand2, Bug, Rocket, Download, Copy, EyeOff, PlayCircle, CheckCircle2 } from 'lucide-react';
 import garlicSpin from '@/assets/garlic-spin.png';
+import { StylePicker } from '@/components/chat/StylePicker';
+import { PurposePicker } from '@/components/chat/PurposePicker';
+import TodoChecklist, { type TodoItem } from '@/components/chat/TodoChecklist';
 
 interface BuildLogEntry {
   t: string;
@@ -42,6 +45,7 @@ interface BuildTask {
     qa_report?: string;
     qa_pending?: boolean;
     needs_continue?: boolean;
+    todos?: Array<{ id: string; text: string; status: 'pending' | 'in_progress' | 'done' | 'dropped'; reason?: string }>;
   } | null;
 }
 
@@ -62,6 +66,10 @@ export default function AppBuilder() {
   const [prompt, setPrompt] = useState('');
   const [editPrompt, setEditPrompt] = useState('');
   const [model, setModel] = useState<'claude-sonnet-4-6' | 'claude-fable-5'>('claude-sonnet-4-6');
+  const [styleId, setStyleId] = useState<string | null>(null);
+  const [designMd, setDesignMd] = useState<string>('');
+  const [purposeId, setPurposeId] = useState<string | null>(null);
+  const [purposeMd, setPurposeMd] = useState<string>('');
   const [taskId, setTaskId] = useState<string | null>(null);
   const [task, setTask] = useState<BuildTask | null>(null);
   const [recentBuilds, setRecentBuilds] = useState<BuildTask[]>([]);
@@ -190,7 +198,7 @@ export default function AppBuilder() {
     setTask(null);
     try {
       const { data, error } = await supabase.functions.invoke('sandbox-manager', {
-        body: { action: 'create', prompt: prompt.trim(), model },
+        body: { action: 'create', prompt: prompt.trim(), model, designMd, marketingMd: purposeMd },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.message || data.error);
@@ -212,7 +220,7 @@ export default function AppBuilder() {
     setIsStarting(true);
     try {
       const { data, error } = await supabase.functions.invoke('sandbox-manager', {
-        body: { action: 'edit', taskId, prompt: usePrompt, model },
+        body: { action: 'edit', taskId, prompt: usePrompt, model, designMd, marketingMd: purposeMd },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.message || data.error);
@@ -385,6 +393,26 @@ export default function AppBuilder() {
             </Button>
           </div>
 
+          <div className="flex gap-2 items-center">
+            <StylePicker
+              selectedId={styleId}
+              disabled={isActive}
+              onSelect={(id, customMd, marketingFromStyle) => {
+                setStyleId(id);
+                setDesignMd(customMd || '');
+                if (marketingFromStyle && !purposeMd) setPurposeMd(marketingFromStyle);
+              }}
+            />
+            <PurposePicker
+              selectedId={purposeId}
+              disabled={isActive}
+              onSelect={(id, md) => {
+                setPurposeId(id);
+                setPurposeMd(md || '');
+              }}
+            />
+          </div>
+
           {isActive ? (
             <Button variant="destructive" onClick={() => taskId && supabase.functions.invoke('sandbox-manager', { body: { action: 'stop', taskId } })} className="w-full">
               <Square className="h-4 w-4 mr-2" /> Stop Build
@@ -501,6 +529,18 @@ export default function AppBuilder() {
             <div className="text-sm bg-emerald-500/10 border border-emerald-500/30 rounded-md px-3 py-2">
               {task.output_data.summary}
             </div>
+          )}
+
+          {task?.output_data?.todos && task.output_data.todos.length > 0 && (
+            <TodoChecklist
+              title="Build checklist"
+              items={task.output_data.todos.map<TodoItem>((t) => ({
+                id: t.id,
+                text: t.status === 'dropped' && t.reason ? `${t.text} — skipped: ${t.reason}` : t.text,
+                completed: t.status === 'done' || t.status === 'dropped',
+                inProgress: t.status === 'in_progress',
+              }))}
+            />
           )}
 
           <div className="flex-1 overflow-y-auto rounded-md border border-border bg-muted/40 p-3 text-xs font-mono space-y-1 min-h-[100px]">

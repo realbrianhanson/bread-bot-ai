@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
 import { Sandbox } from "npm:e2b@1.13.0";
+import { DESIGN_CONSTITUTION } from "../_shared/design-constitution.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -201,6 +202,10 @@ const APP_DIR = '/home/user/app';
 const MAX_TURNS = 30;
 
 const USER_PROMPT = Buffer.from(process.env.PROMPT_B64 || '', 'base64').toString('utf8');
+const DESIGN_MD = Buffer.from(process.env.DESIGN_MD_B64 || '', 'base64').toString('utf8');
+const MARKETING_MD = Buffer.from(process.env.MARKETING_MD_B64 || '', 'base64').toString('utf8');
+const KNOWLEDGE_MD = Buffer.from(process.env.KNOWLEDGE_MD_B64 || '', 'base64').toString('utf8');
+const IS_EDIT = process.env.IS_EDIT === '1';
 
 function log(msg) {
   console.log('[RUNNER] ' + msg);
@@ -211,7 +216,7 @@ async function callback(payload) {
     await fetch(CALLBACK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(Object.assign({ action: 'callback', taskId: TASK_ID, token: BUILD_TOKEN }, payload)),
+      body: JSON.stringify(Object.assign({ action: 'callback', taskId: TASK_ID, token: BUILD_TOKEN, todos: CURRENT_TODOS }, payload)),
     });
   } catch (e) {
     log('callback failed: ' + e.message);
@@ -301,35 +306,84 @@ const TOOLS = [
     input_schema: { type: 'object', properties: {} },
   },
   {
+    name: 'update_todos',
+    description: 'Report the current TODO checklist state so the UI can render a live checklist. Send the full ordered list every time you update it. Also write/replace the same list into TODO.md so it survives snapshots. Statuses: "pending", "in_progress", "done", "dropped" (with reason).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        items: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              text: { type: 'string' },
+              status: { type: 'string', enum: ['pending', 'in_progress', 'done', 'dropped'] },
+              reason: { type: 'string' },
+            },
+            required: ['id', 'text', 'status'],
+          },
+        },
+      },
+      required: ['items'],
+    },
+  },
+  {
     name: 'finish',
     description: 'Declare the build complete. Only call after check_build returns BUILD OK.',
     input_schema: { type: 'object', properties: { summary: { type: 'string' } }, required: ['summary'] },
   },
 ];
 
-const SYSTEM_PROMPT = [
+const PROJECT_SETUP = 'PROJECT SETUP: Vite + React 18, entry src/main.jsx renders src/App.jsx, Tailwind via CDN. Design tokens are CSS variables in src/index.css. Tailwind is mapped so the tokens are consumed via hsl(): tokens live in src/index.css as bare HSL triples (e.g. --primary: 244 75% 57%) and are used as hsl(var(--primary)) or via mapped Tailwind classes (bg-background, text-foreground, bg-primary, text-primary-foreground, bg-secondary, bg-accent, bg-muted, text-muted-foreground, bg-card, border-border, bg-hero, text-hero-foreground, text-hero-muted, font-display, font-sans, rounded, rounded-lg, rounded-xl). Do NOT edit vite.config.js, package.json scripts, or index.html.';
+
+const PLAN_FIRST_CREATE = [
+  'REQUIRED FIRST ACTIONS on a NEW build, in this order, before any components:',
+  '1. write_file PLAN.md — cover: pages/sections list, signature element for this project, palette rationale (name the colors, not just "blue"), font pairing rationale, one paragraph explaining how this brief maps to the design plan.',
+  '2. write_file TODO.md — a markdown checklist of the concrete build steps in order. Use "- [ ] step" for each item. Include tokens step, each page section, wiring, responsive pass, and check_build.',
+  '3. update_todos — call with the same items you put in TODO.md so the UI checklist appears live.',
+  '4. Rewrite src/index.css tokens for this project (from the design plan). Then start building.',
+  '',
+  'As you complete each step, call update_todos with the new statuses AND call replace_in_file on TODO.md to tick the matching checkbox ("- [ ] X" -> "- [x] X"). If you decide a step is no longer necessary, mark it status "dropped" with a short reason instead of deleting it.',
+].join('\\n');
+
+const PLAN_FIRST_EDIT = [
+  'REQUIRED FIRST ACTIONS on an EDIT run:',
+  '1. read_file PLAN.md — respect the original design decisions. Do not change palette, fonts, or radius unless the change request explicitly asks for it. If PLAN.md is missing, create one from what the existing code implies before making edits.',
+  '2. read_file TODO.md if it exists so you know what was already done.',
+  '3. list_files, then read only the files relevant to the change request.',
+  '4. Add new TODO items for this edit via update_todos (and append to TODO.md). Tick them off as you go.',
+  '5. Prefer replace_in_file for targeted edits over rewriting whole files.',
+].join('\\n');
+
+const FINISH_GATE_NOTE = 'FINISH GATE: finish is only accepted when (a) check_build returns BUILD OK, (b) runtime verification passes, and (c) every TODO item is either "done" or "dropped" with a reason. Unchecked items will block finish.';
+
+const SYSTEM_PROMPT_BASE = [
   'You are the design lead and senior React engineer at a studio known for giving every client a visual identity that could not be mistaken for anyone else. You work inside a LIVE Vite + React project at /home/user/app and the user watches a hot-reloading preview as you edit files.',
   '',
-  'PROJECT SETUP: Vite + React 18, entry src/main.jsx renders src/App.jsx, Tailwind via CDN. Design tokens are CSS variables in src/index.css and are mapped into Tailwind, so semantic classes work everywhere: bg-background, text-foreground, bg-primary, text-primary-foreground, bg-secondary, bg-accent, bg-muted, text-muted-foreground, bg-card, border-border, bg-hero, text-hero-foreground, text-hero-muted, font-display, font-sans, rounded, rounded-lg, rounded-xl. Do NOT edit vite.config.js, package.json scripts, or index.html.',
+  PROJECT_SETUP,
   '',
-  'YOUR WORKFLOW:',
-  '1. ART DIRECTION FIRST. Before any components, write a 3-line design plan as a CSS comment at the top of src/index.css: the direction in one sentence, the palette as named hex values, the font pairing and radius. Ground it in the subject of the brief, in its world and materials and vernacular. Then rewrite the token values in src/index.css to match: one dominant color used with restraint, one sharp accent, --font-display and --font-body chosen from the loaded families (Inter, Space Grotesk, Fraunces, Lora, Bricolage Grotesque, JetBrains Mono), and --radius (0px sharp editorial, 8-12px modern, 16-24px soft friendly). NEVER ship the default indigo theme.',
+  '__PLAN_FIRST__',
+  '',
+  '__DESIGN_CONSTITUTION__',
+  '',
+  'USER DESIGN SYSTEM (from the picker — apply as extra constraints on top of the constitution; if empty, ignore):',
+  '__DESIGN_MD__',
+  '',
+  'MARKETING / PAGE PURPOSE FRAMEWORK (from the picker — apply to structure, copy and conversion elements; if empty, ignore):',
+  '__MARKETING_MD__',
+  '',
+  'USER KNOWLEDGE BASE SUMMARY (facts about the user or their business; use only if relevant):',
+  '__KNOWLEDGE_MD__',
+  '',
+  'WORKFLOW:',
+  '1. Follow the REQUIRED FIRST ACTIONS above.',
   '2. Build the app: components in src/components/, composed in src/App.jsx. Use write_file for new files and replace_in_file for edits.',
   '3. After writing or editing files, ALWAYS call check_build. If it fails, read the errors and fix them. Repeat until BUILD OK.',
-  '4. Only then call finish with a one-paragraph summary.',
+  '4. Keep calling update_todos as you progress.',
+  '5. Only then call finish with a one-paragraph summary.',
   '',
-  'DESIGN RULES:',
-  '- The hero is a thesis: open with the most characteristic thing in the subject world. A big number with a small label over a gradient is the template answer; only use it if it is truly the best option.',
-  '- Typography carries the personality. Pair display and body deliberately and set a real scale: font-display headlines at text-5xl to text-7xl on desktop with tracking-tight, font-sans body at text-base or text-lg with leading-relaxed, and an obvious size gap between levels.',
-  '- All color comes from the tokens via the semantic classes above or arbitrary values like bg-[var(--primary)]. Never use raw Tailwind palette colors (no text-gray-400, no bg-blue-600).',
-  '- Avoid the three default AI looks unless the brief asks for them: cream background with a serif and terracotta accent, near-black with one acid-green accent, and broadsheet hairline-rule layouts. Make choices specific to THIS brief.',
-  '- One signature element per page: a striking hero treatment, an unexpected layout, or a bold typographic moment. Spend your boldness there and keep everything else quiet and disciplined.',
-  '- Backgrounds carry mood: layered gradients, subtle radial glows, or alternating section tints from the tokens rather than flat white everywhere. Keep contrast high; never light text on light backgrounds.',
-  '- Depth and polish: consistent radii from the token, soft layered shadows on cards, visible hover states (color shift, slight translate or scale) and transition-all duration-200 on every interactive element.',
-  '- Structure encodes information: numbered markers, eyebrows, and dividers only when the content really is a sequence or a taxonomy, never as decoration.',
-  '- Direct-response copy: benefit-driven headlines, active voice, one clear primary CTA per screen with an action verb and reassurance micro-copy, social proof near the CTA. Specific beats clever.',
-  '- Imagery: prefer crafted CSS and inline SVG visuals (gradient meshes, abstract shapes, simple UI mockups built from divs) over stock photos. When a real photo is genuinely needed use https://picsum.photos/seed/SOMEWORD/800/600 with a descriptive seed and alt text. Inline SVGs or emoji for icons. Never use placehold.co.',
-  '- Quality floor: responsive at sm/md/lg, generous section spacing (py-20 to py-28), visible focus states on inputs and buttons.',
+  FINISH_GATE_NOTE,
   '',
   'TECHNICAL RULES:',
   '- React 18 function components with hooks. No TypeScript (use .jsx).',
@@ -339,6 +393,15 @@ const SYSTEM_PROMPT = [
   '',
   'Tool results are truncated to 8000 chars. Be efficient: do not re-read files you just wrote.',
 ].join('\\n');
+
+const SYSTEM_PROMPT = SYSTEM_PROMPT_BASE
+  .replace('__PLAN_FIRST__', IS_EDIT ? PLAN_FIRST_EDIT : PLAN_FIRST_CREATE)
+  .replace('__DESIGN_MD__', DESIGN_MD || '(none provided)')
+  .replace('__MARKETING_MD__', MARKETING_MD || '(none provided)')
+  .replace('__KNOWLEDGE_MD__', KNOWLEDGE_MD || '(none provided)');
+// Note: the __DESIGN_CONSTITUTION__ placeholder is filled by the SANDBOX MANAGER
+// before this runner source is written into the sandbox, because the runner
+// cannot import Deno modules. See RUNNER_SOURCE.replace(...) below.
 
 function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
@@ -429,6 +492,17 @@ async function verifyRuntime() {
   }
 }
 
+let CURRENT_TODOS = [];
+
+function todoGateOk() {
+  if (!Array.isArray(CURRENT_TODOS) || CURRENT_TODOS.length === 0) return { ok: false, note: 'You have not called update_todos yet — the UI has no checklist. Report the TODO state before finishing.' };
+  const unfinished = CURRENT_TODOS.filter(function (t) { return t && t.status !== 'done' && t.status !== 'dropped'; });
+  if (unfinished.length > 0) {
+    return { ok: false, note: 'These TODO items are still unfinished: ' + unfinished.map(function (t) { return '"' + (t.text || t.id) + '"'; }).join(', ') + '. Either complete them or mark them dropped with a reason via update_todos before finishing.' };
+  }
+  return { ok: true, note: '' };
+}
+
 function executeTool(name, input) {
   if (name === 'write_file') {
     const full = safePath(input.path);
@@ -462,6 +536,18 @@ function executeTool(name, input) {
   }
   if (name === 'check_build') {
     return checkBuild();
+  }
+  if (name === 'update_todos') {
+    const items = Array.isArray(input.items) ? input.items.slice(0, 60) : [];
+    CURRENT_TODOS = items.map(function (it, i) {
+      return {
+        id: String(it.id || ('t' + i)).slice(0, 40),
+        text: String(it.text || '').slice(0, 200),
+        status: ['pending', 'in_progress', 'done', 'dropped'].indexOf(String(it.status)) >= 0 ? String(it.status) : 'pending',
+        reason: it.reason ? String(it.reason).slice(0, 200) : undefined,
+      };
+    });
+    return 'Todos updated (' + CURRENT_TODOS.length + ' items). Remember to also write TODO.md so it survives snapshots.';
   }
   return 'Unknown tool: ' + name;
 }
@@ -512,9 +598,15 @@ async function main() {
       if (buildStatus === 'BUILD OK') {
         const runtime = await verifyRuntime();
         if (runtime.ok) {
-          finished = true;
-          const textBlocks = (result.content || []).filter(function (b) { return b.type === 'text'; });
-          finalSummary = textBlocks.map(function (b) { return b.text; }).join('\\n');
+          const gate = todoGateOk();
+          if (gate.ok) {
+            finished = true;
+            const textBlocks = (result.content || []).filter(function (b) { return b.type === 'text'; });
+            finalSummary = textBlocks.map(function (b) { return b.text; }).join('\\n');
+          } else {
+            messages.push({ role: 'user', content: 'The build compiles and runs, but the TODO checklist is not complete. ' + gate.note });
+            await callback({ step: 'Finish blocked — TODO items still open', log: gate.note.slice(0, 200) });
+          }
         } else {
           messages.push({ role: 'user', content: 'The production build passes but the running preview has problems. Fix these and call check_build then finish again:\\n' + runtime.notes });
           await callback({ step: 'Runtime verification failed — agent is fixing', log: runtime.notes.slice(0, 200) });
@@ -534,9 +626,15 @@ async function main() {
         if (buildStatus === 'BUILD OK') {
           const runtime = await verifyRuntime();
           if (runtime.ok) {
-            finished = true;
-            finalSummary = (tu.input && tu.input.summary) || 'Build complete.';
-            output = 'Confirmed. Build is clean and runtime looks healthy.';
+            const gate = todoGateOk();
+            if (gate.ok) {
+              finished = true;
+              finalSummary = (tu.input && tu.input.summary) || 'Build complete.';
+              output = 'Confirmed. Build is clean, runtime looks healthy, TODO checklist is complete.';
+            } else {
+              output = 'Cannot finish yet — TODO gate: ' + gate.note;
+              await callback({ step: 'Finish rejected — TODO items still open', log: gate.note.slice(0, 200) });
+            }
           } else {
             output = 'Cannot finish yet — runtime verification failed:\\n' + runtime.notes + '\\nFix these and try again.';
             await callback({ step: 'Finish rejected — runtime issues', log: 'runtime verification failed' });
@@ -613,6 +711,38 @@ function generateToken(): string {
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+function renderRunnerSource(): string {
+  // Inject the shared design constitution into the runner (which cannot import Deno modules).
+  // The placeholder lands inside a JS single-quoted string literal in the runner
+  // source, so escape backslashes, single quotes, and newlines. Backticks and
+  // ${...} sequences do not need escaping inside single quotes.
+  const safe = DESIGN_CONSTITUTION
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\r?\n/g, '\\n');
+  // Use a function replacer so `$` sequences in the constitution are not
+  // interpreted by String.replace (e.g. $&, $1).
+  return RUNNER_SOURCE.replace(/__DESIGN_CONSTITUTION__/g, () => safe);
+}
+
+async function loadUserContextForBuild(supabase: any, userId: string): Promise<{ knowledgeMd: string }> {
+  try {
+    const { data } = await supabase
+      .from('knowledge_entries')
+      .select('title, content')
+      .eq('user_id', userId)
+      .limit(12);
+    if (!data || data.length === 0) return { knowledgeMd: '' };
+    const md = data
+      .map((e: any) => '## ' + String(e.title || 'Entry').slice(0, 80) + '\n' + String(e.content || '').slice(0, 800))
+      .join('\n\n')
+      .slice(0, 8000);
+    return { knowledgeMd: md };
+  } catch (_) {
+    return { knowledgeMd: '' };
+  }
+}
+
 function serviceClient() {
   return createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
@@ -639,7 +769,7 @@ async function appendLog(supabase: any, taskId: string, current: any, fields: Re
 
 // ---------- Bootstrap (runs in background after `create` responds) ----------
 
-async function bootstrapBuild(taskId: string, buildToken: string, prompt: string, model: string) {
+async function bootstrapBuild(taskId: string, buildToken: string, prompt: string, model: string, ctx: { designMd?: string; marketingMd?: string; knowledgeMd?: string } = {}) {
   const supabase = serviceClient();
   const e2bApiKey = Deno.env.get('E2B_API_KEY') ?? '';
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
@@ -669,7 +799,7 @@ async function bootstrapBuild(taskId: string, buildToken: string, prompt: string
       { path: '/home/user/app/src/main.jsx', data: FILE_MAIN_JSX },
       { path: '/home/user/app/src/App.jsx', data: FILE_APP_JSX },
       { path: '/home/user/app/src/index.css', data: FILE_INDEX_CSS },
-      { path: '/home/user/runner.cjs', data: RUNNER_SOURCE },
+      { path: '/home/user/runner.cjs', data: renderRunnerSource() },
     ]);
 
     od = await appendLog(supabase, taskId, od, { output_data: { phase: 'installing_deps' } }, 'Installing dependencies (npm install)');
@@ -691,6 +821,9 @@ async function bootstrapBuild(taskId: string, buildToken: string, prompt: string
     const callbackUrl = supabaseUrl + '/functions/v1/sandbox-manager';
     const proxyUrl = supabaseUrl + '/functions/v1/anthropic-proxy';
     const promptB64 = btoa(unescape(encodeURIComponent(prompt)));
+    const designB64 = btoa(unescape(encodeURIComponent(ctx.designMd || '')));
+    const marketingB64 = btoa(unescape(encodeURIComponent(ctx.marketingMd || '')));
+    const knowledgeB64 = btoa(unescape(encodeURIComponent(ctx.knowledgeMd || '')));
 
     await sandbox.commands.run('nohup node /home/user/runner.cjs > /home/user/runner.log 2>&1 &', {
       timeoutMs: 15000,
@@ -702,6 +835,10 @@ async function bootstrapBuild(taskId: string, buildToken: string, prompt: string
         MODEL: model,
         PROMPT_B64: promptB64,
         PREVIEW_URL: previewUrl,
+        DESIGN_MD_B64: designB64,
+        MARKETING_MD_B64: marketingB64,
+        KNOWLEDGE_MD_B64: knowledgeB64,
+        IS_EDIT: '0',
       },
     });
 
@@ -742,7 +879,7 @@ async function snapshotSandbox(taskId: string, userId: string, sandboxId: string
   }
 }
 
-async function bootstrapEdit(taskId: string, buildToken: string, prompt: string, model: string, parent: { sandbox_id?: string; snapshot_path?: string }) {
+async function bootstrapEdit(taskId: string, buildToken: string, prompt: string, model: string, parent: { sandbox_id?: string; snapshot_path?: string }, ctx: { designMd?: string; marketingMd?: string; knowledgeMd?: string } = {}) {
   const supabase = serviceClient();
   const e2bApiKey = Deno.env.get('E2B_API_KEY') ?? '';
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
@@ -752,7 +889,7 @@ async function bootstrapEdit(taskId: string, buildToken: string, prompt: string,
     return data;
   };
 
-  const framedPrompt = 'You are UPDATING an existing app that was previously built. The full project already exists at /home/user/app. Start by calling list_files, then read the files relevant to the request before changing anything. Use replace_in_file for targeted edits where possible. After your changes, run check_build until it passes, then call finish.\n\nUser change request: ' + prompt;
+  const framedPrompt = 'You are UPDATING an existing app that was previously built. The full project already exists at /home/user/app. Start by reading PLAN.md (and TODO.md if it exists) to respect the original design decisions — do NOT change palette, fonts or radius unless the change request explicitly asks for it. Then call list_files and read the files relevant to the request before changing anything. Use replace_in_file for targeted edits where possible. Track your work with update_todos as you go. After your changes, run check_build until it passes, then call finish.\n\nUser change request: ' + prompt;
 
   let sandbox: Sandbox | null = null;
   let reused = false;
@@ -765,6 +902,8 @@ async function bootstrapEdit(taskId: string, buildToken: string, prompt: string,
         sandbox = await Sandbox.connect(parent.sandbox_id, { apiKey: e2bApiKey });
         await sandbox.setTimeout(SANDBOX_TIMEOUT_MS);
         reused = true;
+        // Overwrite runner so newer system-prompt / tools take effect on warm sandboxes.
+        try { await sandbox.files.write([{ path: '/home/user/runner.cjs', data: renderRunnerSource() }]); } catch (_) { /* ignore */ }
         od = await appendLog(supabase, taskId, od, { output_data: { sandbox_id: parent.sandbox_id, phase: 'reusing_sandbox' } }, 'Reusing live sandbox (fast edit)');
       } catch (_) {
         sandbox = null;
@@ -780,7 +919,7 @@ async function bootstrapEdit(taskId: string, buildToken: string, prompt: string,
       if (dlErr || !blob) throw new Error('Snapshot download failed: ' + (dlErr?.message || 'no data'));
       await sandbox.files.write([
         { path: '/home/user/restore.tar.gz', data: blob },
-        { path: '/home/user/runner.cjs', data: RUNNER_SOURCE },
+        { path: '/home/user/runner.cjs', data: renderRunnerSource() },
       ]);
       const untar = await sandbox.commands.run('mkdir -p /home/user/app && cd /home/user/app && tar -xzf /home/user/restore.tar.gz', { timeoutMs: 60000 });
       if (untar.exitCode !== 0) throw new Error('Restore failed: ' + (untar.stderr || '').slice(0, 300));
@@ -798,10 +937,13 @@ async function bootstrapEdit(taskId: string, buildToken: string, prompt: string,
     const callbackUrl = supabaseUrl + '/functions/v1/sandbox-manager';
     const proxyUrl = supabaseUrl + '/functions/v1/anthropic-proxy';
     const promptB64 = btoa(unescape(encodeURIComponent(framedPrompt)));
+    const designB64 = btoa(unescape(encodeURIComponent(ctx.designMd || '')));
+    const marketingB64 = btoa(unescape(encodeURIComponent(ctx.marketingMd || '')));
+    const knowledgeB64 = btoa(unescape(encodeURIComponent(ctx.knowledgeMd || '')));
 
     await sandbox.commands.run('nohup node /home/user/runner.cjs > /home/user/runner.log 2>&1 &', {
       timeoutMs: 15000,
-      envs: { TASK_ID: taskId, BUILD_TOKEN: buildToken, CALLBACK_URL: callbackUrl, PROXY_URL: proxyUrl, MODEL: model, PROMPT_B64: promptB64, PREVIEW_URL: previewUrl },
+      envs: { TASK_ID: taskId, BUILD_TOKEN: buildToken, CALLBACK_URL: callbackUrl, PROXY_URL: proxyUrl, MODEL: model, PROMPT_B64: promptB64, PREVIEW_URL: previewUrl, DESIGN_MD_B64: designB64, MARKETING_MD_B64: marketingB64, KNOWLEDGE_MD_B64: knowledgeB64, IS_EDIT: '1' },
     });
 
     await appendLog(supabase, taskId, od, { status: 'running', output_data: { phase: 'agent_running', reused_sandbox: reused } }, 'Edit agent launched');
@@ -830,7 +972,7 @@ serve(async (req) => {
 
     // ----- Runner callback (token-authenticated, no user JWT) -----
     if (action === 'callback') {
-      const { taskId, token, status, step, log, summary, files_changed, error } = body;
+      const { taskId, token, status, step, log, summary, files_changed, error, todos } = body;
       if (!taskId || !token) {
         return new Response(JSON.stringify({ error: 'Missing taskId or token' }), { status: 400, headers: jsonHeaders });
       }
@@ -847,6 +989,7 @@ serve(async (req) => {
       if (step) fields.output_data.current_step = String(step).slice(0, 200);
       if (summary) fields.output_data.summary = summary;
       if (typeof files_changed === 'number') fields.output_data.files_changed = files_changed;
+      if (Array.isArray(todos)) fields.output_data.todos = todos.slice(0, 60);
       if (status === 'completed') {
         fields.status = 'completed';
         fields.completed_at = new Date().toISOString();
@@ -892,6 +1035,8 @@ serve(async (req) => {
     if (action === 'create') {
       const prompt = (body.prompt || '').trim();
       const model = ['claude-sonnet-4-6', 'claude-fable-5'].includes(body.model) ? body.model : 'claude-sonnet-4-6';
+      const designMd = typeof body.designMd === 'string' ? body.designMd.slice(0, 8000) : '';
+      const marketingMd = typeof body.marketingMd === 'string' ? body.marketingMd.slice(0, 8000) : '';
       if (!prompt || prompt.length < 10) {
         return new Response(JSON.stringify({ error: 'Prompt is required (min 10 chars)' }), { status: 400, headers: jsonHeaders });
       }
@@ -915,7 +1060,7 @@ serve(async (req) => {
           task_type: 'app_build',
           status: 'initializing',
           started_at: new Date().toISOString(),
-          input_data: { prompt: prompt.slice(0, 5000), model },
+          input_data: { prompt: prompt.slice(0, 5000), model, has_design_md: !!designMd, has_marketing_md: !!marketingMd },
           output_data: { build_token: buildToken, log: [], phase: 'queued' },
         })
         .select()
@@ -927,7 +1072,8 @@ serve(async (req) => {
 
       await supabase.from('usage_tracking').insert({ user_id: user.id, usage_type: 'chat_message', quantity: 1, task_id: taskRecord.id });
 
-      const bootstrapPromise = bootstrapBuild(taskRecord.id, buildToken, prompt, model);
+      const { knowledgeMd } = await loadUserContextForBuild(supabase, user.id);
+      const bootstrapPromise = bootstrapBuild(taskRecord.id, buildToken, prompt, model, { designMd, marketingMd, knowledgeMd });
       // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
       if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
         // @ts-ignore
@@ -942,6 +1088,8 @@ serve(async (req) => {
     if (action === 'edit') {
       const prompt = (body.prompt || '').trim();
       const model = ['claude-sonnet-4-6', 'claude-fable-5'].includes(body.model) ? body.model : 'claude-sonnet-4-6';
+      const designMd = typeof body.designMd === 'string' ? body.designMd.slice(0, 8000) : '';
+      const marketingMd = typeof body.marketingMd === 'string' ? body.marketingMd.slice(0, 8000) : '';
       const parentTaskId = body.taskId;
       if (!prompt || prompt.length < 5) {
         return new Response(JSON.stringify({ error: 'Edit prompt is required' }), { status: 400, headers: jsonHeaders });
@@ -987,10 +1135,11 @@ serve(async (req) => {
 
       await supabase.from('usage_tracking').insert({ user_id: user.id, usage_type: 'chat_message', quantity: 1, task_id: taskRecord.id });
 
+      const { knowledgeMd } = await loadUserContextForBuild(supabase, user.id);
       const editPromise = bootstrapEdit(taskRecord.id, buildToken, prompt, model, {
         sandbox_id: parent.output_data?.sandbox_id,
         snapshot_path: parent.output_data?.snapshot_path,
-      });
+      }, { designMd, marketingMd, knowledgeMd });
       // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
       if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
         // @ts-ignore

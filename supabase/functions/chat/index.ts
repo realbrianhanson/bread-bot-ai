@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
 import { ANTHROPIC_API_URL, HONCHO_API_URL, MODELS, fetchWithTimeout, TIMEOUT_AI_MS, TIMEOUT_DEFAULT_MS, isAbortError } from "../_shared/config.ts";
 import { decryptSecret } from "../_shared/crypto.ts";
+import { DESIGN_CONSTITUTION, TOKEN_TEMPLATE_HSL } from "../_shared/design-constitution.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -175,60 +176,36 @@ serve(async (req) => {
 
     console.log('Calling Anthropic API with', messages.length, 'messages, ghlMode:', !!ghlMode, 'hasDesignMd:', !!clientDesignMd, 'hasMarketingMd:', !!marketingMd);
 
-    const DESIGN_TOKENS = `  :root {
-    --background: #FFFFFF;
-    --foreground: #0F172A;
-    --muted: #F1F5F9;
-    --muted-foreground: #64748B;
-    --card: #FFFFFF;
-    --card-foreground: #0F172A;
-    --primary: #4F46E5;
-    --primary-foreground: #FFFFFF;
-    --secondary: #F1F5F9;
-    --secondary-foreground: #0F172A;
-    --accent: #F59E0B;
-    --accent-foreground: #0F172A;
-    --destructive: #EF4444;
-    --destructive-foreground: #FFFFFF;
-    --border: #E2E8F0;
-    --ring: #4F46E5;
-    --hero-bg: #0F172A;
-    --hero-foreground: #F8FAFC;
-    --hero-muted: #94A3B8;
-    --section-alt: #F8FAFC;
-    --success: #10B981;
-    --success-foreground: #FFFFFF;
-  }`;
+    const TOKEN_SKELETON = TOKEN_TEMPLATE_HSL;
 
-    const COLOR_RULES = `COLOR USAGE RULES (ABSOLUTE — NEVER BREAK):
-- Page background: var(--background)
-- All body/paragraph text: var(--foreground) — this is ALWAYS dark, always readable
-- Headings on light backgrounds: var(--foreground) or var(--card-foreground)
-- Muted/subtitle text: var(--muted-foreground)
-- Cards: background var(--card), text var(--card-foreground)
-- Buttons primary: background var(--primary), text var(--primary-foreground)
-- Buttons secondary: background var(--secondary), text var(--secondary-foreground)
-- Hero/dark sections: background var(--hero-bg), text var(--hero-foreground), muted text var(--hero-muted)
-- Alternating sections: var(--section-alt) background with var(--foreground) text
-- Borders: var(--border)
-- Links and interactive accents: var(--primary)
-- NEVER use text-white on anything except var(--hero-bg), var(--primary), or var(--destructive) backgrounds
-- NEVER use any pastel, light, or translucent color for text. All text must use a --foreground or --*-foreground token.
-- NEVER use raw CSS color values (no color: white, color: #aaa, color: lavender, etc). ONLY use var(--token-name).`;
+    const COLOR_RULES = `COLOR USAGE RULES (ABSOLUTE):
+- Rewrite the token VALUES in the :root block for THIS project (from the art direction step). Keep the token NAMES exactly as listed.
+- Consume tokens as hsl(var(--token)) — e.g. background: hsl(var(--primary)); color: hsl(var(--foreground) / 0.7).
+- Body/paragraph text: hsl(var(--foreground)). Muted text: hsl(var(--muted-foreground)).
+- Cards: background hsl(var(--card)), text hsl(var(--card-foreground)).
+- Buttons primary: background hsl(var(--primary)), text hsl(var(--primary-foreground)).
+- Hero/dark sections: background hsl(var(--hero-bg)), text hsl(var(--hero-foreground)), muted hsl(var(--hero-muted)).
+- Alternating sections: hsl(var(--section-alt)) background with hsl(var(--foreground)) text.
+- Borders: hsl(var(--border)). Links and accents: hsl(var(--primary)).
+- Never light text on light backgrounds. Every text block must use a --*-foreground token that is legible on its background.
+- No raw Tailwind palette classes (no text-white, text-gray-400, bg-blue-600, bg-slate-900, etc.) in markup.
+- No raw hex, rgb(), or named CSS colors inside components. Only hsl(var(--token)).
+- FOOTGUN: never put rgb(...) inside hsl(...) — it silently produces the wrong color.`;
 
-    const HERO_PATTERNS = `HERO SECTION PATTERNS (pick one per page):
-Pattern A — Dark hero: bg var(--hero-bg), all text var(--hero-foreground), subtitle var(--hero-muted), CTA button bg var(--accent) text var(--accent-foreground)
-Pattern B — Light hero with accent: bg var(--background), heading var(--foreground), subtitle var(--muted-foreground), CTA bg var(--primary) text var(--primary-foreground)
-Pattern C — Gradient hero: bg gradient from var(--hero-bg) to a slightly lighter dark tone like #1E293B, text var(--hero-foreground)
-NEVER: light/pastel gradient with light text. If the background has ANY light tones, ALL text must use var(--foreground).`;
+    const HERO_PATTERNS = `HERO SECTION PATTERNS (pick or invent one per page — do not default to the same pattern every time):
+Pattern A — Dark hero: bg hsl(var(--hero-bg)), heading hsl(var(--hero-foreground)), subtitle hsl(var(--hero-muted)), CTA bg hsl(var(--accent)) text hsl(var(--accent-foreground)).
+Pattern B — Light hero with accent: bg hsl(var(--background)), heading hsl(var(--foreground)), subtitle hsl(var(--muted-foreground)), CTA hsl(var(--primary)) / hsl(var(--primary-foreground)).
+Pattern C — Gradient hero: layered gradient between hero tokens, high-contrast text.
+Pattern D — Editorial split: type-driven left column + signature visual right column.
+NEVER: light/pastel gradient with light text. Match text foreground to background luminance.`;
 
     const ghlSystemPrompt = `You are an elite direct-response landing page designer who specializes in GoHighLevel (GHL) funnel pages. You create high-converting, visually stunning landing pages that work PERFECTLY inside GHL's Custom Code element.
 
-CRITICAL DESIGN RULE: You MUST use the CSS design tokens defined below for ALL colors. NEVER use raw color values like text-white, bg-purple-300, text-gray-400, #A78BFA, color: white, color: #ccc, etc. ALWAYS reference the CSS variables. This ensures every page has perfect contrast and readability.
+${DESIGN_CONSTITUTION}
 
-Every page you generate MUST include this CSS variable block inside the scoped wrapper's <style> tag. These are your ONLY allowed colors:
+Every page MUST include a :root token block inside the scoped wrapper's <style> tag using the skeleton below. REWRITE the values for this specific project per the art-direction ritual; do not ship the placeholder palette.
 
-${DESIGN_TOKENS}
+${TOKEN_SKELETON}
 
 ${COLOR_RULES}
 
@@ -238,15 +215,15 @@ CRITICAL GHL TECHNICAL RULES:
 - NEVER use external font CDN links — use system font stack: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif
 - ALL code must be in a SINGLE code block — one self-contained HTML blob with embedded <style> and <script> tags
 - Wrap EVERYTHING in a single container div with a unique class like <div class="ghl-lander-[random4chars]"> to scope all styles
-- Images should use placeholder URLs from https://placehold.co/ with descriptive alt text
+- Form and calendar embed slots use dashed-border placeholder divs (see below). For actual visual imagery use https://picsum.photos/seed/<descriptive-seed>/1600/900. Never use placehold.co for visual imagery.
 - Do NOT use position: fixed or position: sticky — GHL's builder can break these
 - Maximum width should be 100% — GHL handles the page container
 - The code must be mobile-responsive using CSS media queries (not Tailwind breakpoints)
 
 BODY STYLES (set on the wrapper class):
 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-color: var(--foreground);
-background: var(--background);
+color: hsl(var(--foreground));
+background: hsl(var(--background));
 -webkit-font-smoothing: antialiased;
 
 DIRECT RESPONSE DESIGN SYSTEM:
@@ -315,7 +292,7 @@ CALENDAR INTEGRATION:
 OUTPUT FORMAT:
 Always output ONE single code block containing the complete, self-contained HTML with embedded <style> and <script>.
 Start with: <!-- GHL Custom Code Block — Paste into a Custom Code element -->
-ALL color references must use var(--token-name) syntax. No raw colors anywhere.
+ALL color references must use hsl(var(--token-name)) syntax. No raw colors anywhere.
 
 USER-UPLOADED IMAGES:
 When the user uploads images, use the provided URLs in <img> tags. Do NOT use placeholder URLs when real images are provided.
@@ -374,17 +351,17 @@ When the user's message includes sections labeled "CURRENT HTML:", "CURRENT CSS:
 
     const standardSystemPrompt = `You are an expert full-stack web developer and UI designer. You create stunning, modern, production-quality websites.
 
-CRITICAL DESIGN RULE: You MUST use the CSS design tokens defined below for ALL colors. NEVER use raw color values like text-white, bg-purple-300, text-gray-400, #A78BFA, etc. in your HTML. ALWAYS reference the CSS variables. This ensures every page has perfect contrast and readability.
+${DESIGN_CONSTITUTION}
 
-Every page you generate MUST include this CSS variable block in a <style> tag in the <head>. These are your ONLY allowed colors:
+Every page MUST include a :root token block in a <style> tag in <head> using the skeleton below. REWRITE the values for this specific project per the art-direction ritual; do not ship the placeholder palette.
 
 <style>
-${DESIGN_TOKENS}
+${TOKEN_SKELETON}
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    color: var(--foreground);
-    background: var(--background);
+    color: hsl(var(--foreground));
+    background: hsl(var(--background));
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
@@ -392,14 +369,12 @@ ${DESIGN_TOKENS}
 
 ${COLOR_RULES}
 
-- NEVER use raw Tailwind color classes for text (no text-purple-300, text-blue-400, text-gray-300, etc). ONLY use the CSS variables above via inline styles or custom Tailwind classes.
-
-When using Tailwind classes, map them to the tokens:
-- text-[var(--foreground)] instead of text-slate-800
-- bg-[var(--primary)] instead of bg-indigo-600
-- text-[var(--muted-foreground)] instead of text-gray-500
-- bg-[var(--hero-bg)] instead of bg-slate-900
-Or use inline style="color: var(--foreground)" which is even more reliable.
+When using Tailwind classes, map them to the tokens via arbitrary values:
+- text-[hsl(var(--foreground))] instead of text-slate-800
+- bg-[hsl(var(--primary))] instead of bg-indigo-600
+- text-[hsl(var(--muted-foreground))] instead of text-gray-500
+- bg-[hsl(var(--hero-bg))] instead of bg-slate-900
+Or use inline style="color: hsl(var(--foreground))" which is equally reliable.
 
 LAYOUT AND TYPOGRAPHY:
 - Include in HTML head: <script src="https://cdn.tailwindcss.com"><\/script> and <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -499,58 +474,23 @@ When the user's message includes sections labeled "CURRENT HTML:", "CURRENT CSS:
       console.error('[CHAT] Honcho context failed (proceeding without):', err);
     }
 
-    // --- Industry auto-detection when no design template is selected ---
-    const industryOverrides: Record<string, { heroGradient: string; primary: string; accent: string; fontMood: string; extraInstruction: string }> = {
-      'beauty-spa': {
-        heroGradient: 'linear-gradient(135deg, #FFF5F5 0%, #FED7E2 100%)',
-        primary: '#D4AF37', accent: '#E8B4B8', fontMood: 'elegant serif',
-        extraInstruction: 'Use soft shadows, organic shapes, calming warm palette. Serif headings with sans-serif body. Premium spa aesthetic.'
-      },
-      'saas': {
-        heroGradient: 'linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #312E81 100%)',
-        primary: '#4F46E5', accent: '#06B6D4', fontMood: 'modern geometric sans',
-        extraInstruction: 'Clean, minimal, technical. Dark hero, light content sections. Emphasize features grid and pricing table.'
-      },
-      'real-estate': {
-        heroGradient: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-        primary: '#C9A84C', accent: '#2D6A4F', fontMood: 'premium serif headings',
-        extraInstruction: 'Luxury feel with gold accents. Large property images. Trust signals prominent. Clean, high-end aesthetic.'
-      },
-      'restaurant': {
-        heroGradient: 'linear-gradient(135deg, #1B1B1B 0%, #2D2D2D 100%)',
-        primary: '#C84B31', accent: '#ECBC55', fontMood: 'warm display font',
-        extraInstruction: 'Warm, inviting, food-focused. Rich dark backgrounds with warm accents. Menu-style layouts. Large food photography areas.'
-      },
-      'healthcare': {
-        heroGradient: 'linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)',
-        primary: '#2563EB', accent: '#059669', fontMood: 'clean trustworthy sans',
-        extraInstruction: 'Clean, clinical, trustworthy. Blue primary for trust. Green for health/positive. Lots of whitespace. Simple navigation.'
-      },
-      'coaching': {
-        heroGradient: 'linear-gradient(135deg, #0F172A 0%, #1E1B4B 100%)',
-        primary: '#7C3AED', accent: '#F59E0B', fontMood: 'bold motivational sans',
-        extraInstruction: 'Bold, energetic, transformation-focused. Strong CTAs. Testimonials prominent. Before/after framing. Authority positioning.'
-      },
-      'fintech': {
-        heroGradient: 'linear-gradient(135deg, #0C0A09 0%, #1C1917 100%)',
-        primary: '#10B981', accent: '#3B82F6', fontMood: 'precise monospace-inspired',
-        extraInstruction: 'Dark, premium, data-driven. Green for growth/money. Trust badges essential. Clean number displays. Security messaging.'
-      },
-      'ecommerce': {
-        heroGradient: 'linear-gradient(135deg, #FFFFFF 0%, #F9FAFB 100%)',
-        primary: '#111827', accent: '#EF4444', fontMood: 'clean shopping sans',
-        extraInstruction: 'Product-focused, clean grid layouts. High contrast CTAs. Trust badges near purchase buttons. Light background to let products stand out.'
-      },
-      'portfolio': {
-        heroGradient: 'linear-gradient(135deg, #0F172A 0%, #020617 100%)',
-        primary: '#F8FAFC', accent: '#A78BFA', fontMood: 'editorial mixed serif sans',
-        extraInstruction: 'Creative, showcase-focused. Large image areas. Minimal UI, maximum content visibility. Elegant transitions.'
-      },
-      'event': {
-        heroGradient: 'linear-gradient(135deg, #0F172A 0%, #312E81 100%)',
-        primary: '#8B5CF6', accent: '#F59E0B', fontMood: 'bold event display',
-        extraInstruction: 'Urgency-driven. Countdown timer. Speaker photos. Bold headlines. Strong registration CTA. FOMO elements.'
-      },
+    // Industry token-value PRESETS (starting points the model may adapt during
+    // the art-direction ritual — not raw hex mandates). Values are bare HSL
+    // triples ready to plug into the token skeleton.
+    const industryOverrides: Record<string, {
+      tokens: { primary: string; accent: string; heroBg: string; heroForeground: string; background: string; foreground: string };
+      fontMood: string; extraInstruction: string;
+    }> = {
+      'beauty-spa':  { tokens: { primary: '43 74% 52%',  accent: '350 55% 82%', heroBg: '350 50% 96%',   heroForeground: '20 15% 20%',  background: '20 40% 98%',  foreground: '20 15% 15%'   }, fontMood: 'elegant serif display + humanist body', extraInstruction: 'Soft shadows, organic shapes, calming warm palette. Premium spa aesthetic — restraint over decoration.' },
+      'saas':        { tokens: { primary: '244 75% 57%', accent: '188 94% 42%', heroBg: '222 47% 11%',   heroForeground: '210 40% 98%', background: '0 0% 100%',   foreground: '222 47% 11%'  }, fontMood: 'modern geometric sans (e.g. Space Grotesk display + Inter body)', extraInstruction: 'Clean, technical, product-forward. One signature product visual, not another gradient blob.' },
+      'real-estate': { tokens: { primary: '43 60% 54%',  accent: '155 40% 30%', heroBg: '222 40% 12%',   heroForeground: '43 60% 90%',  background: '0 0% 100%',   foreground: '222 40% 12%'  }, fontMood: 'premium serif headings + refined sans body', extraInstruction: 'Luxury with gold accents. Large property imagery. Trust signals prominent.' },
+      'restaurant':  { tokens: { primary: '11 60% 48%',  accent: '38 82% 63%',  heroBg: '20 8% 12%',     heroForeground: '38 40% 92%',  background: '30 20% 96%',  foreground: '20 8% 15%'    }, fontMood: 'warm display serif or hand-lettered + humanist body', extraInstruction: 'Warm, inviting, food-focused. Menu-style layouts. Large food imagery areas.' },
+      'healthcare':  { tokens: { primary: '217 91% 45%', accent: '160 84% 32%', heroBg: '214 60% 95%',   heroForeground: '222 47% 15%', background: '0 0% 100%',   foreground: '222 47% 15%'  }, fontMood: 'clean trustworthy sans', extraInstruction: 'Clean, clinical, trustworthy. Generous whitespace, calm navigation.' },
+      'coaching':    { tokens: { primary: '262 83% 58%', accent: '38 92% 50%',  heroBg: '224 71% 12%',   heroForeground: '210 40% 98%', background: '0 0% 100%',   foreground: '222 47% 11%'  }, fontMood: 'bold motivational sans display', extraInstruction: 'Energetic, transformation-focused. Testimonials prominent. Authority positioning.' },
+      'fintech':     { tokens: { primary: '160 84% 39%', accent: '217 91% 60%', heroBg: '20 6% 10%',     heroForeground: '160 30% 90%', background: '0 0% 100%',   foreground: '20 6% 12%'    }, fontMood: 'precise sans with mono numerals', extraInstruction: 'Premium, data-driven. Trust badges essential. Number-first hero.' },
+      'ecommerce':   { tokens: { primary: '222 47% 11%', accent: '0 84% 60%',   heroBg: '0 0% 100%',     heroForeground: '222 47% 11%', background: '0 0% 100%',   foreground: '222 47% 11%'  }, fontMood: 'clean shopping sans', extraInstruction: 'Product-forward, clean grids. Trust badges near purchase buttons.' },
+      'portfolio':   { tokens: { primary: '210 40% 98%', accent: '262 70% 70%', heroBg: '222 47% 5%',    heroForeground: '210 40% 98%', background: '222 47% 8%',  foreground: '210 40% 98%'  }, fontMood: 'editorial mixed serif + sans', extraInstruction: 'Creative, showcase-focused. Minimal UI, maximum content.' },
+      'event':       { tokens: { primary: '262 83% 58%', accent: '38 92% 50%',  heroBg: '244 65% 15%',   heroForeground: '210 40% 98%', background: '0 0% 100%',   foreground: '222 47% 11%'  }, fontMood: 'bold event display', extraInstruction: 'Urgency-driven. Countdown, speaker photos, strong registration CTA.' },
     };
 
     let detectedCategory: string | null = conversationCategory || null;
@@ -604,13 +544,17 @@ When the user's message includes sections labeled "CURRENT HTML:", "CURRENT CSS:
     if (!clientDesignMd && detectedCategory) {
       const override = industryOverrides[detectedCategory];
       if (override) {
-        enrichedPrompt += '\n\nINDUSTRY-SPECIFIC DESIGN ADJUSTMENTS (auto-detected: ' + detectedCategory + '):\n';
-        enrichedPrompt += '- Hero background: ' + override.heroGradient + '\n';
-        enrichedPrompt += '- Primary color: ' + override.primary + '\n';
-        enrichedPrompt += '- Accent color: ' + override.accent + '\n';
-        enrichedPrompt += '- Typography mood: ' + override.fontMood + '\n';
-        enrichedPrompt += '- Design direction: ' + override.extraInstruction + '\n';
-        enrichedPrompt += 'These adjustments override the default template colors for this specific industry. All contrast and readability rules still apply.';
+        const t = override.tokens;
+        enrichedPrompt += '\n\nINDUSTRY TOKEN PRESET (auto-detected: ' + detectedCategory + '). Starting point only — adapt during the art-direction step so this page does not look interchangeable with every other ' + detectedCategory + ' page. Values are bare HSL triples for the token block:\n';
+        enrichedPrompt += '  --background: ' + t.background + ';\n';
+        enrichedPrompt += '  --foreground: ' + t.foreground + ';\n';
+        enrichedPrompt += '  --primary: ' + t.primary + ';\n';
+        enrichedPrompt += '  --accent: ' + t.accent + ';\n';
+        enrichedPrompt += '  --hero-bg: ' + t.heroBg + ';\n';
+        enrichedPrompt += '  --hero-foreground: ' + t.heroForeground + ';\n';
+        enrichedPrompt += 'Typography mood: ' + override.fontMood + '.\n';
+        enrichedPrompt += 'Design direction: ' + override.extraInstruction + '\n';
+        enrichedPrompt += 'Contrast and readability rules from the constitution still apply — verify every text/background pair.';
       }
     }
 
