@@ -1365,6 +1365,7 @@ serve(async (req) => {
         } else {
           const { data: inserted, error: insErr } = await supabase.from('published_apps').insert({
             user_id: user.id, task_id: task.id, name: namePretty, slug, storage_prefix: storagePrefix, version: nextVersion, is_published: true,
+            ...(task.output_data?.form_key ? { form_key: task.output_data.form_key } : {}),
           }).select().single();
           if (insErr || !inserted) throw new Error('Failed to record published app: ' + (insErr?.message || 'unknown'));
           appId = inserted.id;
