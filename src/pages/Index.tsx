@@ -1,8 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Globe, Code, FileStack, ArrowRight, Sparkles, Shield, Zap, Play, Monitor, Bot, CheckCircle2 } from "lucide-react";
+import { Globe, Code, FileStack, ArrowRight, Sparkles, Shield, Zap, Play, Monitor, Bot, CheckCircle2, Clock } from "lucide-react";
 import { GarlicLogo } from "@/components/ui/logo-icon";
 import { AuroraBackground } from "@/components/ui/aurora-background";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -42,8 +42,8 @@ const Index = () => {
     },
     {
       icon: Shield,
-      title: "Enterprise Security",
-      description: "End-to-end encryption, role-based access, and audit logs for mission-critical automation.",
+      title: "Secure by Default",
+      description: "Encrypted connections, row-level database security, and isolated sandboxes for every automation you run.",
       accent: "from-brand-warm/15 to-brand-warm/5",
     },
     {
@@ -54,11 +54,11 @@ const Index = () => {
     },
   ];
 
-  const stats = [
-    { value: "10K+", label: "Tasks Completed" },
-    { value: "99.9%", label: "Uptime" },
-    { value: "<2s", label: "Avg Response" },
-    { value: "500+", label: "Active Users" },
+  const capabilities = [
+    { icon: Globe, label: "Browser automation" },
+    { icon: Code, label: "Code generation" },
+    { icon: FileStack, label: "Data extraction" },
+    { icon: Clock, label: "Scheduled tasks" },
   ];
 
   const demoSteps = [
@@ -128,12 +128,12 @@ const Index = () => {
           </Button>
         </div>
 
-        {/* Stats */}
-        <div className="flex items-center gap-8 md:gap-12 mt-16 animate-fade-in" style={{ animationDelay: '0.4s' }}>
-          {stats.map((stat, i) => (
-            <div key={i} className="text-center">
-              <p className="text-2xl md:text-3xl font-bold text-foreground">{stat.value}</p>
-              <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
+        {/* Capability strip */}
+        <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 mt-16 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+          {capabilities.map((cap) => (
+            <div key={cap.label} className="flex items-center gap-2 px-4 py-2 rounded-full bg-card/50 border border-border/40 backdrop-blur-sm text-sm text-foreground">
+              <cap.icon className="w-4 h-4 text-primary" />
+              {cap.label}
             </div>
           ))}
         </div>
@@ -203,19 +203,19 @@ const Index = () => {
           <div className="p-6 font-mono text-sm space-y-3">
             <div className="flex items-start gap-2">
               <span className="text-primary shrink-0">▸</span>
-              <span className="text-foreground">/browse go to linkedin.com and find 10 AI startup founders</span>
+              <span className="text-foreground">/browse monitor competitor product prices on shopdemo.example.com</span>
             </div>
             <div className="flex items-start gap-2 text-muted-foreground">
               <Bot className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-              <span>Launching browser agent... navigating to linkedin.com</span>
+              <span>Launching browser agent... loading product catalog</span>
             </div>
             <div className="flex items-start gap-2 text-muted-foreground">
               <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-              <span>Found 10 profiles. Extracting names, titles, and company info...</span>
+              <span>Captured 24 products. Extracting titles, SKUs, and prices...</span>
             </div>
             <div className="flex items-start gap-2 text-muted-foreground">
               <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-              <span>Done! Results exported to CSV. <span className="text-primary underline cursor-pointer">Download →</span></span>
+              <span>Done! Price sheet exported to CSV. <span className="text-primary underline cursor-pointer">Download →</span></span>
             </div>
           </div>
         </div>
@@ -249,12 +249,12 @@ const Index = () => {
 
       {/* Footer */}
       <footer className="relative z-10 px-6 pb-12 text-center">
-        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mb-4">
-          <Shield className="w-3.5 h-3.5" />
-          Enterprise-grade security
+        <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground mb-4">
+          <a href="/terms" className="hover:text-foreground">Terms</a>
           <span className="text-border">·</span>
-          <Zap className="w-3.5 h-3.5" />
-          99.9% uptime
+          <a href="/privacy" className="hover:text-foreground">Privacy</a>
+          <span className="text-border">·</span>
+          <a href="/pricing" className="hover:text-foreground">Pricing</a>
         </div>
         <p className="text-xs text-muted-foreground/50">© 2026 GarlicBread.ai</p>
       </footer>
