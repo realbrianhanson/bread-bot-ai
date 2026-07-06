@@ -882,7 +882,7 @@ async function bootstrapEdit(taskId: string, buildToken: string, prompt: string,
     return data;
   };
 
-  const framedPrompt = 'You are UPDATING an existing app that was previously built. The full project already exists at /home/user/app. Start by calling list_files, then read the files relevant to the request before changing anything. Use replace_in_file for targeted edits where possible. After your changes, run check_build until it passes, then call finish.\n\nUser change request: ' + prompt;
+  const framedPrompt = 'You are UPDATING an existing app that was previously built. The full project already exists at /home/user/app. Start by reading PLAN.md (and TODO.md if it exists) to respect the original design decisions — do NOT change palette, fonts or radius unless the change request explicitly asks for it. Then call list_files and read the files relevant to the request before changing anything. Use replace_in_file for targeted edits where possible. Track your work with update_todos as you go. After your changes, run check_build until it passes, then call finish.\n\nUser change request: ' + prompt;
 
   let sandbox: Sandbox | null = null;
   let reused = false;
@@ -895,6 +895,8 @@ async function bootstrapEdit(taskId: string, buildToken: string, prompt: string,
         sandbox = await Sandbox.connect(parent.sandbox_id, { apiKey: e2bApiKey });
         await sandbox.setTimeout(SANDBOX_TIMEOUT_MS);
         reused = true;
+        // Overwrite runner so newer system-prompt / tools take effect on warm sandboxes.
+        try { await sandbox.files.write([{ path: '/home/user/runner.cjs', data: renderRunnerSource() }]); } catch (_) { /* ignore */ }
         od = await appendLog(supabase, taskId, od, { output_data: { sandbox_id: parent.sandbox_id, phase: 'reusing_sandbox' } }, 'Reusing live sandbox (fast edit)');
       } catch (_) {
         sandbox = null;
