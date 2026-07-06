@@ -136,6 +136,14 @@ Deno.serve(async (req) => {
 
   if (!slug) return notFound();
 
+  // For `base: './'` to resolve assets correctly under /{slug}/, requests to /{slug} must
+  // redirect to /{slug}/ so the browser treats the slug as the current directory.
+  if (assetPath === 'index.html' && !querySlug && !path.endsWith('/') && path !== '/') {
+    const dest = new URL(url.toString());
+    dest.pathname = dest.pathname.replace(/(\/functions\/v1\/serve-app)?\/([a-z0-9][a-z0-9-]{2,80})$/, (_full, prefix, s) => `${prefix || ''}/${s}/`);
+    return Response.redirect(dest.toString(), 301);
+  }
+
   const { data: app, error: appErr } = await supabase
     .from('published_apps')
     .select('storage_prefix, is_published')
