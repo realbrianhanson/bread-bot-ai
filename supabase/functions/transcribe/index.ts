@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
+import { OPENAI_API_URL, MODELS, fetchWithTimeout, TIMEOUT_DEFAULT_MS, isAbortError } from "../_shared/config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -71,16 +72,16 @@ serve(async (req) => {
     // Forward to OpenAI Whisper
     const whisperForm = new FormData();
     whisperForm.append('file', audioFile, audioFile.name || 'audio.webm');
-    whisperForm.append('model', 'whisper-1');
+    whisperForm.append('model', MODELS.TRANSCRIBE);
     whisperForm.append('response_format', 'json');
 
-    const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    const whisperRes = await fetchWithTimeout(`${OPENAI_API_URL}/audio/transcriptions`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openaiKey}`,
       },
       body: whisperForm,
-    });
+    }, TIMEOUT_DEFAULT_MS);
 
     if (!whisperRes.ok) {
       const errText = await whisperRes.text();

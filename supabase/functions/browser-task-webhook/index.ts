@@ -1,12 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
+import { BROWSER_USE_API_URL, fetchWithTimeout, TIMEOUT_DEFAULT_MS } from "../_shared/config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-webhook-secret, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const BROWSER_USE_API_URL = 'https://api.browser-use.com/api/v3';
+/** Constant-time string comparison to avoid timing attacks on the shared secret. */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
 
 async function fetchAndStoreScreenshots(
   browserUseTaskId: string,
@@ -15,9 +22,9 @@ async function fetchAndStoreScreenshots(
   supabaseClient: any,
 ) {
   try {
-    const response = await fetch(`${BROWSER_USE_API_URL}/sessions/${browserUseTaskId}/files`, {
+    const response = await fetchWithTimeout(`${BROWSER_USE_API_URL}/sessions/${browserUseTaskId}/files`, {
       headers: { 'X-Browser-Use-API-Key': apiKey },
-    });
+    }, TIMEOUT_DEFAULT_MS);
 
     if (!response.ok) {
       console.error('Failed to fetch screenshots:', await response.text());
@@ -77,12 +84,11 @@ serve(async (req) => {
   }
 
   try {
-    // Verify shared secret
-    const url = new URL(req.url);
-    const secret = url.searchParams.get('secret');
-    const expectedSecret = Deno.env.get('WEBHOOK_SECRET');
+    // Verify shared secret via header (constant-time comparison).
+    const secret = req.headers.get('x-webhook-secret') || '';
+    const expectedSecret = Deno.env.get('WEBHOOK_SECRET') || '';
 
-    if (!expectedSecret || secret !== expectedSecret) {
+    if (!expectedSecret || !timingSafeEqual(secret, expectedSecret)) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -144,7 +150,7 @@ serve(async (req) => {
     // Look up task by browser_use_task_id in output_data
     const { data: tasks, error: lookupError } = await supabaseClient
       .from('tasks')
-      .select('id, output_data, user_id')
+      .select('id, output_data, user_id, status')
       .filter('output_data->>browser_use_task_id', 'eq', task_id);
 
     if (lookupError || !tasks || tasks.length === 0) {
@@ -157,12 +163,24 @@ serve(async (req) => {
 
     const task = tasks[0];
     const currentOutputData = task.output_data || {};
+    const previousStatus: string = task.status || 'pending';
+    const TERMINAL = new Set(['completed', 'failed', 'stopped', 'cancelled']);
 
     // Map status
     const mappedStatus = status === 'finished' ? 'completed'
       : status === 'failed' ? 'failed'
       : status === 'paused' ? 'paused'
       : 'running';
+
+    // If the task is already in a terminal state, treat this as a duplicate delivery
+    // and skip re-uploading screenshots / re-dispatching user webhooks.
+    if (TERMINAL.has(previousStatus)) {
+      console.log('[WEBHOOK] Duplicate delivery for terminal task, skipping:', task.id, previousStatus);
+      return new Response(JSON.stringify({ ok: true, duplicate: true }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const updatePayload: Record<string, any> = {
       status: mappedStatus,
@@ -191,7 +209,7 @@ serve(async (req) => {
       .update(updatePayload)
       .eq('id', task.id);
 
-    // Fetch screenshots on finish
+    // Fetch screenshots on finish (only when transitioning into terminal state).
     if (status === 'finished') {
       const apiKey = Deno.env.get('BROWSER_USE_API_KEY') ?? '';
       if (apiKey) {
@@ -204,7 +222,7 @@ serve(async (req) => {
       const webhookEvent = status === 'finished' ? 'task.completed' : 'task.failed';
       try {
         const dispatchUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/dispatch-webhook`;
-        await fetch(dispatchUrl, {
+        await fetchWithTimeout(dispatchUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -220,7 +238,7 @@ serve(async (req) => {
               description: output || taskError || 'Task event',
             },
           }),
-        });
+        }, TIMEOUT_DEFAULT_MS);
         console.log('[WEBHOOK] Dispatched user webhooks for event:', webhookEvent);
       } catch (dispatchErr) {
         console.error('[WEBHOOK] Failed to dispatch user webhooks:', dispatchErr);

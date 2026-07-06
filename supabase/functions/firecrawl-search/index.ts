@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
+import { FIRECRAWL_API_URL, fetchWithTimeout, TIMEOUT_DEFAULT_MS } from "../_shared/config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -54,7 +55,7 @@ Deno.serve(async (req) => {
 
     console.log('Searching:', query, 'for user:', user.id);
 
-    const response = await fetch('https://api.firecrawl.dev/v1/search', {
+    const response = await fetchWithTimeout(`${FIRECRAWL_API_URL}/search`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -68,7 +69,7 @@ Deno.serve(async (req) => {
         tbs: options?.tbs,
         scrapeOptions: options?.scrapeOptions,
       }),
-    });
+    }, TIMEOUT_DEFAULT_MS);
 
     const data = await response.json();
 

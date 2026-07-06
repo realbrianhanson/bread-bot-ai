@@ -404,7 +404,14 @@ async function resolveAnthropicKey(
       .eq('is_active', true)
       .maybeSingle();
 
-    if (apiKeyData?.encrypted_key) return apiKeyData.encrypted_key;
+    if (apiKeyData?.encrypted_key) {
+      try {
+        const { decryptSecret } = await import("../_shared/crypto.ts");
+        return await decryptSecret(apiKeyData.encrypted_key);
+      } catch (e) {
+        console.warn('[ORCHESTRATE] Decrypt user anthropic key failed:', e);
+      }
+    }
   }
   return Deno.env.get('ANTHROPIC_API_KEY') ?? '';
 }

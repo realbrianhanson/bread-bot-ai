@@ -1,12 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
+import { BROWSER_USE_API_URL, MODELS, fetchWithTimeout, TIMEOUT_DEFAULT_MS, isAbortError } from "../_shared/config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 };
-
-const BROWSER_USE_API_URL = 'https://api.browser-use.com/api/v3';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -15,6 +14,17 @@ serve(async (req) => {
 
   try {
     console.log('[RUN-SCHEDULED] Cron trigger received');
+
+    // Protect against unauthorized triggers — only pg_cron (which knows the secret) may call.
+    const cronSecret = req.headers.get('x-cron-secret');
+    const expected = Deno.env.get('CRON_SECRET');
+    if (!expected || cronSecret !== expected) {
+      console.warn('[RUN-SCHEDULED] Rejected: missing/invalid x-cron-secret');
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -28,6 +38,64 @@ serve(async (req) => {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // -------- Stuck task sweep --------
+    // Any 'running' task older than 30 minutes is considered stuck (webhook likely missed).
+    // Poll Browser Use once for real status; if still not terminal, mark as failed.
+    try {
+      const cutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      const { data: stuckTasks } = await supabase
+        .from('tasks')
+        .select('id, output_data, user_id, started_at')
+        .eq('status', 'running')
+        .lt('started_at', cutoff)
+        .limit(25);
+
+      for (const t of stuckTasks ?? []) {
+        const buId = (t.output_data as any)?.browser_use_task_id;
+        let realStatus: string | null = null;
+        let realOutput: any = null;
+        if (buId) {
+          try {
+            const r = await fetchWithTimeout(
+              `${BROWSER_USE_API_URL}/sessions/${buId}`,
+              { headers: { 'X-Browser-Use-API-Key': browserUseApiKey } },
+              TIMEOUT_DEFAULT_MS,
+            );
+            if (r.ok) {
+              const j = await r.json();
+              realStatus = j?.status ?? null;
+              realOutput = j?.output ?? null;
+            }
+          } catch (err) {
+            console.warn('[RUN-SCHEDULED] Sweep poll failed for', t.id, err);
+          }
+        }
+
+        const isTerminal = realStatus === 'finished' || realStatus === 'failed' || realStatus === 'stopped';
+        if (isTerminal) {
+          await supabase
+            .from('tasks')
+            .update({
+              status: realStatus === 'finished' ? 'completed' : 'failed',
+              output_data: { ...(t.output_data as any), output: realOutput },
+              completed_at: new Date().toISOString(),
+            })
+            .eq('id', t.id);
+        } else {
+          await supabase
+            .from('tasks')
+            .update({
+              status: 'failed',
+              error_message: 'Task timed out (no completion after 30 minutes).',
+              completed_at: new Date().toISOString(),
+            })
+            .eq('id', t.id);
+        }
+      }
+    } catch (sweepErr) {
+      console.error('[RUN-SCHEDULED] Sweep error:', sweepErr);
     }
 
     // Fetch all active scheduled tasks
@@ -112,7 +180,7 @@ serve(async (req) => {
       try {
         // Polling handles status updates; no webhook URL needed
 
-        const response = await fetch(`${BROWSER_USE_API_URL}/sessions`, {
+        const response = await fetchWithTimeout(`${BROWSER_USE_API_URL}/sessions`, {
           method: 'POST',
           headers: {
             'X-Browser-Use-API-Key': browserUseApiKey,
@@ -120,9 +188,10 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             task: scheduledTask.prompt,
+            model: MODELS.BROWSER_USE,
             ...(browserUseProfileId ? { profileId: browserUseProfileId } : {}),
           }),
-        });
+        }, TIMEOUT_DEFAULT_MS);
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -172,12 +241,13 @@ serve(async (req) => {
         ranCount++;
         console.log(`[RUN-SCHEDULED] Successfully launched "${scheduledTask.name}"`);
       } catch (err) {
+        const message = isAbortError(err) ? 'Browser Use request timed out' : (err instanceof Error ? err.message : 'Unknown error');
         console.error(`[RUN-SCHEDULED] Error launching "${scheduledTask.name}":`, err);
         await supabase
           .from('tasks')
           .update({
             status: 'failed',
-            error_message: err instanceof Error ? err.message : 'Unknown error',
+            error_message: message,
             completed_at: now.toISOString(),
           })
           .eq('id', taskRecord.id);

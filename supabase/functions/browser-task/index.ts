@@ -1,13 +1,13 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
+import { BROWSER_USE_API_URL, MODELS, fetchWithTimeout, TIMEOUT_DEFAULT_MS, isAbortError } from "../_shared/config.ts";
+import { decryptSecret } from "../_shared/crypto.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
-
-const BROWSER_USE_API_URL = 'https://api.browser-use.com/api/v3';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -85,7 +85,12 @@ serve(async (req) => {
         .eq('is_active', true)
         .maybeSingle();
 
-      browserUseApiKey = apiKeyData?.encrypted_key || (Deno.env.get('BROWSER_USE_API_KEY') ?? '');
+      let userKey = '';
+      if (apiKeyData?.encrypted_key) {
+        try { userKey = await decryptSecret(apiKeyData.encrypted_key); }
+        catch (e) { console.warn('Failed to decrypt user Browser Use key:', e); }
+      }
+      browserUseApiKey = userKey || (Deno.env.get('BROWSER_USE_API_KEY') ?? '');
     } else {
       browserUseApiKey = Deno.env.get('BROWSER_USE_API_KEY') ?? '';
     }
@@ -141,7 +146,7 @@ serve(async (req) => {
     // Call Browser Use Cloud API
     try {
 
-      const browserUseResponse = await fetch(`${BROWSER_USE_API_URL}/sessions`, {
+      const browserUseResponse = await fetchWithTimeout(`${BROWSER_USE_API_URL}/sessions`, {
         method: 'POST',
         headers: {
           'X-Browser-Use-API-Key': browserUseApiKey,
@@ -149,11 +154,11 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           task,
-          model: 'bu-ultra',
+          model: MODELS.BROWSER_USE,
           ...(browserUseProfileId ? { profileId: browserUseProfileId } : {}),
           ...(outputSchema ? { output_schema: outputSchema } : {})
         }),
-      });
+      }, TIMEOUT_DEFAULT_MS);
 
       if (!browserUseResponse.ok) {
         const errorText = await browserUseResponse.text();
