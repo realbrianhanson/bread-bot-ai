@@ -631,25 +631,83 @@ export default function AppBuilder() {
               </div>
             </div>
           )}
+
+          {versions.length > 1 && (
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                <GitBranch className="h-3 w-3" /> Version history ({versions.length})
+              </p>
+              <div className="max-h-[180px] overflow-y-auto space-y-1 rounded-md border border-border bg-muted/30 p-1.5">
+                {versions.map((v, idx) => {
+                  const isCurrent = v.id === taskId;
+                  const label = v.edit ? (idx === versions.length - 1 ? 'Initial build' : `Edit v${versions.length - idx}`) : 'Initial build';
+                  const when = v.completed_at || v.created_at;
+                  return (
+                    <div
+                      key={v.id}
+                      className={`text-xs rounded border px-2 py-1.5 space-y-1 ${isCurrent ? 'border-primary bg-background' : 'border-border/60 bg-background/60'}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium truncate" title={v.prompt}>{label}</span>
+                        <span className="text-muted-foreground text-[10px] shrink-0">{new Date(when).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      {v.prompt && <p className="text-muted-foreground line-clamp-2 leading-snug">{v.prompt}</p>}
+                      <div className="flex items-center justify-between gap-2 pt-0.5">
+                        <span className="text-muted-foreground text-[10px]">{v.status}{v.has_snapshot ? ' · saved' : ''}</span>
+                        <div className="flex items-center gap-1">
+                          {!isCurrent && (
+                            <button
+                              onClick={() => openBuild({ id: v.id, status: v.status, error_message: null, completed_at: v.completed_at, input_data: { prompt: v.prompt, edit: v.edit, parent_task_id: v.parent_task_id || undefined } as any, output_data: { preview_url: v.preview_url || undefined } as any })}
+                              disabled={isActive}
+                              aria-label="Open version"
+                              className="text-primary hover:underline text-[10px] disabled:opacity-50"
+                            >Open</button>
+                          )}
+                          {v.has_snapshot && !isActive && (
+                            <button
+                              onClick={() => restoreVersion(v.id)}
+                              disabled={!!isRestoring}
+                              aria-label="Restore this version"
+                              className="inline-flex items-center gap-0.5 text-[10px] text-foreground hover:text-primary disabled:opacity-50"
+                            >
+                              {isRestoring === v.id ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <RotateCcw className="h-2.5 w-2.5" />} Restore
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right: live preview */}
         <div className="relative bg-muted/20">
-          {previewUrl && !previewExpired ? (
+          {effectivePreviewUrl && !(previewExpired && !showRetainedPreview) ? (
             <>
               <div className="absolute top-3 right-3 z-10">
                 <Button asChild size="sm" variant="secondary">
-                  <a href={previewUrl} target="_blank" rel="noopener noreferrer">
+                  <a href={effectivePreviewUrl} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="h-4 w-4 mr-1" /> Open
                   </a>
                 </Button>
               </div>
               <iframe
-                src={previewUrl}
+                src={effectivePreviewUrl}
                 title="Live app preview"
                 className="w-full h-full border-0"
                 sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
               />
+              {showRetainedPreview && (
+                <div className="absolute inset-0 pointer-events-none flex items-start justify-center pt-4">
+                  <div className="pointer-events-auto rounded-full bg-background/90 backdrop-blur border border-border shadow-lg px-4 py-2 text-xs font-medium flex items-center gap-2">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                    Updating preview…
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             isActive ? (
