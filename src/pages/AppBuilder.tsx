@@ -97,7 +97,7 @@ export default function AppBuilder() {
 
   // Effective preview: prefer the current task's URL, otherwise the retained one from before this edit.
   const currentPreviewUrl = task?.output_data?.preview_url || null;
-  const showRetainedPreview = !currentPreviewUrl && !!previousPreview?.url && isActive;
+  const showRetainedPreview = !currentPreviewUrl && !!previousPreview?.url;
   const effectivePreviewUrl = currentPreviewUrl || (showRetainedPreview ? previousPreview!.url : null);
 
   // When the new sandbox's preview appears, drop the retained preview so we swap.
