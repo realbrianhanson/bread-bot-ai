@@ -40,15 +40,16 @@ export default function Admin() {
     monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
     const iso = monthStart.toISOString();
 
+    const sb = supabase as any;
     const [leadsRes, profilesRes, subsRes, usageRes, tasksCount, msgsCount, activeSubsCount, usersCount] = await Promise.all([
-      supabase.from('leads').select('*').order('created_at', { ascending: false }).limit(200),
-      supabase.from('profiles').select('id, email, full_name, created_at').order('created_at', { ascending: false }).limit(200),
-      supabase.from('subscriptions').select('user_id, tier, subscribed'),
-      supabase.from('usage_tracking').select('user_id, usage_type').gte('created_at', iso),
-      supabase.from('tasks').select('*', { count: 'exact', head: true }),
-      supabase.from('messages').select('*', { count: 'exact', head: true }),
-      supabase.from('subscriptions').select('*', { count: 'exact', head: true }).eq('subscribed', true),
-      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      sb.from('leads').select('*').order('created_at', { ascending: false }).limit(200),
+      sb.from('profiles').select('id, email, full_name, created_at').order('created_at', { ascending: false }).limit(200),
+      sb.from('subscriptions').select('user_id, tier, subscribed'),
+      sb.from('usage_tracking').select('user_id, usage_type').gte('created_at', iso),
+      sb.from('tasks').select('*', { count: 'exact', head: true }),
+      sb.from('messages').select('*', { count: 'exact', head: true }),
+      sb.from('subscriptions').select('*', { count: 'exact', head: true }).eq('subscribed', true),
+      sb.from('profiles').select('*', { count: 'exact', head: true }),
     ]);
 
     setLeads((leadsRes.data as any[]) ?? []);
