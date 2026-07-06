@@ -206,6 +206,8 @@ const DESIGN_MD = Buffer.from(process.env.DESIGN_MD_B64 || '', 'base64').toStrin
 const MARKETING_MD = Buffer.from(process.env.MARKETING_MD_B64 || '', 'base64').toString('utf8');
 const KNOWLEDGE_MD = Buffer.from(process.env.KNOWLEDGE_MD_B64 || '', 'base64').toString('utf8');
 const IS_EDIT = process.env.IS_EDIT === '1';
+const FORM_KEY = process.env.FORM_KEY || '';
+const FORM_ENDPOINT_URL = process.env.FORM_ENDPOINT_URL || '';
 
 function log(msg) {
   console.log('[RUNNER] ' + msg);
@@ -380,6 +382,8 @@ const SYSTEM_PROMPT_BASE = [
   'USER KNOWLEDGE BASE SUMMARY (facts about the user or their business; use only if relevant):',
   '__KNOWLEDGE_MD__',
   '',
+  '__FORMS_INSTRUCTIONS__',
+  '',
   'WORKFLOW:',
   '1. Follow the REQUIRED FIRST ACTIONS above.',
   '2. Build the app: components in src/components/, composed in src/App.jsx. Use write_file for new files and replace_in_file for edits.',
@@ -402,7 +406,11 @@ const SYSTEM_PROMPT = SYSTEM_PROMPT_BASE
   .replace('__PLAN_FIRST__', IS_EDIT ? PLAN_FIRST_EDIT : PLAN_FIRST_CREATE)
   .replace('__DESIGN_MD__', DESIGN_MD || '(none provided)')
   .replace('__MARKETING_MD__', MARKETING_MD || '(none provided)')
-  .replace('__KNOWLEDGE_MD__', KNOWLEDGE_MD || '(none provided)');
+  .replace('__KNOWLEDGE_MD__', KNOWLEDGE_MD || '(none provided)')
+  .replace('__FORMS_INSTRUCTIONS__',
+    '__FORMS_TEMPLATE__'
+      .split('{{FORM_ENDPOINT}}').join(FORM_ENDPOINT_URL)
+      .split('{{FORM_KEY}}').join(FORM_KEY));
 // Note: the __DESIGN_CONSTITUTION__ placeholder is filled by the SANDBOX MANAGER
 // before this runner source is written into the sandbox, because the runner
 // cannot import Deno modules. See RUNNER_SOURCE.replace(...) below.
