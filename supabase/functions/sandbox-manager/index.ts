@@ -1028,6 +1028,8 @@ serve(async (req) => {
     if (action === 'create') {
       const prompt = (body.prompt || '').trim();
       const model = ['claude-sonnet-4-6', 'claude-fable-5'].includes(body.model) ? body.model : 'claude-sonnet-4-6';
+      const designMd = typeof body.designMd === 'string' ? body.designMd.slice(0, 8000) : '';
+      const marketingMd = typeof body.marketingMd === 'string' ? body.marketingMd.slice(0, 8000) : '';
       if (!prompt || prompt.length < 10) {
         return new Response(JSON.stringify({ error: 'Prompt is required (min 10 chars)' }), { status: 400, headers: jsonHeaders });
       }
@@ -1051,7 +1053,7 @@ serve(async (req) => {
           task_type: 'app_build',
           status: 'initializing',
           started_at: new Date().toISOString(),
-          input_data: { prompt: prompt.slice(0, 5000), model },
+          input_data: { prompt: prompt.slice(0, 5000), model, has_design_md: !!designMd, has_marketing_md: !!marketingMd },
           output_data: { build_token: buildToken, log: [], phase: 'queued' },
         })
         .select()
@@ -1063,7 +1065,8 @@ serve(async (req) => {
 
       await supabase.from('usage_tracking').insert({ user_id: user.id, usage_type: 'chat_message', quantity: 1, task_id: taskRecord.id });
 
-      const bootstrapPromise = bootstrapBuild(taskRecord.id, buildToken, prompt, model);
+      const { knowledgeMd } = await loadUserContextForBuild(supabase, user.id);
+      const bootstrapPromise = bootstrapBuild(taskRecord.id, buildToken, prompt, model, { designMd, marketingMd, knowledgeMd });
       // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
       if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
         // @ts-ignore
@@ -1078,6 +1081,8 @@ serve(async (req) => {
     if (action === 'edit') {
       const prompt = (body.prompt || '').trim();
       const model = ['claude-sonnet-4-6', 'claude-fable-5'].includes(body.model) ? body.model : 'claude-sonnet-4-6';
+      const designMd = typeof body.designMd === 'string' ? body.designMd.slice(0, 8000) : '';
+      const marketingMd = typeof body.marketingMd === 'string' ? body.marketingMd.slice(0, 8000) : '';
       const parentTaskId = body.taskId;
       if (!prompt || prompt.length < 5) {
         return new Response(JSON.stringify({ error: 'Edit prompt is required' }), { status: 400, headers: jsonHeaders });
@@ -1123,10 +1128,11 @@ serve(async (req) => {
 
       await supabase.from('usage_tracking').insert({ user_id: user.id, usage_type: 'chat_message', quantity: 1, task_id: taskRecord.id });
 
+      const { knowledgeMd } = await loadUserContextForBuild(supabase, user.id);
       const editPromise = bootstrapEdit(taskRecord.id, buildToken, prompt, model, {
         sandbox_id: parent.output_data?.sandbox_id,
         snapshot_path: parent.output_data?.snapshot_path,
-      });
+      }, { designMd, marketingMd, knowledgeMd });
       // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
       if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
         // @ts-ignore
