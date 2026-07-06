@@ -7,6 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, Hammer, Square, ExternalLink, Loader2, Sparkles, Zap, History, Wand2, Bug, Rocket, Download, Copy, EyeOff, PlayCircle, CheckCircle2 } from 'lucide-react';
 import garlicSpin from '@/assets/garlic-spin.png';
+import { StylePicker } from '@/components/chat/StylePicker';
+import { PurposePicker } from '@/components/chat/PurposePicker';
+import TodoChecklist, { type TodoItem } from '@/components/chat/TodoChecklist';
 
 interface BuildLogEntry {
   t: string;
@@ -42,6 +45,7 @@ interface BuildTask {
     qa_report?: string;
     qa_pending?: boolean;
     needs_continue?: boolean;
+    todos?: Array<{ id: string; text: string; status: 'pending' | 'in_progress' | 'done' | 'dropped'; reason?: string }>;
   } | null;
 }
 
@@ -62,6 +66,10 @@ export default function AppBuilder() {
   const [prompt, setPrompt] = useState('');
   const [editPrompt, setEditPrompt] = useState('');
   const [model, setModel] = useState<'claude-sonnet-4-6' | 'claude-fable-5'>('claude-sonnet-4-6');
+  const [styleId, setStyleId] = useState<string | null>(null);
+  const [designMd, setDesignMd] = useState<string>('');
+  const [purposeId, setPurposeId] = useState<string | null>(null);
+  const [purposeMd, setPurposeMd] = useState<string>('');
   const [taskId, setTaskId] = useState<string | null>(null);
   const [task, setTask] = useState<BuildTask | null>(null);
   const [recentBuilds, setRecentBuilds] = useState<BuildTask[]>([]);
