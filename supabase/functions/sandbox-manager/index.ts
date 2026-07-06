@@ -1170,6 +1170,7 @@ serve(async (req) => {
       const editPromise = bootstrapEdit(taskRecord.id, buildToken, prompt, model, {
         sandbox_id: parent.output_data?.sandbox_id,
         snapshot_path: parent.output_data?.snapshot_path,
+        form_key: parent.output_data?.form_key,
       }, { designMd, marketingMd, knowledgeMd });
       // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
       if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
