@@ -965,7 +965,7 @@ serve(async (req) => {
 
     // ----- Runner callback (token-authenticated, no user JWT) -----
     if (action === 'callback') {
-      const { taskId, token, status, step, log, summary, files_changed, error } = body;
+      const { taskId, token, status, step, log, summary, files_changed, error, todos } = body;
       if (!taskId || !token) {
         return new Response(JSON.stringify({ error: 'Missing taskId or token' }), { status: 400, headers: jsonHeaders });
       }
@@ -982,6 +982,7 @@ serve(async (req) => {
       if (step) fields.output_data.current_step = String(step).slice(0, 200);
       if (summary) fields.output_data.summary = summary;
       if (typeof files_changed === 'number') fields.output_data.files_changed = files_changed;
+      if (Array.isArray(todos)) fields.output_data.todos = todos.slice(0, 60);
       if (status === 'completed') {
         fields.status = 'completed';
         fields.completed_at = new Date().toISOString();
