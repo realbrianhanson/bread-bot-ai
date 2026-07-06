@@ -788,6 +788,12 @@ async function bootstrapBuild(taskId: string, buildToken: string, prompt: string
   const supabase = serviceClient();
   const e2bApiKey = Deno.env.get('E2B_API_KEY') ?? '';
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  const formEndpoint = supabaseUrl + '/functions/v1/submit-form';
+
+  // Generate/reuse a stable form_key for this app lineage. Stored on the task
+  // and reused at publish time so the built app's forms hit the right owner.
+  const formKey = 'fk_' + Array.from(crypto.getRandomValues(new Uint8Array(12)))
+    .map((b) => b.toString(16).padStart(2, '0')).join('');
 
   const readTask = async () => {
     const { data } = await supabase.from('tasks').select('output_data,status').eq('id', taskId).single();
@@ -797,7 +803,7 @@ async function bootstrapBuild(taskId: string, buildToken: string, prompt: string
   let sandbox: Sandbox | null = null;
   try {
     let task = await readTask();
-    let od = await appendLog(supabase, taskId, task?.output_data, { output_data: { phase: 'creating_sandbox' } }, 'Creating sandbox');
+    let od = await appendLog(supabase, taskId, task?.output_data, { output_data: { phase: 'creating_sandbox', form_key: formKey } }, 'Creating sandbox');
 
     sandbox = await Sandbox.create('base', {
       apiKey: e2bApiKey,
@@ -854,6 +860,8 @@ async function bootstrapBuild(taskId: string, buildToken: string, prompt: string
         MARKETING_MD_B64: marketingB64,
         KNOWLEDGE_MD_B64: knowledgeB64,
         IS_EDIT: '0',
+        FORM_KEY: formKey,
+        FORM_ENDPOINT_URL: formEndpoint,
       },
     });
 
