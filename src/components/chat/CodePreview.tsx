@@ -667,9 +667,14 @@ ${previewScrollRecoveryScript}
             Copies self-contained HTML ready to paste into GoHighLevel's Custom Code block.
           </TooltipContent>
         </Tooltip>
-        <Button variant="ghost" size="icon" onClick={handleDownloadHTML} className="h-6 w-6">
-          <Download className="h-3 w-3" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={handleDownloadHTML} aria-label="Download HTML" className="h-6 w-6">
+              <Download className="h-3 w-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">Download self-contained HTML file</TooltipContent>
+        </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" onClick={() => setShowSaveTemplate(true)} className="h-6 w-6">
