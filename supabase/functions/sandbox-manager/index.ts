@@ -839,7 +839,7 @@ serve(async (req) => {
       if (!task || task.task_type !== 'app_build' || task.output_data?.build_token !== token) {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: jsonHeaders });
       }
-      if (['completed', 'failed', 'stopped'].includes(task.status)) {
+      if (['completed', 'failed', 'stopped', 'completed_partial'].includes(task.status)) {
         return new Response(JSON.stringify({ ok: true, note: 'terminal' }), { headers: jsonHeaders });
       }
 
@@ -850,6 +850,11 @@ serve(async (req) => {
       if (status === 'completed') {
         fields.status = 'completed';
         fields.completed_at = new Date().toISOString();
+        fields.output_data.qa_pending = true;
+      } else if (status === 'completed_partial') {
+        fields.status = 'completed_partial';
+        fields.completed_at = new Date().toISOString();
+        fields.output_data.needs_continue = true;
       } else if (status === 'failed') {
         fields.status = 'failed';
         fields.error_message = (error || 'Build failed').slice(0, 500);
@@ -859,7 +864,7 @@ serve(async (req) => {
       }
 
       await appendLog(supabase, taskId, task.output_data, fields, log);
-      if ((status === 'completed' || status === 'failed') && task.output_data?.sandbox_id && task.user_id) {
+      if ((status === 'completed' || status === 'failed' || status === 'completed_partial') && task.output_data?.sandbox_id && task.user_id) {
         const snapPromise = snapshotSandbox(taskId, task.user_id, task.output_data.sandbox_id);
         // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
         if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
