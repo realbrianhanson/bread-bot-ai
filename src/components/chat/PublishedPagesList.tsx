@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Globe, Copy, Check, Trash2, Eye, Link2 } from 'lucide-react';
+import { Globe, Copy, Check, Trash2, Eye, Link2, Webhook } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { ConnectDomainDialog } from './ConnectDomainDialog';
+import { ForwardingConfig } from './ForwardingConfig';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface PublishedPage {
   id: string;
@@ -12,6 +14,7 @@ interface PublishedPage {
   title: string | null;
   views: number | null;
   created_at: string | null;
+  form_key: string | null;
 }
 
 const PublishedPagesList = () => {
@@ -20,12 +23,13 @@ const PublishedPagesList = () => {
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [domainTarget, setDomainTarget] = useState<PublishedPage | null>(null);
+  const [leadTarget, setLeadTarget] = useState<PublishedPage | null>(null);
 
   const fetchPages = async () => {
     if (!user) return;
     const { data } = await supabase
       .from('shared_previews')
-      .select('id, slug, title, views, created_at')
+      .select('id, slug, title, views, created_at, form_key')
       .eq('user_id', user.id)
       .eq('is_published', true)
       .order('created_at', { ascending: false });
@@ -78,6 +82,9 @@ const PublishedPagesList = () => {
             <Button variant="ghost" size="icon" aria-label="Connect custom domain" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => setDomainTarget(page)}>
               <Link2 className="h-3 w-3" />
             </Button>
+            <Button variant="ghost" size="icon" aria-label="Configure lead webhook" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => setLeadTarget(page)}>
+              <Webhook className="h-3 w-3" />
+            </Button>
             <Button variant="ghost" size="icon" aria-label="Unpublish page" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => handleUnpublish(page.id)}>
               <Trash2 className="h-3 w-3" />
             </Button>
@@ -91,6 +98,16 @@ const PublishedPagesList = () => {
           sharedPreviewId={domainTarget.id}
           pageTitle={domainTarget.title || 'Untitled'}
         />
+      )}
+      {leadTarget && (
+        <Dialog open={!!leadTarget} onOpenChange={(v) => { if (!v) setLeadTarget(null); }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Lead forwarding — {leadTarget.title || 'Untitled'}</DialogTitle>
+            </DialogHeader>
+            <ForwardingConfig kind="page" siteId={leadTarget.id} formKey={leadTarget.form_key} />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
