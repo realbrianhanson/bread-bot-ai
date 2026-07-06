@@ -1483,6 +1483,7 @@ serve(async (req) => {
       // Force snapshot-based restore (do not reuse a warm sandbox from parent — restore semantics require the exact files).
       const editPromise = bootstrapEdit(taskRecord.id, buildToken, restorePrompt, model, {
         snapshot_path: parent.output_data?.snapshot_path,
+        form_key: parent.output_data?.form_key,
       }, { knowledgeMd });
       // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
       if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
