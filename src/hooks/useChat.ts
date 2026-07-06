@@ -5,7 +5,7 @@ import { toast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
 import { validateWebsite, hasCodeBlocks, extractCodeFromResponse } from '@/lib/validateWebsite';
 import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 export interface Message {
   id: string;
@@ -50,9 +50,19 @@ async function parseCSVPreview(file: File): Promise<{ preview: string; totalRows
 
 async function parseXLSXPreview(file: File): Promise<{ preview: string; totalRows: number; totalColumns: number }> {
   const buffer = await file.arrayBuffer();
-  const wb = XLSX.read(buffer, { type: 'array' });
-  const sheet = wb.Sheets[wb.SheetNames[0]];
-  const data = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1 }) as string[][];
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(buffer);
+  const sheet = wb.worksheets[0];
+  if (!sheet) return { preview: '(empty spreadsheet)', totalRows: 0, totalColumns: 0 };
+  const data: string[][] = [];
+  sheet.eachRow({ includeEmpty: false }, (row) => {
+    const cells: string[] = [];
+    row.eachCell({ includeEmpty: true }, (cell) => {
+      const v = cell.value;
+      cells.push(v == null ? '' : (typeof v === 'object' && 'text' in (v as any) ? String((v as any).text) : String(v)));
+    });
+    data.push(cells);
+  });
   if (data.length === 0) return { preview: '(empty spreadsheet)', totalRows: 0, totalColumns: 0 };
   const columns = data[0].map(String);
   const rows = data.slice(1);
