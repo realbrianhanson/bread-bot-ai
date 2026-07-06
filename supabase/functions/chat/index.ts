@@ -474,58 +474,23 @@ When the user's message includes sections labeled "CURRENT HTML:", "CURRENT CSS:
       console.error('[CHAT] Honcho context failed (proceeding without):', err);
     }
 
-    // --- Industry auto-detection when no design template is selected ---
-    const industryOverrides: Record<string, { heroGradient: string; primary: string; accent: string; fontMood: string; extraInstruction: string }> = {
-      'beauty-spa': {
-        heroGradient: 'linear-gradient(135deg, #FFF5F5 0%, #FED7E2 100%)',
-        primary: '#D4AF37', accent: '#E8B4B8', fontMood: 'elegant serif',
-        extraInstruction: 'Use soft shadows, organic shapes, calming warm palette. Serif headings with sans-serif body. Premium spa aesthetic.'
-      },
-      'saas': {
-        heroGradient: 'linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #312E81 100%)',
-        primary: '#4F46E5', accent: '#06B6D4', fontMood: 'modern geometric sans',
-        extraInstruction: 'Clean, minimal, technical. Dark hero, light content sections. Emphasize features grid and pricing table.'
-      },
-      'real-estate': {
-        heroGradient: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-        primary: '#C9A84C', accent: '#2D6A4F', fontMood: 'premium serif headings',
-        extraInstruction: 'Luxury feel with gold accents. Large property images. Trust signals prominent. Clean, high-end aesthetic.'
-      },
-      'restaurant': {
-        heroGradient: 'linear-gradient(135deg, #1B1B1B 0%, #2D2D2D 100%)',
-        primary: '#C84B31', accent: '#ECBC55', fontMood: 'warm display font',
-        extraInstruction: 'Warm, inviting, food-focused. Rich dark backgrounds with warm accents. Menu-style layouts. Large food photography areas.'
-      },
-      'healthcare': {
-        heroGradient: 'linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)',
-        primary: '#2563EB', accent: '#059669', fontMood: 'clean trustworthy sans',
-        extraInstruction: 'Clean, clinical, trustworthy. Blue primary for trust. Green for health/positive. Lots of whitespace. Simple navigation.'
-      },
-      'coaching': {
-        heroGradient: 'linear-gradient(135deg, #0F172A 0%, #1E1B4B 100%)',
-        primary: '#7C3AED', accent: '#F59E0B', fontMood: 'bold motivational sans',
-        extraInstruction: 'Bold, energetic, transformation-focused. Strong CTAs. Testimonials prominent. Before/after framing. Authority positioning.'
-      },
-      'fintech': {
-        heroGradient: 'linear-gradient(135deg, #0C0A09 0%, #1C1917 100%)',
-        primary: '#10B981', accent: '#3B82F6', fontMood: 'precise monospace-inspired',
-        extraInstruction: 'Dark, premium, data-driven. Green for growth/money. Trust badges essential. Clean number displays. Security messaging.'
-      },
-      'ecommerce': {
-        heroGradient: 'linear-gradient(135deg, #FFFFFF 0%, #F9FAFB 100%)',
-        primary: '#111827', accent: '#EF4444', fontMood: 'clean shopping sans',
-        extraInstruction: 'Product-focused, clean grid layouts. High contrast CTAs. Trust badges near purchase buttons. Light background to let products stand out.'
-      },
-      'portfolio': {
-        heroGradient: 'linear-gradient(135deg, #0F172A 0%, #020617 100%)',
-        primary: '#F8FAFC', accent: '#A78BFA', fontMood: 'editorial mixed serif sans',
-        extraInstruction: 'Creative, showcase-focused. Large image areas. Minimal UI, maximum content visibility. Elegant transitions.'
-      },
-      'event': {
-        heroGradient: 'linear-gradient(135deg, #0F172A 0%, #312E81 100%)',
-        primary: '#8B5CF6', accent: '#F59E0B', fontMood: 'bold event display',
-        extraInstruction: 'Urgency-driven. Countdown timer. Speaker photos. Bold headlines. Strong registration CTA. FOMO elements.'
-      },
+    // Industry token-value PRESETS (starting points the model may adapt during
+    // the art-direction ritual — not raw hex mandates). Values are bare HSL
+    // triples ready to plug into the token skeleton.
+    const industryOverrides: Record<string, {
+      tokens: { primary: string; accent: string; heroBg: string; heroForeground: string; background: string; foreground: string };
+      fontMood: string; extraInstruction: string;
+    }> = {
+      'beauty-spa':  { tokens: { primary: '43 74% 52%',  accent: '350 55% 82%', heroBg: '350 50% 96%',   heroForeground: '20 15% 20%',  background: '20 40% 98%',  foreground: '20 15% 15%'   }, fontMood: 'elegant serif display + humanist body', extraInstruction: 'Soft shadows, organic shapes, calming warm palette. Premium spa aesthetic — restraint over decoration.' },
+      'saas':        { tokens: { primary: '244 75% 57%', accent: '188 94% 42%', heroBg: '222 47% 11%',   heroForeground: '210 40% 98%', background: '0 0% 100%',   foreground: '222 47% 11%'  }, fontMood: 'modern geometric sans (e.g. Space Grotesk display + Inter body)', extraInstruction: 'Clean, technical, product-forward. One signature product visual, not another gradient blob.' },
+      'real-estate': { tokens: { primary: '43 60% 54%',  accent: '155 40% 30%', heroBg: '222 40% 12%',   heroForeground: '43 60% 90%',  background: '0 0% 100%',   foreground: '222 40% 12%'  }, fontMood: 'premium serif headings + refined sans body', extraInstruction: 'Luxury with gold accents. Large property imagery. Trust signals prominent.' },
+      'restaurant':  { tokens: { primary: '11 60% 48%',  accent: '38 82% 63%',  heroBg: '20 8% 12%',     heroForeground: '38 40% 92%',  background: '30 20% 96%',  foreground: '20 8% 15%'    }, fontMood: 'warm display serif or hand-lettered + humanist body', extraInstruction: 'Warm, inviting, food-focused. Menu-style layouts. Large food imagery areas.' },
+      'healthcare':  { tokens: { primary: '217 91% 45%', accent: '160 84% 32%', heroBg: '214 60% 95%',   heroForeground: '222 47% 15%', background: '0 0% 100%',   foreground: '222 47% 15%'  }, fontMood: 'clean trustworthy sans', extraInstruction: 'Clean, clinical, trustworthy. Generous whitespace, calm navigation.' },
+      'coaching':    { tokens: { primary: '262 83% 58%', accent: '38 92% 50%',  heroBg: '224 71% 12%',   heroForeground: '210 40% 98%', background: '0 0% 100%',   foreground: '222 47% 11%'  }, fontMood: 'bold motivational sans display', extraInstruction: 'Energetic, transformation-focused. Testimonials prominent. Authority positioning.' },
+      'fintech':     { tokens: { primary: '160 84% 39%', accent: '217 91% 60%', heroBg: '20 6% 10%',     heroForeground: '160 30% 90%', background: '0 0% 100%',   foreground: '20 6% 12%'    }, fontMood: 'precise sans with mono numerals', extraInstruction: 'Premium, data-driven. Trust badges essential. Number-first hero.' },
+      'ecommerce':   { tokens: { primary: '222 47% 11%', accent: '0 84% 60%',   heroBg: '0 0% 100%',     heroForeground: '222 47% 11%', background: '0 0% 100%',   foreground: '222 47% 11%'  }, fontMood: 'clean shopping sans', extraInstruction: 'Product-forward, clean grids. Trust badges near purchase buttons.' },
+      'portfolio':   { tokens: { primary: '210 40% 98%', accent: '262 70% 70%', heroBg: '222 47% 5%',    heroForeground: '210 40% 98%', background: '222 47% 8%',  foreground: '210 40% 98%'  }, fontMood: 'editorial mixed serif + sans', extraInstruction: 'Creative, showcase-focused. Minimal UI, maximum content.' },
+      'event':       { tokens: { primary: '262 83% 58%', accent: '38 92% 50%',  heroBg: '244 65% 15%',   heroForeground: '210 40% 98%', background: '0 0% 100%',   foreground: '222 47% 11%'  }, fontMood: 'bold event display', extraInstruction: 'Urgency-driven. Countdown, speaker photos, strong registration CTA.' },
     };
 
     let detectedCategory: string | null = conversationCategory || null;
