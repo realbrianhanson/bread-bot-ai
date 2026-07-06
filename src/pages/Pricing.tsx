@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +8,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSubscription } from '@/hooks/useSubscription';
 import { toast } from '@/hooks/use-toast';
 
-const PLANS = [
+type PlanId = 'free' | 'pro' | 'enterprise';
+
+const PLANS: Array<{
+  id: PlanId;
+  name: string;
+  price: number;
+  description: string;
+  features: string[];
+  popular?: boolean;
+}> = [
   {
     id: 'free',
     name: 'Free',
@@ -25,7 +34,6 @@ const PLANS = [
     id: 'pro',
     name: 'Pro',
     price: 20,
-    priceId: 'price_pro_placeholder',
     popular: true,
     description: 'For power users',
     features: [
@@ -40,7 +48,6 @@ const PLANS = [
     id: 'enterprise',
     name: 'Business',
     price: 99,
-    priceId: 'price_business_placeholder',
     description: 'For teams & agencies',
     features: [
       '25,000 chat messages/month',
@@ -53,10 +60,27 @@ const PLANS = [
   },
 ];
 
+function isRealPriceId(id: string | null | undefined): id is string {
+  return !!id && !id.includes('placeholder');
+}
+
 export default function Pricing() {
   const navigate = useNavigate();
   const { tier, subscribed } = useSubscription();
   const [loading, setLoading] = useState<string | null>(null);
+  const [priceIds, setPriceIds] = useState<Record<string, string | null>>({});
+
+  useEffect(() => {
+    supabase
+      .from('tier_limits')
+      .select('tier, stripe_price_id')
+      .then(({ data }) => {
+        if (!data) return;
+        const map: Record<string, string | null> = {};
+        for (const row of data) map[row.tier] = row.stripe_price_id;
+        setPriceIds(map);
+      });
+  }, []);
 
   const handleCheckout = async (priceId: string, planId: string) => {
     setLoading(planId);
@@ -84,7 +108,10 @@ export default function Pricing() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          {PLANS.map((plan) => (
+          {PLANS.map((plan) => {
+            const priceId = priceIds[plan.id];
+            const hasRealPrice = isRealPriceId(priceId);
+            return (
             <Card
               key={plan.id}
               className={`relative flex flex-col ${isCurrentPlan(plan.id) ? 'border-primary border-2' : ''} ${plan.popular ? 'shadow-lg shadow-primary/10' : ''}`}
@@ -114,23 +141,33 @@ export default function Pricing() {
                 </ul>
               </CardContent>
               <CardFooter>
-                {plan.priceId ? (
+                {plan.id === 'free' ? (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => navigate('/auth')}
+                    disabled={isCurrentPlan(plan.id)}
+                  >
+                    {isCurrentPlan(plan.id) ? 'Current Plan' : 'Get Started'}
+                  </Button>
+                ) : hasRealPrice ? (
                   <Button
                     className="w-full"
                     variant={plan.popular ? 'default' : 'outline'}
-                    onClick={() => handleCheckout(plan.priceId!, plan.id)}
+                    onClick={() => handleCheckout(priceId!, plan.id)}
                     disabled={loading === plan.id || isCurrentPlan(plan.id)}
                   >
                     {isCurrentPlan(plan.id) ? 'Current Plan' : loading === plan.id ? 'Loading...' : `Upgrade to ${plan.name}`}
                   </Button>
                 ) : (
-                  <Button variant="outline" className="w-full" disabled={isCurrentPlan(plan.id)}>
-                    {isCurrentPlan(plan.id) ? 'Current Plan' : 'Get Started'}
+                  <Button variant="outline" className="w-full" disabled>
+                    Coming soon
                   </Button>
                 )}
               </CardFooter>
             </Card>
-          ))}
+          );
+          })}
         </div>
 
         <div className="text-center mt-8">

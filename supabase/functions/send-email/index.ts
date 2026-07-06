@@ -36,6 +36,18 @@ serve(async (req) => {
       });
     }
 
+    // Enforce quota (atomic check + increment via RPC)
+    const { data: quota } = await supabaseAdmin.rpc('check_and_increment_usage', {
+      p_user_id: user.id, p_usage_type: 'chat_message',
+    });
+    if (quota && !quota.allowed) {
+      return new Response(JSON.stringify({
+        error: 'quota_exceeded',
+        message: `You have used all ${quota.limit} chat messages for this billing period. Please upgrade your plan.`,
+        usage: { used: quota.used, limit: quota.limit },
+      }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       return new Response(JSON.stringify({ error: 'LOVABLE_API_KEY is not configured' }), {
@@ -80,13 +92,7 @@ serve(async (req) => {
       throw new Error(`Email send failed [${response.status}]: ${JSON.stringify(data)}`);
     }
 
-    // Track usage
-    await supabaseAdmin.from('usage_tracking').insert({
-      user_id: user.id,
-      usage_type: 'chat_message',
-      quantity: 1,
-      metadata: { tool: 'send_email', to, subject },
-    });
+    // Usage already tracked atomically in check_and_increment_usage above.
 
     return new Response(JSON.stringify({
       success: true,

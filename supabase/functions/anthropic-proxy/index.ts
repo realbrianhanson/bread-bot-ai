@@ -4,12 +4,13 @@ import { createClient } from "npm:@supabase/supabase-js@2.84.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-build-token, x-task-id',
+  'Access-Control-Allow-Headers': 'authorization, apikey, x-client-info, content-type, x-build-token, x-task-id',
 };
 const jsonHeaders = { ...corsHeaders, 'Content-Type': 'application/json' };
 
 const ALLOWED_MODELS = ['claude-sonnet-4-6', 'claude-fable-5', 'claude-opus-4-8', 'claude-haiku-4-5-20251001'];
 const MAX_TOKENS_CAP = 16384;
+const RATE_LIMIT_PER_MIN = 120;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -32,9 +33,20 @@ serve(async (req) => {
       { auth: { persistSession: false } },
     );
 
+    // Require an authenticated user whose id matches the task's user_id.
+    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Missing user credentials' }), { status: 401, headers: jsonHeaders });
+    }
+    const { data: userData, error: userErr } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ error: 'Invalid user token' }), { status: 401, headers: jsonHeaders });
+    }
+    const authedUserId = userData.user.id;
+
     const { data: task } = await supabase
       .from('tasks')
-      .select('task_type, status, output_data')
+      .select('task_type, status, output_data, user_id')
       .eq('id', taskId)
       .single();
 
@@ -42,9 +54,23 @@ serve(async (req) => {
       !task ||
       task.task_type !== 'app_build' ||
       task.output_data?.build_token !== buildToken ||
-      !['initializing', 'running'].includes(task.status)
+      !['initializing', 'running'].includes(task.status) ||
+      task.user_id !== authedUserId
     ) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: jsonHeaders });
+    }
+
+    // Per-user rate limit: 120 requests / minute
+    const { data: rl } = await supabase.rpc('check_and_increment_rate_limit', {
+      p_user_id: authedUserId,
+      p_usage_type: 'anthropic_proxy',
+      p_limit: RATE_LIMIT_PER_MIN,
+      p_window_seconds: 60,
+    });
+    if (rl && !rl.allowed) {
+      return new Response(JSON.stringify({ error: 'rate_limited', message: 'Too many requests. Slow down.' }), {
+        status: 429, headers: jsonHeaders,
+      });
     }
 
     const body = await req.json();

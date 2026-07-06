@@ -427,6 +427,24 @@ export type Database = {
         }
         Relationships: []
       }
+      stripe_events: {
+        Row: {
+          event_id: string
+          event_type: string
+          processed_at: string
+        }
+        Insert: {
+          event_id: string
+          event_type: string
+          processed_at?: string
+        }
+        Update: {
+          event_id?: string
+          event_type?: string
+          processed_at?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           can_use_own_keys: boolean | null
@@ -763,6 +781,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_and_increment_rate_limit: {
+        Args: {
+          p_limit: number
+          p_usage_type: string
+          p_user_id: string
+          p_window_seconds: number
+        }
+        Returns: Json
+      }
+      check_and_increment_usage: {
+        Args: { p_usage_type: string; p_user_id: string }
+        Returns: Json
+      }
       get_user_tier_and_usage: {
         Args: { p_user_id: string }
         Returns: {
