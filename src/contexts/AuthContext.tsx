@@ -7,7 +7,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any; needsEmailConfirmation?: boolean }>;
   signOut: () => Promise<void>;
   loading: boolean;
   tier: string;
@@ -131,8 +131,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/dashboard`;
-    
-    const { error } = await supabase.auth.signUp({
+
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -142,22 +142,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     });
-    
+
     if (!error) {
       // Fire GHL webhook with contact info (non-blocking)
       const nameParts = fullName.trim().split(/\s+/);
       const firstName = nameParts[0] || "";
       const lastName = nameParts.slice(1).join(" ") || "";
-      
+
       supabase.functions.invoke("ghl-contact-webhook", {
         body: { email, firstName, lastName },
       }).catch((err) => {
         console.error("GHL webhook failed (non-blocking):", err);
       });
 
-      navigate('/dashboard');
+      // If email confirmation is required, Supabase returns a user with no
+      // session. Don't navigate — let the caller show a "check your email" screen.
+      const needsEmailConfirmation = !!data?.user && !data?.session;
+      if (!needsEmailConfirmation) {
+        navigate('/dashboard');
+      }
+      return { error: null, needsEmailConfirmation };
     }
-    
+
     return { error };
   };
 

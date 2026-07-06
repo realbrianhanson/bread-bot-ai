@@ -18,6 +18,10 @@ import PublishedPage from "./pages/PublishedPage";
 import WorkflowsPage from "./pages/Workflows";
 import WorkflowEditor from "./pages/WorkflowEditor";
 import AppBuilder from "./pages/AppBuilder";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+import ResetPassword from "./pages/ResetPassword";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -61,7 +65,10 @@ function AnimatedRoutes() {
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<PageWrapper><Index /></PageWrapper>} />
         <Route path="/auth" element={<PageWrapper><Auth /></PageWrapper>} />
+        <Route path="/reset-password" element={<PageWrapper><ResetPassword /></PageWrapper>} />
         <Route path="/pricing" element={<PageWrapper><Pricing /></PageWrapper>} />
+        <Route path="/terms" element={<PageWrapper><Terms /></PageWrapper>} />
+        <Route path="/privacy" element={<PageWrapper><Privacy /></PageWrapper>} />
         <Route path="/lead" element={<PageWrapper><LeadCapture /></PageWrapper>} />
         <Route path="/preview/:shareId" element={<SharedPreview />} />
         <Route path="/p/:slug" element={<PublishedPage />} />
@@ -117,11 +124,13 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <AnimatedRoutes />
-          </AuthProvider>
-        </BrowserRouter>
+        <ErrorBoundary>
+          <BrowserRouter>
+            <AuthProvider>
+              <AnimatedRoutes />
+            </AuthProvider>
+          </BrowserRouter>
+        </ErrorBoundary>
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
