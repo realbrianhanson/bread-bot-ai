@@ -872,7 +872,7 @@ async function snapshotSandbox(taskId: string, userId: string, sandboxId: string
   }
 }
 
-async function bootstrapEdit(taskId: string, buildToken: string, prompt: string, model: string, parent: { sandbox_id?: string; snapshot_path?: string }) {
+async function bootstrapEdit(taskId: string, buildToken: string, prompt: string, model: string, parent: { sandbox_id?: string; snapshot_path?: string }, ctx: { designMd?: string; marketingMd?: string; knowledgeMd?: string } = {}) {
   const supabase = serviceClient();
   const e2bApiKey = Deno.env.get('E2B_API_KEY') ?? '';
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
@@ -910,7 +910,7 @@ async function bootstrapEdit(taskId: string, buildToken: string, prompt: string,
       if (dlErr || !blob) throw new Error('Snapshot download failed: ' + (dlErr?.message || 'no data'));
       await sandbox.files.write([
         { path: '/home/user/restore.tar.gz', data: blob },
-        { path: '/home/user/runner.cjs', data: RUNNER_SOURCE },
+        { path: '/home/user/runner.cjs', data: renderRunnerSource() },
       ]);
       const untar = await sandbox.commands.run('mkdir -p /home/user/app && cd /home/user/app && tar -xzf /home/user/restore.tar.gz', { timeoutMs: 60000 });
       if (untar.exitCode !== 0) throw new Error('Restore failed: ' + (untar.stderr || '').slice(0, 300));
@@ -928,10 +928,13 @@ async function bootstrapEdit(taskId: string, buildToken: string, prompt: string,
     const callbackUrl = supabaseUrl + '/functions/v1/sandbox-manager';
     const proxyUrl = supabaseUrl + '/functions/v1/anthropic-proxy';
     const promptB64 = btoa(unescape(encodeURIComponent(framedPrompt)));
+    const designB64 = btoa(unescape(encodeURIComponent(ctx.designMd || '')));
+    const marketingB64 = btoa(unescape(encodeURIComponent(ctx.marketingMd || '')));
+    const knowledgeB64 = btoa(unescape(encodeURIComponent(ctx.knowledgeMd || '')));
 
     await sandbox.commands.run('nohup node /home/user/runner.cjs > /home/user/runner.log 2>&1 &', {
       timeoutMs: 15000,
-      envs: { TASK_ID: taskId, BUILD_TOKEN: buildToken, CALLBACK_URL: callbackUrl, PROXY_URL: proxyUrl, MODEL: model, PROMPT_B64: promptB64, PREVIEW_URL: previewUrl },
+      envs: { TASK_ID: taskId, BUILD_TOKEN: buildToken, CALLBACK_URL: callbackUrl, PROXY_URL: proxyUrl, MODEL: model, PROMPT_B64: promptB64, PREVIEW_URL: previewUrl, DESIGN_MD_B64: designB64, MARKETING_MD_B64: marketingB64, KNOWLEDGE_MD_B64: knowledgeB64, IS_EDIT: '1' },
     });
 
     await appendLog(supabase, taskId, od, { status: 'running', output_data: { phase: 'agent_running', reused_sandbox: reused } }, 'Edit agent launched');
