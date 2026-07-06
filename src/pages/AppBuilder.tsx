@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, Hammer, Square, ExternalLink, Loader2, Sparkles, Zap, History, Wand2, Bug, Rocket, Download, Copy, EyeOff, PlayCircle, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Hammer, Square, ExternalLink, Loader2, Sparkles, Zap, History, Wand2, Bug, Rocket, Download, Copy, EyeOff, PlayCircle, CheckCircle2, GitBranch, RotateCcw } from 'lucide-react';
 import garlicSpin from '@/assets/garlic-spin.png';
 import { StylePicker } from '@/components/chat/StylePicker';
 import { PurposePicker } from '@/components/chat/PurposePicker';
@@ -73,6 +73,11 @@ export default function AppBuilder() {
   const [taskId, setTaskId] = useState<string | null>(null);
   const [task, setTask] = useState<BuildTask | null>(null);
   const [recentBuilds, setRecentBuilds] = useState<BuildTask[]>([]);
+  // Kept from the previous build so we can keep showing the working preview
+  // while a new edit sandbox spins up instead of blanking the panel.
+  const [previousPreview, setPreviousPreview] = useState<{ url: string; taskId: string } | null>(null);
+  const [versions, setVersions] = useState<Array<{ id: string; status: string; created_at: string; completed_at: string | null; prompt: string; edit: boolean; parent_task_id: string | null; has_snapshot: boolean; preview_url: string | null }>>([]);
+  const [isRestoring, setIsRestoring] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [isQaStarting, setIsQaStarting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -90,6 +95,16 @@ export default function AppBuilder() {
   const publishedVersion = task?.output_data?.published_version;
   const publishedUrl = publishedSlug ? `${(import.meta.env.VITE_SUPABASE_URL as string) || ''}/functions/v1/serve-app/${publishedSlug}/` : null;
 
+  // Effective preview: prefer the current task's URL, otherwise the retained one from before this edit.
+  const currentPreviewUrl = task?.output_data?.preview_url || null;
+  const showRetainedPreview = !currentPreviewUrl && !!previousPreview?.url;
+  const effectivePreviewUrl = currentPreviewUrl || (showRetainedPreview ? previousPreview!.url : null);
+
+  // When the new sandbox's preview appears, drop the retained preview so we swap.
+  useEffect(() => {
+    if (currentPreviewUrl && previousPreview) setPreviousPreview(null);
+  }, [currentPreviewUrl, previousPreview]);
+
   const loadRecentBuilds = useCallback(async () => {
     const { data } = await supabase
       .from('tasks')
@@ -103,6 +118,21 @@ export default function AppBuilder() {
   useEffect(() => {
     loadRecentBuilds();
   }, [loadRecentBuilds]);
+
+  // Load version lineage whenever the active task changes.
+  useEffect(() => {
+    if (!taskId) { setVersions([]); return; }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.functions.invoke('sandbox-manager', {
+        body: { action: 'versions', taskId },
+      });
+      if (!cancelled && !error && Array.isArray(data?.versions)) {
+        setVersions(data.versions);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [taskId, task?.status]);
 
   useEffect(() => {
     if (!taskId) return;
@@ -218,6 +248,11 @@ export default function AppBuilder() {
       return;
     }
     setIsStarting(true);
+    // Retain the current preview URL so we can keep showing it while the new
+    // sandbox spins up, then swap when the fresh preview_url arrives.
+    if (task?.output_data?.preview_url && !previewExpired) {
+      setPreviousPreview({ url: task.output_data.preview_url, taskId: task.id });
+    }
     try {
       const { data, error } = await supabase.functions.invoke('sandbox-manager', {
         body: { action: 'edit', taskId, prompt: usePrompt, model, designMd, marketingMd: purposeMd },
@@ -229,9 +264,33 @@ export default function AppBuilder() {
       setTaskId(data.taskId);
       toast({ title: 'Edit started', description: 'Resuming your build — fast if the sandbox is still warm.' });
     } catch (e: any) {
+      setPreviousPreview(null);
       toast({ title: 'Failed to start edit', description: e.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setIsStarting(false);
+    }
+  };
+
+  const restoreVersion = async (versionId: string) => {
+    if (!versionId || isActive) return;
+    setIsRestoring(versionId);
+    if (task?.output_data?.preview_url && !previewExpired) {
+      setPreviousPreview({ url: task.output_data.preview_url, taskId: task.id });
+    }
+    try {
+      const { data, error } = await supabase.functions.invoke('sandbox-manager', {
+        body: { action: 'restore', taskId: versionId, model },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.message || data.error);
+      setTask(null);
+      setTaskId(data.taskId);
+      toast({ title: 'Restoring version', description: 'Relaunching a sandbox from the saved snapshot.' });
+    } catch (e: any) {
+      setPreviousPreview(null);
+      toast({ title: 'Restore failed', description: e.message || 'Unknown error', variant: 'destructive' });
+    } finally {
+      setIsRestoring(null);
     }
   };
 
@@ -572,25 +631,83 @@ export default function AppBuilder() {
               </div>
             </div>
           )}
+
+          {versions.length > 1 && (
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                <GitBranch className="h-3 w-3" /> Version history ({versions.length})
+              </p>
+              <div className="max-h-[180px] overflow-y-auto space-y-1 rounded-md border border-border bg-muted/30 p-1.5">
+                {versions.map((v, idx) => {
+                  const isCurrent = v.id === taskId;
+                  const label = v.edit ? (idx === versions.length - 1 ? 'Initial build' : `Edit v${versions.length - idx}`) : 'Initial build';
+                  const when = v.completed_at || v.created_at;
+                  return (
+                    <div
+                      key={v.id}
+                      className={`text-xs rounded border px-2 py-1.5 space-y-1 ${isCurrent ? 'border-primary bg-background' : 'border-border/60 bg-background/60'}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium truncate" title={v.prompt}>{label}</span>
+                        <span className="text-muted-foreground text-[10px] shrink-0">{new Date(when).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      {v.prompt && <p className="text-muted-foreground line-clamp-2 leading-snug">{v.prompt}</p>}
+                      <div className="flex items-center justify-between gap-2 pt-0.5">
+                        <span className="text-muted-foreground text-[10px]">{v.status}{v.has_snapshot ? ' · saved' : ''}</span>
+                        <div className="flex items-center gap-1">
+                          {!isCurrent && (
+                            <button
+                              onClick={() => openBuild({ id: v.id, status: v.status, error_message: null, completed_at: v.completed_at, input_data: { prompt: v.prompt, edit: v.edit, parent_task_id: v.parent_task_id || undefined } as any, output_data: { preview_url: v.preview_url || undefined } as any })}
+                              disabled={isActive}
+                              aria-label="Open version"
+                              className="text-primary hover:underline text-[10px] disabled:opacity-50"
+                            >Open</button>
+                          )}
+                          {v.has_snapshot && !isActive && (
+                            <button
+                              onClick={() => restoreVersion(v.id)}
+                              disabled={!!isRestoring}
+                              aria-label="Restore this version"
+                              className="inline-flex items-center gap-0.5 text-[10px] text-foreground hover:text-primary disabled:opacity-50"
+                            >
+                              {isRestoring === v.id ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <RotateCcw className="h-2.5 w-2.5" />} Restore
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right: live preview */}
         <div className="relative bg-muted/20">
-          {previewUrl && !previewExpired ? (
+          {effectivePreviewUrl && !(previewExpired && !showRetainedPreview) ? (
             <>
               <div className="absolute top-3 right-3 z-10">
                 <Button asChild size="sm" variant="secondary">
-                  <a href={previewUrl} target="_blank" rel="noopener noreferrer">
+                  <a href={effectivePreviewUrl} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="h-4 w-4 mr-1" /> Open
                   </a>
                 </Button>
               </div>
               <iframe
-                src={previewUrl}
+                src={effectivePreviewUrl}
                 title="Live app preview"
                 className="w-full h-full border-0"
                 sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
               />
+              {showRetainedPreview && (
+                <div className="absolute inset-0 pointer-events-none flex items-start justify-center pt-4">
+                  <div className="pointer-events-auto rounded-full bg-background/90 backdrop-blur border border-border shadow-lg px-4 py-2 text-xs font-medium flex items-center gap-2">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                    Updating preview…
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             isActive ? (

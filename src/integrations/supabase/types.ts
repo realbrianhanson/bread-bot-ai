@@ -670,6 +670,7 @@ export type Database = {
       }
       tier_limits: {
         Row: {
+          app_builds_per_month: number
           browser_tasks_per_month: number
           chat_messages_per_month: number
           code_executions_per_month: number
@@ -680,6 +681,7 @@ export type Database = {
           tier: Database["public"]["Enums"]["subscription_tier"]
         }
         Insert: {
+          app_builds_per_month?: number
           browser_tasks_per_month: number
           chat_messages_per_month: number
           code_executions_per_month?: number
@@ -690,6 +692,7 @@ export type Database = {
           tier: Database["public"]["Enums"]["subscription_tier"]
         }
         Update: {
+          app_builds_per_month?: number
           browser_tasks_per_month?: number
           chat_messages_per_month?: number
           code_executions_per_month?: number
@@ -898,6 +901,8 @@ export type Database = {
       get_user_tier_and_usage: {
         Args: { p_user_id: string }
         Returns: {
+          app_builds_limit: number
+          app_builds_used: number
           browser_tasks_limit: number
           browser_tasks_used: number
           can_use_own_keys: boolean

@@ -69,6 +69,8 @@ serve(async (req) => {
         chat_messages_limit: 100,
         browser_tasks_limit: 10,
         code_executions_limit: 5,
+        app_builds_used: 0,
+        app_builds_limit: 3,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -139,6 +141,8 @@ serve(async (req) => {
       chat_messages_limit: 100,
       browser_tasks_limit: 10,
       code_executions_limit: 5,
+      app_builds_used: 0,
+      app_builds_limit: 3,
     };
 
     return new Response(JSON.stringify({
@@ -152,6 +156,8 @@ serve(async (req) => {
       chat_messages_limit: result.chat_messages_limit,
       browser_tasks_limit: result.browser_tasks_limit,
       code_executions_limit: result.code_executions_limit,
+      app_builds_used: result.app_builds_used ?? 0,
+      app_builds_limit: result.app_builds_limit ?? 3,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

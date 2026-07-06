@@ -342,7 +342,8 @@ const PLAN_FIRST_CREATE = [
   '1. write_file PLAN.md — cover: pages/sections list, signature element for this project, palette rationale (name the colors, not just "blue"), font pairing rationale, one paragraph explaining how this brief maps to the design plan.',
   '2. write_file TODO.md — a markdown checklist of the concrete build steps in order. Use "- [ ] step" for each item. Include tokens step, each page section, wiring, responsive pass, and check_build.',
   '3. update_todos — call with the same items you put in TODO.md so the UI checklist appears live.',
-  '4. Rewrite src/index.css tokens for this project (from the design plan). Then start building.',
+  '4. write_file DECISIONS.md — start the design & build journal with a first entry: `## <today\\'s date> — Initial build` followed by 3–8 bullets covering the brief in your own words and the key design choices you are locking in (palette, fonts, radius, hero pattern, signature element). This file is the memory across future edits.',
+  '5. Rewrite src/index.css tokens for this project (from the design plan). Then start building.',
   '',
   'As you complete each step, call update_todos with the new statuses AND call replace_in_file on TODO.md to tick the matching checkbox ("- [ ] X" -> "- [x] X"). If you decide a step is no longer necessary, mark it status "dropped" with a short reason instead of deleting it.',
 ].join('\\n');
@@ -350,10 +351,13 @@ const PLAN_FIRST_CREATE = [
 const PLAN_FIRST_EDIT = [
   'REQUIRED FIRST ACTIONS on an EDIT run:',
   '1. read_file PLAN.md — respect the original design decisions. Do not change palette, fonts, or radius unless the change request explicitly asks for it. If PLAN.md is missing, create one from what the existing code implies before making edits.',
-  '2. read_file TODO.md if it exists so you know what was already done.',
-  '3. list_files, then read only the files relevant to the change request.',
-  '4. Add new TODO items for this edit via update_todos (and append to TODO.md). Tick them off as you go.',
-  '5. Prefer replace_in_file for targeted edits over rewriting whole files.',
+  '2. read_file DECISIONS.md — this is the running journal of every previous change. Read it so you understand why things are the way they are before touching them. If DECISIONS.md is missing, create it now from the existing code.',
+  '3. read_file TODO.md if it exists so you know what was already done.',
+  '4. list_files, then read only the files relevant to the change request.',
+  '5. Add new TODO items for this edit via update_todos (and append to TODO.md). Tick them off as you go.',
+  '6. Prefer replace_in_file for targeted edits over rewriting whole files.',
+  '',
+  'BEFORE calling finish: append a new entry to DECISIONS.md using replace_in_file — one section titled `## <today\\'s date> — <one-line summary of the edit>` followed by short bullets covering: what the user asked for, what you changed, and any tradeoffs or choices worth remembering. This journal is included in every future snapshot.',
 ].join('\\n');
 
 const FINISH_GATE_NOTE = 'FINISH GATE: finish is only accepted when (a) check_build returns BUILD OK, (b) runtime verification passes, and (c) every TODO item is either "done" or "dropped" with a reason. Unchecked items will block finish.';
@@ -1041,14 +1045,14 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Prompt is required (min 10 chars)' }), { status: 400, headers: jsonHeaders });
       }
 
-      // Usage gate (reuses chat message quota for v1)
-      const { data: usageData } = await supabase.rpc('get_user_tier_and_usage', { p_user_id: user.id });
-      const usage = usageData?.[0];
-      if (!usage) {
-        return new Response(JSON.stringify({ error: 'Unable to fetch usage data' }), { status: 500, headers: jsonHeaders });
+      // Atomic app_build quota gate — check + increment in one transaction.
+      const { data: quota, error: quotaErr } = await supabase.rpc('check_and_increment_usage', { p_user_id: user.id, p_usage_type: 'app_build' });
+      if (quotaErr) {
+        return new Response(JSON.stringify({ error: 'Unable to check quota' }), { status: 500, headers: jsonHeaders });
       }
-      if (usage.chat_messages_used >= usage.chat_messages_limit) {
-        return new Response(JSON.stringify({ error: 'quota_exceeded', message: 'Monthly limit reached. Please upgrade your plan.', limit_exceeded: true }), { status: 402, headers: jsonHeaders });
+      if (quota && (quota as any).allowed === false) {
+        const q = quota as any;
+        return new Response(JSON.stringify({ error: 'quota_exceeded', message: `Monthly app build limit reached (${q.used}/${q.limit}). Please upgrade your plan.`, limit_exceeded: true, used: q.used, limit: q.limit }), { status: 402, headers: jsonHeaders });
       }
 
       const buildToken = generateToken();
@@ -1070,7 +1074,10 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Failed to create build record' }), { status: 500, headers: jsonHeaders });
       }
 
-      await supabase.from('usage_tracking').insert({ user_id: user.id, usage_type: 'chat_message', quantity: 1, task_id: taskRecord.id });
+      // Backfill the task_id on the usage row we just inserted atomically.
+      await supabase.from('usage_tracking').update({ task_id: taskRecord.id })
+        .eq('user_id', user.id).eq('usage_type', 'app_build').is('task_id', null)
+        .order('created_at', { ascending: false }).limit(1);
 
       const { knowledgeMd } = await loadUserContextForBuild(supabase, user.id);
       const bootstrapPromise = bootstrapBuild(taskRecord.id, buildToken, prompt, model, { designMd, marketingMd, knowledgeMd });
@@ -1105,13 +1112,13 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: 'This build has no saved files to resume from' }), { status: 409, headers: jsonHeaders });
       }
 
-      const { data: usageData } = await supabase.rpc('get_user_tier_and_usage', { p_user_id: user.id });
-      const usage = usageData?.[0];
-      if (!usage) {
-        return new Response(JSON.stringify({ error: 'Unable to fetch usage data' }), { status: 500, headers: jsonHeaders });
+      const { data: quota, error: quotaErr } = await supabase.rpc('check_and_increment_usage', { p_user_id: user.id, p_usage_type: 'app_build' });
+      if (quotaErr) {
+        return new Response(JSON.stringify({ error: 'Unable to check quota' }), { status: 500, headers: jsonHeaders });
       }
-      if (usage.chat_messages_used >= usage.chat_messages_limit) {
-        return new Response(JSON.stringify({ error: 'quota_exceeded', message: 'Monthly limit reached. Please upgrade your plan.', limit_exceeded: true }), { status: 402, headers: jsonHeaders });
+      if (quota && (quota as any).allowed === false) {
+        const q = quota as any;
+        return new Response(JSON.stringify({ error: 'quota_exceeded', message: `Monthly app build limit reached (${q.used}/${q.limit}). Please upgrade your plan.`, limit_exceeded: true, used: q.used, limit: q.limit }), { status: 402, headers: jsonHeaders });
       }
 
       const buildToken = generateToken();
@@ -1133,7 +1140,9 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Failed to create edit record' }), { status: 500, headers: jsonHeaders });
       }
 
-      await supabase.from('usage_tracking').insert({ user_id: user.id, usage_type: 'chat_message', quantity: 1, task_id: taskRecord.id });
+      await supabase.from('usage_tracking').update({ task_id: taskRecord.id })
+        .eq('user_id', user.id).eq('usage_type', 'app_build').is('task_id', null)
+        .order('created_at', { ascending: false }).limit(1);
 
       const { knowledgeMd } = await loadUserContextForBuild(supabase, user.id);
       const editPromise = bootstrapEdit(taskRecord.id, buildToken, prompt, model, {
@@ -1354,6 +1363,113 @@ serve(async (req) => {
         console.error('[SANDBOX-MANAGER] ' + action + ' failed:', err);
         return new Response(JSON.stringify({ error: (err instanceof Error ? err.message : String(err)).slice(0, 500) }), { status: 500, headers: jsonHeaders });
       }
+    }
+
+    if (action === 'versions') {
+      // Walk the parent chain to find the root of this lineage, then return every
+      // build in the same chain (root + descendants) so the UI can show version history.
+      const startId = body.taskId;
+      if (!startId) return new Response(JSON.stringify({ error: 'taskId required' }), { status: 400, headers: jsonHeaders });
+      const { data: startTask } = await supabase.from('tasks').select('*').eq('id', startId).eq('user_id', user.id).maybeSingle();
+      if (!startTask) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: jsonHeaders });
+
+      let rootId = startTask.id;
+      let cursor: any = startTask;
+      for (let i = 0; i < 40; i++) {
+        const parentId = cursor?.input_data?.parent_task_id || cursor?.output_data?.parent_task_id;
+        if (!parentId) { rootId = cursor.id; break; }
+        const { data: p } = await supabase.from('tasks').select('*').eq('id', parentId).eq('user_id', user.id).maybeSingle();
+        if (!p) { rootId = cursor.id; break; }
+        cursor = p;
+        rootId = p.id;
+      }
+
+      // Collect every user app_build task and keep those whose ancestor chain contains rootId.
+      const { data: all } = await supabase
+        .from('tasks')
+        .select('id, status, completed_at, created_at, input_data, output_data')
+        .eq('user_id', user.id)
+        .eq('task_type', 'app_build')
+        .order('created_at', { ascending: false })
+        .limit(200);
+      const byId = new Map<string, any>();
+      for (const t of (all || [])) byId.set(t.id, t);
+      const inLineage = (t: any): boolean => {
+        let c: any = t;
+        for (let i = 0; i < 40 && c; i++) {
+          if (c.id === rootId) return true;
+          const pid = c?.input_data?.parent_task_id || c?.output_data?.parent_task_id;
+          if (!pid) return false;
+          c = byId.get(pid);
+        }
+        return false;
+      };
+      const versions = (all || []).filter(inLineage).map((t: any) => ({
+        id: t.id,
+        status: t.status,
+        created_at: t.created_at,
+        completed_at: t.completed_at,
+        prompt: t.input_data?.prompt || '',
+        edit: !!t.input_data?.edit,
+        parent_task_id: t.input_data?.parent_task_id || t.output_data?.parent_task_id || null,
+        has_snapshot: !!t.output_data?.snapshot_path,
+        preview_url: t.output_data?.preview_url || null,
+      }));
+      return new Response(JSON.stringify({ rootId, versions }), { headers: jsonHeaders });
+    }
+
+    if (action === 'restore') {
+      // Relaunch a sandbox from a saved snapshot as a brand new edit lineage entry.
+      // Uses the atomic edit path with a "no-op" prompt so the model just re-verifies.
+      const parentTaskId = body.taskId;
+      const model = ['claude-sonnet-4-6', 'claude-fable-5'].includes(body.model) ? body.model : 'claude-sonnet-4-6';
+      if (!parentTaskId) return new Response(JSON.stringify({ error: 'taskId required' }), { status: 400, headers: jsonHeaders });
+      const { data: parent } = await supabase.from('tasks').select('*').eq('id', parentTaskId).eq('user_id', user.id).single();
+      if (!parent || parent.task_type !== 'app_build') return new Response(JSON.stringify({ error: 'Build not found' }), { status: 404, headers: jsonHeaders });
+      if (!parent.output_data?.snapshot_path) return new Response(JSON.stringify({ error: 'This version has no saved snapshot to restore from' }), { status: 409, headers: jsonHeaders });
+
+      const { data: quota, error: quotaErr } = await supabase.rpc('check_and_increment_usage', { p_user_id: user.id, p_usage_type: 'app_build' });
+      if (quotaErr) return new Response(JSON.stringify({ error: 'Unable to check quota' }), { status: 500, headers: jsonHeaders });
+      if (quota && (quota as any).allowed === false) {
+        const q = quota as any;
+        return new Response(JSON.stringify({ error: 'quota_exceeded', message: `Monthly app build limit reached (${q.used}/${q.limit}).`, limit_exceeded: true }), { status: 402, headers: jsonHeaders });
+      }
+
+      const restorePrompt = 'RESTORE VERSION: The saved project files have been restored. Do not modify any files. Just run check_build to confirm it still compiles, add a DECISIONS.md entry titled `## <today> — Restored earlier version` noting which version was restored, then call finish immediately.';
+      const buildToken = generateToken();
+      const { data: taskRecord, error: taskError } = await supabase
+        .from('tasks')
+        .insert({
+          user_id: user.id,
+          project_id: parent.project_id || null,
+          task_type: 'app_build',
+          status: 'initializing',
+          started_at: new Date().toISOString(),
+          input_data: { prompt: 'Restore earlier version', model, parent_task_id: parentTaskId, edit: true, restore: true },
+          output_data: { build_token: buildToken, log: [], phase: 'queued', parent_task_id: parentTaskId },
+        })
+        .select()
+        .single();
+      if (taskError || !taskRecord) return new Response(JSON.stringify({ error: 'Failed to create restore record' }), { status: 500, headers: jsonHeaders });
+
+      await supabase.from('usage_tracking').update({ task_id: taskRecord.id })
+        .eq('user_id', user.id).eq('usage_type', 'app_build').is('task_id', null)
+        .order('created_at', { ascending: false }).limit(1);
+
+      const { knowledgeMd } = await loadUserContextForBuild(supabase, user.id);
+      // Force snapshot-based restore (do not reuse a warm sandbox from parent — restore semantics require the exact files).
+      const editPromise = bootstrapEdit(taskRecord.id, buildToken, restorePrompt, model, {
+        snapshot_path: parent.output_data?.snapshot_path,
+      }, { knowledgeMd });
+      // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
+      if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(editPromise);
+      } else {
+        editPromise.catch((e) => console.error('[SANDBOX-MANAGER] restore background error:', e));
+      }
+
+      return new Response(JSON.stringify({ taskId: taskRecord.id, status: 'initializing' }), { headers: jsonHeaders });
     }
 
     return new Response(JSON.stringify({ error: 'Unknown action' }), { status: 400, headers: jsonHeaders });
