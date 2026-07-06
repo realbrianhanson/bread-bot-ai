@@ -364,6 +364,7 @@ const Dashboard = () => {
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Open conversations"
             onClick={() => setMobileDrawerOpen(true)}
             className="md:hidden h-8 w-8"
           >
@@ -398,15 +399,15 @@ const Dashboard = () => {
           <ResultsDashboard />
           <ThemeToggle />
           <TaskHistory onRerunTask={handleRerunTask} />
-          <Button variant="ghost" size="icon" onClick={() => navigate("/builder")} className="h-8 w-8 text-muted-foreground hover:text-foreground" title="App Builder">
+          <Button variant="ghost" size="icon" aria-label="App Builder" onClick={() => navigate("/builder")} className="h-8 w-8 text-muted-foreground hover:text-foreground" title="App Builder">
             <Hammer className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={() => navigate("/settings")} className="h-8 w-8 text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="icon" aria-label="Settings" onClick={() => navigate("/settings")} className="h-8 w-8 text-muted-foreground hover:text-foreground">
             <Settings className="h-4 w-4" />
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" size="icon" aria-label="Sign out" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                 <LogOut className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>
@@ -424,18 +425,23 @@ const Dashboard = () => {
         </div>
         {/* Mobile: scrollable icon row */}
         <div className="flex md:hidden items-center gap-1 overflow-x-auto scrollbar-none">
+          <TaskTemplatesPanel onSelectTemplate={handleQuickStart} />
+          <WorkflowBuilder onExecuteWorkflow={handleExecuteWorkflow} />
+          <ScheduledTasksPanel />
+          <WebhookManager />
+          <TaskHistory onRerunTask={handleRerunTask} />
           <BuildHistory onOpenBuild={handleSelectConversation} />
           <ResultsDashboard />
           <ThemeToggle />
-          <Button variant="ghost" size="icon" onClick={() => navigate("/builder")} className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground" title="App Builder">
+          <Button variant="ghost" size="icon" aria-label="App Builder" onClick={() => navigate("/builder")} className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground" title="App Builder">
             <Hammer className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={() => navigate("/settings")} className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="icon" aria-label="Settings" onClick={() => navigate("/settings")} className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground">
             <Settings className="h-4 w-4" />
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" size="icon" aria-label="Sign out" className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground">
                 <LogOut className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>

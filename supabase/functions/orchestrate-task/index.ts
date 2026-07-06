@@ -7,9 +7,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const ORCHESTRATOR_MODEL = 'claude-fable-5';
-const ORCHESTRATOR_FALLBACK_MODEL = 'claude-opus-4-8';
+import { ANTHROPIC_API_URL, MODELS } from '../_shared/config.ts';
+const ORCHESTRATOR_MODEL = MODELS.ORCHESTRATOR;
+const ORCHESTRATOR_FALLBACK_MODEL = MODELS.ORCHESTRATOR_FALLBACK;
 
 // --- Honcho helpers ---
 const HONCHO_API_BASE = 'https://api.honcho.dev/v1';
@@ -536,7 +536,7 @@ async function executeTool(
             'content-type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'claude-sonnet-4-6',
+            model: MODELS.CHAT,
             max_tokens: 8192,
             messages: [{
               role: 'user',
@@ -734,7 +734,7 @@ async function executeTool(
         const res = await fetch(`${supabaseUrl}/functions/v1/sandbox-manager`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-          body: JSON.stringify({ action: 'create', prompt: toolInput.prompt, model: toolInput.model || 'claude-sonnet-4-6' }),
+          body: JSON.stringify({ action: 'create', prompt: toolInput.prompt, model: toolInput.model || MODELS.BUILDER_FAST }),
         });
         const data = await res.json();
         if (data.error) return `Build error: ${data.message || data.error}`;

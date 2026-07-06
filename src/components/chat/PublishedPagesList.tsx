@@ -70,10 +70,10 @@ const PublishedPagesList = () => {
                 <span>{page.created_at ? new Date(page.created_at).toLocaleDateString() : ''}</span>
               </p>
             </div>
-            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => handleCopy(page.slug)}>
+            <Button variant="ghost" size="icon" aria-label="Copy published page link" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleCopy(page.slug)}>
               {copiedSlug === page.slug ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
             </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive" onClick={() => handleUnpublish(page.id)}>
+            <Button variant="ghost" size="icon" aria-label="Unpublish page" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => handleUnpublish(page.id)}>
               <Trash2 className="h-3 w-3" />
             </Button>
           </div>

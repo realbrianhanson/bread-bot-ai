@@ -166,12 +166,9 @@ const ConversationList = ({
                         <Button
                           size="sm"
                           variant="ghost"
+                          aria-label="Conversation actions"
                           onClick={(e) => e.stopPropagation()}
-                          className={`h-7 w-7 p-0 shrink-0 ${
-                            activeConversationId === conversation.id
-                              ? 'opacity-100'
-                              : 'opacity-0 group-hover:opacity-100'
-                          } transition-opacity`}
+                          className="h-7 w-7 p-0 shrink-0 text-muted-foreground hover:text-foreground"
                         >
                           <MoreVertical className="h-3.5 w-3.5" />
                         </Button>

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Globe, Code, FileStack, ArrowRight, Sparkles, Shield, Zap, Play, Monitor, Bot, CheckCircle2, Clock } from "lucide-react";
@@ -69,6 +70,20 @@ const Index = () => {
 
   return (
     <main className="min-h-screen bg-background relative overflow-hidden">
+      <Helmet>
+        <title>GarlicBread.ai — AI Browser Automation & Code Generation</title>
+        <meta name="description" content="AI agents that navigate the web, extract data, run code, and build apps for you. Free tier available." />
+        <link rel="canonical" href="https://garlicbread.ai/" />
+        <meta property="og:title" content="GarlicBread.ai — AI Browser Automation & Code Generation" />
+        <meta property="og:description" content="AI agents that navigate the web, extract data, run code, and build apps for you." />
+        <meta property="og:url" content="https://garlicbread.ai/" />
+        <meta property="og:image" content="https://garlicbread.ai/og-image.png" />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="GarlicBread.ai — AI Browser Automation & Code Generation" />
+        <meta name="twitter:description" content="AI agents that navigate the web, extract data, run code, and build apps for you." />
+        <meta name="twitter:image" content="https://garlicbread.ai/og-image.png" />
+      </Helmet>
       <AuroraBackground />
       <div className="absolute inset-0 dot-grid opacity-30" />
 

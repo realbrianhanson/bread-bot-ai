@@ -28,13 +28,15 @@
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "GarlicBread.ai",
+      "url": "https://garlicbread.ai",
       "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Web",
       "description": "AI-powered browser automation and code generation platform",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
-      }
+      "offers": [
+        { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "USD", "description": "100 chat messages, 10 browser tasks, 5 code executions per month" },
+        { "@type": "Offer", "name": "Pro", "price": "20", "priceCurrency": "USD", "description": "8,000 chat messages, 200 browser tasks, 50 code executions per month" },
+        { "@type": "Offer", "name": "Business", "price": "99", "priceCurrency": "USD", "description": "25,000 chat messages, 1,000 browser tasks, 200 code executions per month, BYOK" }
+      ]
     }
     </script>
   </head>

@@ -1,0 +1,1 @@
+ALTER TABLE public.tier_limits ADD COLUMN IF NOT EXISTS stripe_price_id_annual text;

@@ -578,6 +578,7 @@ export type Database = {
           features: Json | null
           price_monthly_cents: number
           stripe_price_id: string | null
+          stripe_price_id_annual: string | null
           tier: Database["public"]["Enums"]["subscription_tier"]
         }
         Insert: {
@@ -587,6 +588,7 @@ export type Database = {
           features?: Json | null
           price_monthly_cents: number
           stripe_price_id?: string | null
+          stripe_price_id_annual?: string | null
           tier: Database["public"]["Enums"]["subscription_tier"]
         }
         Update: {
@@ -596,6 +598,7 @@ export type Database = {
           features?: Json | null
           price_monthly_cents?: number
           stripe_price_id?: string | null
+          stripe_price_id_annual?: string | null
           tier?: Database["public"]["Enums"]["subscription_tier"]
         }
         Relationships: []
