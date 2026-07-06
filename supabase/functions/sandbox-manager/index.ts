@@ -713,8 +713,13 @@ function generateToken(): string {
 
 function renderRunnerSource(): string {
   // Inject the shared design constitution into the runner (which cannot import Deno modules).
-  // Escape backslashes and backticks so the string is safe inside the runner's template.
-  const safe = DESIGN_CONSTITUTION.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+  // The placeholder lands inside a JS single-quoted string literal in the runner
+  // source, so escape backslashes, single quotes, and newlines. Backticks and
+  // ${...} sequences do not need escaping inside single quotes.
+  const safe = DESIGN_CONSTITUTION
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\r?\n/g, '\\n');
   return RUNNER_SOURCE.replace(/__DESIGN_CONSTITUTION__/g, safe);
 }
 
