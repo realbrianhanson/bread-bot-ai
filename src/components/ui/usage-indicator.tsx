@@ -1,10 +1,10 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { MessageSquare, Globe, Infinity } from "lucide-react";
+import { MessageSquare, Globe, Hammer, Infinity } from "lucide-react";
 
 interface UsageIndicatorProps {
-  featureId: "chat_messages" | "browser_tasks";
+  featureId: "chat_messages" | "browser_tasks" | "app_builds";
   className?: string;
   showLabel?: boolean;
   showIcon?: boolean;
@@ -19,6 +19,10 @@ const featureConfig = {
   browser_tasks: {
     label: "Browser Tasks",
     icon: Globe
+  },
+  app_builds: {
+    label: "App Builds",
+    icon: Hammer
   }
 };
 
@@ -34,11 +38,19 @@ export const UsageIndicator = ({
     chatMessagesLimit, 
     browserTasksUsed, 
     browserTasksLimit,
+    appBuildsUsed,
+    appBuildsLimit,
     loading 
   } = useAuth();
 
-  const usage = featureId === 'chat_messages' ? chatMessagesUsed : browserTasksUsed;
-  const limit = featureId === 'chat_messages' ? chatMessagesLimit : browserTasksLimit;
+  const usage =
+    featureId === 'chat_messages' ? chatMessagesUsed
+    : featureId === 'browser_tasks' ? browserTasksUsed
+    : appBuildsUsed;
+  const limit =
+    featureId === 'chat_messages' ? chatMessagesLimit
+    : featureId === 'browser_tasks' ? browserTasksLimit
+    : appBuildsLimit;
   const isUnlimited = limit === -1;
   const percentage = isUnlimited ? 0 : Math.min((usage / limit) * 100, 100);
   const isNearLimit = !isUnlimited && percentage >= 80;
@@ -114,6 +126,7 @@ export const UsageOverview = ({ className }: { className?: string }) => {
     <div className={cn("space-y-4", className)}>
       <UsageIndicator featureId="chat_messages" />
       <UsageIndicator featureId="browser_tasks" />
+      <UsageIndicator featureId="app_builds" />
     </div>
   );
 };
