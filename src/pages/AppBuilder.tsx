@@ -45,6 +45,7 @@ interface BuildTask {
     qa_report?: string;
     qa_pending?: boolean;
     needs_continue?: boolean;
+    form_key?: string;
     todos?: Array<{ id: string; text: string; status: 'pending' | 'in_progress' | 'done' | 'dropped'; reason?: string }>;
   } | null;
 }
