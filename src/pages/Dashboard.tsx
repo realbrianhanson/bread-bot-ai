@@ -47,6 +47,7 @@ import { TaskPlanViewer } from "@/components/workflow/TaskPlanViewer";
 import { useTaskPlanner } from "@/hooks/useTaskPlanner";
 import { WebhookManager } from "@/components/webhooks/WebhookManager";
 import { ResultsDashboard } from "@/components/results/ResultsDashboard";
+import { FormLeadsPanel } from "@/components/results/FormLeadsPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -397,6 +398,7 @@ const Dashboard = () => {
           <WebhookManager />
           <BuildHistory onOpenBuild={handleSelectConversation} />
           <ResultsDashboard />
+          <FormLeadsPanel />
           <ThemeToggle />
           <TaskHistory onRerunTask={handleRerunTask} />
           <Button variant="ghost" size="icon" aria-label="App Builder" onClick={() => navigate("/builder")} className="h-8 w-8 text-muted-foreground hover:text-foreground" title="App Builder">
@@ -432,6 +434,7 @@ const Dashboard = () => {
           <TaskHistory onRerunTask={handleRerunTask} />
           <BuildHistory onOpenBuild={handleSelectConversation} />
           <ResultsDashboard />
+          <FormLeadsPanel />
           <ThemeToggle />
           <Button variant="ghost" size="icon" aria-label="App Builder" onClick={() => navigate("/builder")} className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground" title="App Builder">
             <Hammer className="h-4 w-4" />
