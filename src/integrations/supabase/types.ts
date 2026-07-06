@@ -82,7 +82,8 @@ export type Database = {
           created_at: string
           domain: string
           id: string
-          shared_preview_id: string
+          published_app_id: string | null
+          shared_preview_id: string | null
           user_id: string
           verification_token: string
           verified: boolean
@@ -92,7 +93,8 @@ export type Database = {
           created_at?: string
           domain: string
           id?: string
-          shared_preview_id: string
+          published_app_id?: string | null
+          shared_preview_id?: string | null
           user_id: string
           verification_token?: string
           verified?: boolean
@@ -102,13 +104,21 @@ export type Database = {
           created_at?: string
           domain?: string
           id?: string
-          shared_preview_id?: string
+          published_app_id?: string | null
+          shared_preview_id?: string | null
           user_id?: string
           verification_token?: string
           verified?: boolean
           verified_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "custom_domains_published_app_id_fkey"
+            columns: ["published_app_id"]
+            isOneToOne: false
+            referencedRelation: "published_apps"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "custom_domains_shared_preview_id_fkey"
             columns: ["shared_preview_id"]
@@ -372,6 +382,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      published_apps: {
+        Row: {
+          created_at: string
+          id: string
+          is_published: boolean
+          name: string
+          slug: string
+          storage_prefix: string
+          task_id: string | null
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          name: string
+          slug: string
+          storage_prefix: string
+          task_id?: string | null
+          updated_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          name?: string
+          slug?: string
+          storage_prefix?: string
+          task_id?: string | null
+          updated_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "published_apps_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       scheduled_tasks: {
         Row: {
