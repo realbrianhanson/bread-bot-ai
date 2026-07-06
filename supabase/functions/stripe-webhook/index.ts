@@ -29,21 +29,31 @@ serve(async (req) => {
   let event: Stripe.Event;
   const body = await req.text();
 
-  if (webhookSecret) {
-    const sig = req.headers.get("stripe-signature");
-    if (!sig) return new Response("Missing signature", { status: 400 });
-    try {
-      event = await stripe.webhooks.constructEventAsync(body, sig, webhookSecret);
-    } catch (err) {
-      logStep("Signature verification failed", { error: String(err) });
-      return new Response("Invalid signature", { status: 400 });
-    }
-  } else {
-    // No webhook secret configured — parse directly (dev mode)
-    event = JSON.parse(body) as Stripe.Event;
+  if (!webhookSecret) {
+    logStep("ERROR: STRIPE_WEBHOOK_SECRET not set — refusing to process unsigned events");
+    return new Response("Server misconfigured", { status: 500 });
+  }
+  const sig = req.headers.get("stripe-signature");
+  if (!sig) return new Response("Missing signature", { status: 400 });
+  try {
+    event = await stripe.webhooks.constructEventAsync(body, sig, webhookSecret);
+  } catch (err) {
+    logStep("Signature verification failed", { error: String(err) });
+    return new Response("Invalid signature", { status: 400 });
   }
 
   logStep("Event received", { type: event.type, id: event.id });
+
+  // Idempotency: skip events we've already processed
+  const { data: existing } = await supabase
+    .from("stripe_events")
+    .select("event_id")
+    .eq("event_id", event.id)
+    .maybeSingle();
+  if (existing) {
+    logStep("Duplicate event, skipping", { id: event.id });
+    return new Response(JSON.stringify({ received: true, duplicate: true }), { status: 200 });
+  }
 
   try {
     switch (event.type) {
@@ -156,6 +166,7 @@ serve(async (req) => {
         logStep("Unhandled event type", { type: event.type });
     }
 
+    await supabase.from("stripe_events").insert({ event_id: event.id, event_type: event.type });
     return new Response(JSON.stringify({ received: true }), { status: 200 });
   } catch (err) {
     logStep("ERROR processing event", { error: String(err) });

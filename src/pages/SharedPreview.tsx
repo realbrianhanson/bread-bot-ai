@@ -58,7 +58,7 @@ const SharedPreview = () => {
       srcDoc={html}
       title="Shared Preview"
       style={{ display: 'block', width: '100vw', height: '100vh', border: 'none', margin: 0, padding: 0 }}
-      sandbox="allow-scripts allow-same-origin"
+      sandbox="allow-scripts"
     />
   );
 };
