@@ -75,7 +75,7 @@ serve(async (req) => {
         params: {
           protocolVersion: '2024-11-05',
           capabilities: {},
-          clientInfo: { name: 'BreadBot', version: '1.0.0' },
+          clientInfo: { name: 'GarlicBread.ai', version: '1.0.0' },
         },
       }),
     });
