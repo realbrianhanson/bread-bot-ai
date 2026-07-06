@@ -23,12 +23,8 @@ const PublishedPage = () => {
       document.title = data.title ? `${data.title} — GarlicBread.ai` : 'Published Page — GarlicBread.ai';
       setHtml(data.html_content);
 
-      // fire-and-forget view increment
-      supabase
-        .from('shared_previews')
-        .update({ views: (data.views || 0) + 1 })
-        .eq('slug', slug)
-        .then(() => {});
+      // fire-and-forget view increment via SECURITY DEFINER RPC (works for anon)
+      supabase.rpc('increment_page_views', { p_slug: slug }).then(() => {});
     };
 
     load();
