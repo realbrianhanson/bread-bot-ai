@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Globe, Copy, Check, Trash2, Eye } from 'lucide-react';
+import { Globe, Copy, Check, Trash2, Eye, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { ConnectDomainDialog } from './ConnectDomainDialog';
 
 interface PublishedPage {
   id: string;
@@ -18,6 +19,7 @@ const PublishedPagesList = () => {
   const [pages, setPages] = useState<PublishedPage[]>([]);
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [domainTarget, setDomainTarget] = useState<PublishedPage | null>(null);
 
   const fetchPages = async () => {
     if (!user) return;
@@ -73,12 +75,23 @@ const PublishedPagesList = () => {
             <Button variant="ghost" size="icon" aria-label="Copy published page link" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleCopy(page.slug)}>
               {copiedSlug === page.slug ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
             </Button>
+            <Button variant="ghost" size="icon" aria-label="Connect custom domain" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => setDomainTarget(page)}>
+              <Link2 className="h-3 w-3" />
+            </Button>
             <Button variant="ghost" size="icon" aria-label="Unpublish page" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => handleUnpublish(page.id)}>
               <Trash2 className="h-3 w-3" />
             </Button>
           </div>
         ))}
       </div>
+      {domainTarget && (
+        <ConnectDomainDialog
+          open={!!domainTarget}
+          onOpenChange={(v) => { if (!v) setDomainTarget(null); }}
+          sharedPreviewId={domainTarget.id}
+          pageTitle={domainTarget.title || 'Untitled'}
+        />
+      )}
     </div>
   );
 };
