@@ -10,7 +10,7 @@ const corsHeaders = {
 
 const jsonHeaders = { ...corsHeaders, 'Content-Type': 'application/json' };
 
-const SANDBOX_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes per build sandbox (v1)
+const SANDBOX_TIMEOUT_MS = 45 * 60 * 1000; // 45 minutes per build sandbox (slow-build keepalive)
 const DEV_PORT = 5173;
 
 // ---------- Project skeleton written into every new build sandbox ----------
@@ -38,6 +38,7 @@ const FILE_VITE_CONFIG = `import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
+  base: './',
   plugins: [react()],
   server: {
     host: true,
