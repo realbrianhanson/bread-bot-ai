@@ -1129,10 +1129,7 @@ serve(async (req) => {
 
         // action === 'publish'
         // Ensure vite base is './' so assets resolve under /{slug}/
-        await sandbox.commands.run(
-          "cd /home/user/app && node -e \"const fs=require('fs');const p='vite.config.js';let s=fs.existsSync(p)?fs.readFileSync(p,'utf8'):\\\"import {defineConfig} from 'vite';import react from '@vitejs/plugin-react';export default defineConfig({base:'./',plugins:[react()]})\\\";if(!/base\\\\s*:/.test(s)){s=s.replace(/defineConfig\\\\(\\\\{/,\\\"defineConfig({ base: './', \\\");fs.writeFileSync(p,s);}\"",
-          { timeoutMs: 15000 },
-        );
+        await sandbox.files.write([{ path: '/home/user/app/vite.config.js', data: FILE_VITE_CONFIG }]);
         const buildRes = await sandbox.commands.run('cd /home/user/app && npx vite build --logLevel error', { timeoutMs: 240000 });
         if (buildRes.exitCode !== 0) {
           throw new Error('Production build failed: ' + ((buildRes.stderr || buildRes.stdout || '').slice(0, 500)));
