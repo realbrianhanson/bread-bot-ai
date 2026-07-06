@@ -117,6 +117,35 @@ When a color/size/state changes in one spot, add a variant (Tailwind class, cva 
 
 12. If any rule above conflicts with the user's explicit brief, the user wins for that project — but call it out in the design plan.`;
 
+/**
+ * FORMS section — injected into runner/chat prompts alongside the constitution.
+ * The caller substitutes {{FORM_ENDPOINT}} and {{FORM_KEY}} at generation/publish time.
+ */
+export const FORMS_INSTRUCTIONS = `FORMS — every form must actually submit for real.
+
+Endpoint (POST, JSON): {{FORM_ENDPOINT}}
+This site's form_key: "{{FORM_KEY}}"
+
+Every <form> you ship MUST:
+1. Include a hidden honeypot input, EXACTLY:
+   <input type="text" name="_gb_hp" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;opacity:0;pointer-events:none" aria-hidden="true" />
+2. Submit via fetch (never a raw form POST). Serialize named fields into an object, include the form_key, and POST to the endpoint above:
+   fetch("{{FORM_ENDPOINT}}", {
+     method: "POST",
+     headers: { "Content-Type": "application/json" },
+     body: JSON.stringify({
+       form_key: "{{FORM_KEY}}",
+       form_name: "<name of this form — e.g. 'contact', 'waitlist'>",
+       fields: { /* field_name: value */ },
+       _gb_hp: hp,
+     }),
+   })
+3. Disable the submit button and show a "Sending…" state while the request is in flight.
+4. On success (r.ok), replace the form UI with an inline success message that uses the site's own token colors — default text: "Thanks, we got it." Do not redirect and do not use alert().
+5. On failure, show an inline error using --destructive tokens with the message "Something went wrong. Please try again." Re-enable the button.
+6. NEVER fake a submission (no fake success timers, no console.logs pretending to submit). NEVER submit to a placeholder URL. NEVER change the endpoint or the form_key.
+7. Client-side validate required fields and email format before POSTing, but always let the server be the source of truth.`;
+
 // Legacy default hex palette (kept for the anthropic-proxy hex fallback path).
 // New code should use TOKEN_TEMPLATE_HSL above and the constitution.
 export const LEGACY_HEX_TOKENS = `:root {

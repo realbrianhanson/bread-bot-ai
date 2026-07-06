@@ -83,9 +83,19 @@ ${js.trim() ? `<script>\n${js}\n</script>` : ''}
       let currentSlug = publishedSlug;
 
       if (currentSlug) {
+        // Look up the existing form_key so we can rewrite the placeholder in the new HTML.
+        const { data: existing } = await supabase
+          .from('shared_previews')
+          .select('form_key')
+          .eq('slug', currentSlug)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        const finalHtml = (existing?.form_key)
+          ? fullHtml.split('__GB_FORM_KEY__').join(existing.form_key)
+          : fullHtml;
         await supabase
           .from('shared_previews')
-          .update({ html_content: fullHtml, title })
+          .update({ html_content: finalHtml, title })
           .eq('slug', currentSlug)
           .eq('user_id', user.id);
         
@@ -98,7 +108,7 @@ ${js.trim() ? `<script>\n${js}\n</script>` : ''}
         let lastError: unknown = null;
         for (let attempt = 0; attempt < 5 && !inserted; attempt++) {
           currentSlug = generateSlug();
-          const { error } = await supabase
+          const { data: insertRow, error } = await supabase
             .from('shared_previews')
             .insert({
               user_id: user.id,
@@ -107,8 +117,19 @@ ${js.trim() ? `<script>\n${js}\n</script>` : ''}
               conversation_id: conversationId || null,
               is_published: true,
               slug: currentSlug,
-            });
-          if (!error) { inserted = true; break; }
+            })
+            .select('id, form_key')
+            .single();
+          if (!error && insertRow) {
+            // Rewrite the placeholder now that we know the assigned form_key, then update in place.
+            if (fullHtml.includes('__GB_FORM_KEY__') && insertRow.form_key) {
+              await supabase
+                .from('shared_previews')
+                .update({ html_content: fullHtml.split('__GB_FORM_KEY__').join(insertRow.form_key) })
+                .eq('id', insertRow.id);
+            }
+            inserted = true; break;
+          }
           // Unique-violation on slug — retry with a fresh one
           if ((error as any).code === '23505') { lastError = error; continue; }
           throw error;

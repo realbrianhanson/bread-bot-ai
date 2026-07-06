@@ -3,7 +3,15 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
 import { ANTHROPIC_API_URL, HONCHO_API_URL, MODELS, fetchWithTimeout, TIMEOUT_AI_MS, TIMEOUT_DEFAULT_MS, isAbortError } from "../_shared/config.ts";
 import { decryptSecret } from "../_shared/crypto.ts";
-import { DESIGN_CONSTITUTION, TOKEN_TEMPLATE_HSL } from "../_shared/design-constitution.ts";
+import { DESIGN_CONSTITUTION, TOKEN_TEMPLATE_HSL, FORMS_INSTRUCTIONS } from "../_shared/design-constitution.ts";
+
+const FORM_ENDPOINT_URL = `${Deno.env.get('SUPABASE_URL') ?? ''}/functions/v1/submit-form`;
+// At chat/generation time the site's form_key is not yet known — the runner
+// leaves the placeholder __GB_FORM_KEY__ in the emitted HTML. usePublish.ts
+// swaps it for the real form_key when the page is published.
+const FORMS_FOR_CHAT = FORMS_INSTRUCTIONS
+  .replaceAll('{{FORM_ENDPOINT}}', FORM_ENDPOINT_URL)
+  .replaceAll('{{FORM_KEY}}', '__GB_FORM_KEY__');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -203,6 +211,8 @@ NEVER: light/pastel gradient with light text. Match text foreground to backgroun
 
 ${DESIGN_CONSTITUTION}
 
+${FORMS_FOR_CHAT}
+
 Every page MUST include a :root token block inside the scoped wrapper's <style> tag using the skeleton below. REWRITE the values for this specific project per the art-direction ritual; do not ship the placeholder palette.
 
 ${TOKEN_SKELETON}
@@ -352,6 +362,8 @@ When the user's message includes sections labeled "CURRENT HTML:", "CURRENT CSS:
     const standardSystemPrompt = `You are an expert full-stack web developer and UI designer. You create stunning, modern, production-quality websites.
 
 ${DESIGN_CONSTITUTION}
+
+${FORMS_FOR_CHAT}
 
 Every page MUST include a :root token block in a <style> tag in <head> using the skeleton below. REWRITE the values for this specific project per the art-direction ritual; do not ship the placeholder palette.
 

@@ -2,7 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
 import { Sandbox } from "npm:e2b@1.13.0";
-import { DESIGN_CONSTITUTION } from "../_shared/design-constitution.ts";
+import { DESIGN_CONSTITUTION, FORMS_INSTRUCTIONS } from "../_shared/design-constitution.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -206,6 +206,8 @@ const DESIGN_MD = Buffer.from(process.env.DESIGN_MD_B64 || '', 'base64').toStrin
 const MARKETING_MD = Buffer.from(process.env.MARKETING_MD_B64 || '', 'base64').toString('utf8');
 const KNOWLEDGE_MD = Buffer.from(process.env.KNOWLEDGE_MD_B64 || '', 'base64').toString('utf8');
 const IS_EDIT = process.env.IS_EDIT === '1';
+const FORM_KEY = process.env.FORM_KEY || '';
+const FORM_ENDPOINT_URL = process.env.FORM_ENDPOINT_URL || '';
 
 function log(msg) {
   console.log('[RUNNER] ' + msg);
@@ -380,6 +382,8 @@ const SYSTEM_PROMPT_BASE = [
   'USER KNOWLEDGE BASE SUMMARY (facts about the user or their business; use only if relevant):',
   '__KNOWLEDGE_MD__',
   '',
+  '__FORMS_INSTRUCTIONS__',
+  '',
   'WORKFLOW:',
   '1. Follow the REQUIRED FIRST ACTIONS above.',
   '2. Build the app: components in src/components/, composed in src/App.jsx. Use write_file for new files and replace_in_file for edits.',
@@ -402,7 +406,11 @@ const SYSTEM_PROMPT = SYSTEM_PROMPT_BASE
   .replace('__PLAN_FIRST__', IS_EDIT ? PLAN_FIRST_EDIT : PLAN_FIRST_CREATE)
   .replace('__DESIGN_MD__', DESIGN_MD || '(none provided)')
   .replace('__MARKETING_MD__', MARKETING_MD || '(none provided)')
-  .replace('__KNOWLEDGE_MD__', KNOWLEDGE_MD || '(none provided)');
+  .replace('__KNOWLEDGE_MD__', KNOWLEDGE_MD || '(none provided)')
+  .replace('__FORMS_INSTRUCTIONS__',
+    '__FORMS_TEMPLATE__'
+      .split('{{FORM_ENDPOINT}}').join(FORM_ENDPOINT_URL)
+      .split('{{FORM_KEY}}').join(FORM_KEY));
 // Note: the __DESIGN_CONSTITUTION__ placeholder is filled by the SANDBOX MANAGER
 // before this runner source is written into the sandbox, because the runner
 // cannot import Deno modules. See RUNNER_SOURCE.replace(...) below.
@@ -720,13 +728,16 @@ function renderRunnerSource(): string {
   // The placeholder lands inside a JS single-quoted string literal in the runner
   // source, so escape backslashes, single quotes, and newlines. Backticks and
   // ${...} sequences do not need escaping inside single quotes.
-  const safe = DESIGN_CONSTITUTION
+  const escapeForJsString = (s: string) => s
     .replace(/\\/g, '\\\\')
     .replace(/'/g, "\\'")
     .replace(/\r?\n/g, '\\n');
-  // Use a function replacer so `$` sequences in the constitution are not
-  // interpreted by String.replace (e.g. $&, $1).
-  return RUNNER_SOURCE.replace(/__DESIGN_CONSTITUTION__/g, () => safe);
+  const safeConstitution = escapeForJsString(DESIGN_CONSTITUTION);
+  const safeForms = escapeForJsString(FORMS_INSTRUCTIONS);
+  // Use function replacers so `$` sequences are not interpreted by String.replace.
+  return RUNNER_SOURCE
+    .replace(/__DESIGN_CONSTITUTION__/g, () => safeConstitution)
+    .replace(/__FORMS_TEMPLATE__/g, () => safeForms);
 }
 
 async function loadUserContextForBuild(supabase: any, userId: string): Promise<{ knowledgeMd: string }> {
@@ -777,6 +788,12 @@ async function bootstrapBuild(taskId: string, buildToken: string, prompt: string
   const supabase = serviceClient();
   const e2bApiKey = Deno.env.get('E2B_API_KEY') ?? '';
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  const formEndpoint = supabaseUrl + '/functions/v1/submit-form';
+
+  // Generate/reuse a stable form_key for this app lineage. Stored on the task
+  // and reused at publish time so the built app's forms hit the right owner.
+  const formKey = 'fk_' + Array.from(crypto.getRandomValues(new Uint8Array(12)))
+    .map((b) => b.toString(16).padStart(2, '0')).join('');
 
   const readTask = async () => {
     const { data } = await supabase.from('tasks').select('output_data,status').eq('id', taskId).single();
@@ -786,7 +803,7 @@ async function bootstrapBuild(taskId: string, buildToken: string, prompt: string
   let sandbox: Sandbox | null = null;
   try {
     let task = await readTask();
-    let od = await appendLog(supabase, taskId, task?.output_data, { output_data: { phase: 'creating_sandbox' } }, 'Creating sandbox');
+    let od = await appendLog(supabase, taskId, task?.output_data, { output_data: { phase: 'creating_sandbox', form_key: formKey } }, 'Creating sandbox');
 
     sandbox = await Sandbox.create('base', {
       apiKey: e2bApiKey,
@@ -843,6 +860,8 @@ async function bootstrapBuild(taskId: string, buildToken: string, prompt: string
         MARKETING_MD_B64: marketingB64,
         KNOWLEDGE_MD_B64: knowledgeB64,
         IS_EDIT: '0',
+        FORM_KEY: formKey,
+        FORM_ENDPOINT_URL: formEndpoint,
       },
     });
 
@@ -883,10 +902,13 @@ async function snapshotSandbox(taskId: string, userId: string, sandboxId: string
   }
 }
 
-async function bootstrapEdit(taskId: string, buildToken: string, prompt: string, model: string, parent: { sandbox_id?: string; snapshot_path?: string }, ctx: { designMd?: string; marketingMd?: string; knowledgeMd?: string } = {}) {
+async function bootstrapEdit(taskId: string, buildToken: string, prompt: string, model: string, parent: { sandbox_id?: string; snapshot_path?: string; form_key?: string }, ctx: { designMd?: string; marketingMd?: string; knowledgeMd?: string } = {}) {
   const supabase = serviceClient();
   const e2bApiKey = Deno.env.get('E2B_API_KEY') ?? '';
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  const formEndpoint = supabaseUrl + '/functions/v1/submit-form';
+  const formKey = parent.form_key || ('fk_' + Array.from(crypto.getRandomValues(new Uint8Array(12)))
+    .map((b) => b.toString(16).padStart(2, '0')).join(''));
 
   const readTask = async () => {
     const { data } = await supabase.from('tasks').select('output_data,status').eq('id', taskId).single();
@@ -947,10 +969,10 @@ async function bootstrapEdit(taskId: string, buildToken: string, prompt: string,
 
     await sandbox.commands.run('nohup node /home/user/runner.cjs > /home/user/runner.log 2>&1 &', {
       timeoutMs: 15000,
-      envs: { TASK_ID: taskId, BUILD_TOKEN: buildToken, CALLBACK_URL: callbackUrl, PROXY_URL: proxyUrl, MODEL: model, PROMPT_B64: promptB64, PREVIEW_URL: previewUrl, DESIGN_MD_B64: designB64, MARKETING_MD_B64: marketingB64, KNOWLEDGE_MD_B64: knowledgeB64, IS_EDIT: '1' },
+      envs: { TASK_ID: taskId, BUILD_TOKEN: buildToken, CALLBACK_URL: callbackUrl, PROXY_URL: proxyUrl, MODEL: model, PROMPT_B64: promptB64, PREVIEW_URL: previewUrl, DESIGN_MD_B64: designB64, MARKETING_MD_B64: marketingB64, KNOWLEDGE_MD_B64: knowledgeB64, IS_EDIT: '1', FORM_KEY: formKey, FORM_ENDPOINT_URL: formEndpoint },
     });
 
-    await appendLog(supabase, taskId, od, { status: 'running', output_data: { phase: 'agent_running', reused_sandbox: reused } }, 'Edit agent launched');
+    await appendLog(supabase, taskId, od, { status: 'running', output_data: { phase: 'agent_running', reused_sandbox: reused, form_key: formKey } }, 'Edit agent launched');
   } catch (err) {
     console.error('[SANDBOX-MANAGER] Edit bootstrap failed:', err);
     const task = await readTask();
@@ -1148,6 +1170,7 @@ serve(async (req) => {
       const editPromise = bootstrapEdit(taskRecord.id, buildToken, prompt, model, {
         sandbox_id: parent.output_data?.sandbox_id,
         snapshot_path: parent.output_data?.snapshot_path,
+        form_key: parent.output_data?.form_key,
       }, { designMd, marketingMd, knowledgeMd });
       // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
       if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
@@ -1342,6 +1365,7 @@ serve(async (req) => {
         } else {
           const { data: inserted, error: insErr } = await supabase.from('published_apps').insert({
             user_id: user.id, task_id: task.id, name: namePretty, slug, storage_prefix: storagePrefix, version: nextVersion, is_published: true,
+            ...(task.output_data?.form_key ? { form_key: task.output_data.form_key } : {}),
           }).select().single();
           if (insErr || !inserted) throw new Error('Failed to record published app: ' + (insErr?.message || 'unknown'));
           appId = inserted.id;
@@ -1460,6 +1484,7 @@ serve(async (req) => {
       // Force snapshot-based restore (do not reuse a warm sandbox from parent — restore semantics require the exact files).
       const editPromise = bootstrapEdit(taskRecord.id, buildToken, restorePrompt, model, {
         snapshot_path: parent.output_data?.snapshot_path,
+        form_key: parent.output_data?.form_key,
       }, { knowledgeMd });
       // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
       if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {

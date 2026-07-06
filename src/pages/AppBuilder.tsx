@@ -10,6 +10,7 @@ import garlicSpin from '@/assets/garlic-spin.png';
 import { StylePicker } from '@/components/chat/StylePicker';
 import { PurposePicker } from '@/components/chat/PurposePicker';
 import TodoChecklist, { type TodoItem } from '@/components/chat/TodoChecklist';
+import ForwardingConfig from '@/components/chat/ForwardingConfig';
 
 interface BuildLogEntry {
   t: string;
@@ -45,6 +46,7 @@ interface BuildTask {
     qa_report?: string;
     qa_pending?: boolean;
     needs_continue?: boolean;
+    form_key?: string;
     todos?: Array<{ id: string; text: string; status: 'pending' | 'in_progress' | 'done' | 'dropped'; reason?: string }>;
   } | null;
 }
@@ -540,6 +542,9 @@ export default function AppBuilder() {
                 <Button size="sm" variant="ghost" onClick={unpublishBuild} disabled={isPublishing} className="w-full text-muted-foreground">
                   <EyeOff className="h-4 w-4 mr-1" /> Unpublish
                 </Button>
+              )}
+              {publishedSlug && task?.output_data?.published_app_id && (
+                <ForwardingConfig kind="app" siteId={task.output_data.published_app_id} formKey={task.output_data.form_key} />
               )}
               {previewUrl && !previewExpired && (
                 <Button variant="outline" size="sm" onClick={runQA} disabled={isQaStarting} className="w-full">
