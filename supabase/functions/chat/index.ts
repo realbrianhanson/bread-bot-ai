@@ -176,60 +176,36 @@ serve(async (req) => {
 
     console.log('Calling Anthropic API with', messages.length, 'messages, ghlMode:', !!ghlMode, 'hasDesignMd:', !!clientDesignMd, 'hasMarketingMd:', !!marketingMd);
 
-    const DESIGN_TOKENS = `  :root {
-    --background: #FFFFFF;
-    --foreground: #0F172A;
-    --muted: #F1F5F9;
-    --muted-foreground: #64748B;
-    --card: #FFFFFF;
-    --card-foreground: #0F172A;
-    --primary: #4F46E5;
-    --primary-foreground: #FFFFFF;
-    --secondary: #F1F5F9;
-    --secondary-foreground: #0F172A;
-    --accent: #F59E0B;
-    --accent-foreground: #0F172A;
-    --destructive: #EF4444;
-    --destructive-foreground: #FFFFFF;
-    --border: #E2E8F0;
-    --ring: #4F46E5;
-    --hero-bg: #0F172A;
-    --hero-foreground: #F8FAFC;
-    --hero-muted: #94A3B8;
-    --section-alt: #F8FAFC;
-    --success: #10B981;
-    --success-foreground: #FFFFFF;
-  }`;
+    const TOKEN_SKELETON = TOKEN_TEMPLATE_HSL;
 
-    const COLOR_RULES = `COLOR USAGE RULES (ABSOLUTE — NEVER BREAK):
-- Page background: var(--background)
-- All body/paragraph text: var(--foreground) — this is ALWAYS dark, always readable
-- Headings on light backgrounds: var(--foreground) or var(--card-foreground)
-- Muted/subtitle text: var(--muted-foreground)
-- Cards: background var(--card), text var(--card-foreground)
-- Buttons primary: background var(--primary), text var(--primary-foreground)
-- Buttons secondary: background var(--secondary), text var(--secondary-foreground)
-- Hero/dark sections: background var(--hero-bg), text var(--hero-foreground), muted text var(--hero-muted)
-- Alternating sections: var(--section-alt) background with var(--foreground) text
-- Borders: var(--border)
-- Links and interactive accents: var(--primary)
-- NEVER use text-white on anything except var(--hero-bg), var(--primary), or var(--destructive) backgrounds
-- NEVER use any pastel, light, or translucent color for text. All text must use a --foreground or --*-foreground token.
-- NEVER use raw CSS color values (no color: white, color: #aaa, color: lavender, etc). ONLY use var(--token-name).`;
+    const COLOR_RULES = `COLOR USAGE RULES (ABSOLUTE):
+- Rewrite the token VALUES in the :root block for THIS project (from the art direction step). Keep the token NAMES exactly as listed.
+- Consume tokens as hsl(var(--token)) — e.g. background: hsl(var(--primary)); color: hsl(var(--foreground) / 0.7).
+- Body/paragraph text: hsl(var(--foreground)). Muted text: hsl(var(--muted-foreground)).
+- Cards: background hsl(var(--card)), text hsl(var(--card-foreground)).
+- Buttons primary: background hsl(var(--primary)), text hsl(var(--primary-foreground)).
+- Hero/dark sections: background hsl(var(--hero-bg)), text hsl(var(--hero-foreground)), muted hsl(var(--hero-muted)).
+- Alternating sections: hsl(var(--section-alt)) background with hsl(var(--foreground)) text.
+- Borders: hsl(var(--border)). Links and accents: hsl(var(--primary)).
+- Never light text on light backgrounds. Every text block must use a --*-foreground token that is legible on its background.
+- No raw Tailwind palette classes (no text-white, text-gray-400, bg-blue-600, bg-slate-900, etc.) in markup.
+- No raw hex, rgb(), or named CSS colors inside components. Only hsl(var(--token)).
+- FOOTGUN: never put rgb(...) inside hsl(...) — it silently produces the wrong color.`;
 
-    const HERO_PATTERNS = `HERO SECTION PATTERNS (pick one per page):
-Pattern A — Dark hero: bg var(--hero-bg), all text var(--hero-foreground), subtitle var(--hero-muted), CTA button bg var(--accent) text var(--accent-foreground)
-Pattern B — Light hero with accent: bg var(--background), heading var(--foreground), subtitle var(--muted-foreground), CTA bg var(--primary) text var(--primary-foreground)
-Pattern C — Gradient hero: bg gradient from var(--hero-bg) to a slightly lighter dark tone like #1E293B, text var(--hero-foreground)
-NEVER: light/pastel gradient with light text. If the background has ANY light tones, ALL text must use var(--foreground).`;
+    const HERO_PATTERNS = `HERO SECTION PATTERNS (pick or invent one per page — do not default to the same pattern every time):
+Pattern A — Dark hero: bg hsl(var(--hero-bg)), heading hsl(var(--hero-foreground)), subtitle hsl(var(--hero-muted)), CTA bg hsl(var(--accent)) text hsl(var(--accent-foreground)).
+Pattern B — Light hero with accent: bg hsl(var(--background)), heading hsl(var(--foreground)), subtitle hsl(var(--muted-foreground)), CTA hsl(var(--primary)) / hsl(var(--primary-foreground)).
+Pattern C — Gradient hero: layered gradient between hero tokens, high-contrast text.
+Pattern D — Editorial split: type-driven left column + signature visual right column.
+NEVER: light/pastel gradient with light text. Match text foreground to background luminance.`;
 
     const ghlSystemPrompt = `You are an elite direct-response landing page designer who specializes in GoHighLevel (GHL) funnel pages. You create high-converting, visually stunning landing pages that work PERFECTLY inside GHL's Custom Code element.
 
-CRITICAL DESIGN RULE: You MUST use the CSS design tokens defined below for ALL colors. NEVER use raw color values like text-white, bg-purple-300, text-gray-400, #A78BFA, color: white, color: #ccc, etc. ALWAYS reference the CSS variables. This ensures every page has perfect contrast and readability.
+${DESIGN_CONSTITUTION}
 
-Every page you generate MUST include this CSS variable block inside the scoped wrapper's <style> tag. These are your ONLY allowed colors:
+Every page MUST include a :root token block inside the scoped wrapper's <style> tag using the skeleton below. REWRITE the values for this specific project per the art-direction ritual; do not ship the placeholder palette.
 
-${DESIGN_TOKENS}
+${TOKEN_SKELETON}
 
 ${COLOR_RULES}
 
@@ -239,15 +215,15 @@ CRITICAL GHL TECHNICAL RULES:
 - NEVER use external font CDN links — use system font stack: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif
 - ALL code must be in a SINGLE code block — one self-contained HTML blob with embedded <style> and <script> tags
 - Wrap EVERYTHING in a single container div with a unique class like <div class="ghl-lander-[random4chars]"> to scope all styles
-- Images should use placeholder URLs from https://placehold.co/ with descriptive alt text
+- Form and calendar embed slots use dashed-border placeholder divs (see below). For actual visual imagery use https://picsum.photos/seed/<descriptive-seed>/1600/900. Never use placehold.co for visual imagery.
 - Do NOT use position: fixed or position: sticky — GHL's builder can break these
 - Maximum width should be 100% — GHL handles the page container
 - The code must be mobile-responsive using CSS media queries (not Tailwind breakpoints)
 
 BODY STYLES (set on the wrapper class):
 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-color: var(--foreground);
-background: var(--background);
+color: hsl(var(--foreground));
+background: hsl(var(--background));
 -webkit-font-smoothing: antialiased;
 
 DIRECT RESPONSE DESIGN SYSTEM:
@@ -316,7 +292,7 @@ CALENDAR INTEGRATION:
 OUTPUT FORMAT:
 Always output ONE single code block containing the complete, self-contained HTML with embedded <style> and <script>.
 Start with: <!-- GHL Custom Code Block — Paste into a Custom Code element -->
-ALL color references must use var(--token-name) syntax. No raw colors anywhere.
+ALL color references must use hsl(var(--token-name)) syntax. No raw colors anywhere.
 
 USER-UPLOADED IMAGES:
 When the user uploads images, use the provided URLs in <img> tags. Do NOT use placeholder URLs when real images are provided.
@@ -375,17 +351,17 @@ When the user's message includes sections labeled "CURRENT HTML:", "CURRENT CSS:
 
     const standardSystemPrompt = `You are an expert full-stack web developer and UI designer. You create stunning, modern, production-quality websites.
 
-CRITICAL DESIGN RULE: You MUST use the CSS design tokens defined below for ALL colors. NEVER use raw color values like text-white, bg-purple-300, text-gray-400, #A78BFA, etc. in your HTML. ALWAYS reference the CSS variables. This ensures every page has perfect contrast and readability.
+${DESIGN_CONSTITUTION}
 
-Every page you generate MUST include this CSS variable block in a <style> tag in the <head>. These are your ONLY allowed colors:
+Every page MUST include a :root token block in a <style> tag in <head> using the skeleton below. REWRITE the values for this specific project per the art-direction ritual; do not ship the placeholder palette.
 
 <style>
-${DESIGN_TOKENS}
+${TOKEN_SKELETON}
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    color: var(--foreground);
-    background: var(--background);
+    color: hsl(var(--foreground));
+    background: hsl(var(--background));
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
@@ -393,14 +369,12 @@ ${DESIGN_TOKENS}
 
 ${COLOR_RULES}
 
-- NEVER use raw Tailwind color classes for text (no text-purple-300, text-blue-400, text-gray-300, etc). ONLY use the CSS variables above via inline styles or custom Tailwind classes.
-
-When using Tailwind classes, map them to the tokens:
-- text-[var(--foreground)] instead of text-slate-800
-- bg-[var(--primary)] instead of bg-indigo-600
-- text-[var(--muted-foreground)] instead of text-gray-500
-- bg-[var(--hero-bg)] instead of bg-slate-900
-Or use inline style="color: var(--foreground)" which is even more reliable.
+When using Tailwind classes, map them to the tokens via arbitrary values:
+- text-[hsl(var(--foreground))] instead of text-slate-800
+- bg-[hsl(var(--primary))] instead of bg-indigo-600
+- text-[hsl(var(--muted-foreground))] instead of text-gray-500
+- bg-[hsl(var(--hero-bg))] instead of bg-slate-900
+Or use inline style="color: hsl(var(--foreground))" which is equally reliable.
 
 LAYOUT AND TYPOGRAPHY:
 - Include in HTML head: <script src="https://cdn.tailwindcss.com"><\/script> and <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
