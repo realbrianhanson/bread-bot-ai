@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, Hammer, Square, ExternalLink, Loader2, Sparkles, Zap, History, Wand2, Bug, Rocket, Download, Copy, EyeOff, PlayCircle, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Hammer, Square, ExternalLink, Loader2, Sparkles, Zap, History, Wand2, Bug, Rocket, Download, Copy, EyeOff, PlayCircle, CheckCircle2, GitBranch, RotateCcw } from 'lucide-react';
 import garlicSpin from '@/assets/garlic-spin.png';
 import { StylePicker } from '@/components/chat/StylePicker';
 import { PurposePicker } from '@/components/chat/PurposePicker';
@@ -73,6 +73,11 @@ export default function AppBuilder() {
   const [taskId, setTaskId] = useState<string | null>(null);
   const [task, setTask] = useState<BuildTask | null>(null);
   const [recentBuilds, setRecentBuilds] = useState<BuildTask[]>([]);
+  // Kept from the previous build so we can keep showing the working preview
+  // while a new edit sandbox spins up instead of blanking the panel.
+  const [previousPreview, setPreviousPreview] = useState<{ url: string; taskId: string } | null>(null);
+  const [versions, setVersions] = useState<Array<{ id: string; status: string; created_at: string; completed_at: string | null; prompt: string; edit: boolean; parent_task_id: string | null; has_snapshot: boolean; preview_url: string | null }>>([]);
+  const [isRestoring, setIsRestoring] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [isQaStarting, setIsQaStarting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -90,6 +95,16 @@ export default function AppBuilder() {
   const publishedVersion = task?.output_data?.published_version;
   const publishedUrl = publishedSlug ? `${(import.meta.env.VITE_SUPABASE_URL as string) || ''}/functions/v1/serve-app/${publishedSlug}/` : null;
 
+  // Effective preview: prefer the current task's URL, otherwise the retained one from before this edit.
+  const currentPreviewUrl = task?.output_data?.preview_url || null;
+  const showRetainedPreview = !currentPreviewUrl && !!previousPreview?.url && isActive;
+  const effectivePreviewUrl = currentPreviewUrl || (showRetainedPreview ? previousPreview!.url : null);
+
+  // When the new sandbox's preview appears, drop the retained preview so we swap.
+  useEffect(() => {
+    if (currentPreviewUrl && previousPreview) setPreviousPreview(null);
+  }, [currentPreviewUrl, previousPreview]);
+
   const loadRecentBuilds = useCallback(async () => {
     const { data } = await supabase
       .from('tasks')
@@ -103,6 +118,21 @@ export default function AppBuilder() {
   useEffect(() => {
     loadRecentBuilds();
   }, [loadRecentBuilds]);
+
+  // Load version lineage whenever the active task changes.
+  useEffect(() => {
+    if (!taskId) { setVersions([]); return; }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.functions.invoke('sandbox-manager', {
+        body: { action: 'versions', taskId },
+      });
+      if (!cancelled && !error && Array.isArray(data?.versions)) {
+        setVersions(data.versions);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [taskId, task?.status]);
 
   useEffect(() => {
     if (!taskId) return;
@@ -218,6 +248,11 @@ export default function AppBuilder() {
       return;
     }
     setIsStarting(true);
+    // Retain the current preview URL so we can keep showing it while the new
+    // sandbox spins up, then swap when the fresh preview_url arrives.
+    if (task?.output_data?.preview_url && !previewExpired) {
+      setPreviousPreview({ url: task.output_data.preview_url, taskId: task.id });
+    }
     try {
       const { data, error } = await supabase.functions.invoke('sandbox-manager', {
         body: { action: 'edit', taskId, prompt: usePrompt, model, designMd, marketingMd: purposeMd },
@@ -229,9 +264,33 @@ export default function AppBuilder() {
       setTaskId(data.taskId);
       toast({ title: 'Edit started', description: 'Resuming your build — fast if the sandbox is still warm.' });
     } catch (e: any) {
+      setPreviousPreview(null);
       toast({ title: 'Failed to start edit', description: e.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setIsStarting(false);
+    }
+  };
+
+  const restoreVersion = async (versionId: string) => {
+    if (!versionId || isActive) return;
+    setIsRestoring(versionId);
+    if (task?.output_data?.preview_url && !previewExpired) {
+      setPreviousPreview({ url: task.output_data.preview_url, taskId: task.id });
+    }
+    try {
+      const { data, error } = await supabase.functions.invoke('sandbox-manager', {
+        body: { action: 'restore', taskId: versionId, model },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.message || data.error);
+      setTask(null);
+      setTaskId(data.taskId);
+      toast({ title: 'Restoring version', description: 'Relaunching a sandbox from the saved snapshot.' });
+    } catch (e: any) {
+      setPreviousPreview(null);
+      toast({ title: 'Restore failed', description: e.message || 'Unknown error', variant: 'destructive' });
+    } finally {
+      setIsRestoring(null);
     }
   };
 
