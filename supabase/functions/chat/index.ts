@@ -211,6 +211,8 @@ NEVER: light/pastel gradient with light text. Match text foreground to backgroun
 
 ${DESIGN_CONSTITUTION}
 
+${FORMS_FOR_CHAT}
+
 Every page MUST include a :root token block inside the scoped wrapper's <style> tag using the skeleton below. REWRITE the values for this specific project per the art-direction ritual; do not ship the placeholder palette.
 
 ${TOKEN_SKELETON}
@@ -360,6 +362,8 @@ When the user's message includes sections labeled "CURRENT HTML:", "CURRENT CSS:
     const standardSystemPrompt = `You are an expert full-stack web developer and UI designer. You create stunning, modern, production-quality websites.
 
 ${DESIGN_CONSTITUTION}
+
+${FORMS_FOR_CHAT}
 
 Every page MUST include a :root token block in a <style> tag in <head> using the skeleton below. REWRITE the values for this specific project per the art-direction ritual; do not ship the placeholder palette.
 
