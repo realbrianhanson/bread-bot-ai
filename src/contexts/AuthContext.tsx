@@ -20,6 +20,8 @@ interface AuthContextType {
   browserTasksLimit: number;
   codeExecutionsUsed: number;
   codeExecutionsLimit: number;
+  appBuildsUsed: number;
+  appBuildsLimit: number;
   refreshSubscription: () => Promise<void>;
 }
 
@@ -39,6 +41,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [browserTasksLimit, setBrowserTasksLimit] = useState(10);
   const [codeExecutionsUsed, setCodeExecutionsUsed] = useState(0);
   const [codeExecutionsLimit, setCodeExecutionsLimit] = useState(5);
+  const [appBuildsUsed, setAppBuildsUsed] = useState(0);
+  const [appBuildsLimit, setAppBuildsLimit] = useState(3);
   const navigate = useNavigate();
   const userId = user?.id ?? null;
 
@@ -70,6 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setBrowserTasksLimit(data.browser_tasks_limit || 10);
         setCodeExecutionsUsed(data.code_executions_used || 0);
         setCodeExecutionsLimit(data.code_executions_limit || 5);
+        setAppBuildsUsed(data.app_builds_used || 0);
+        setAppBuildsLimit(data.app_builds_limit || 3);
       }
     } catch (error) {
       console.error('Error refreshing subscription, using free tier defaults:', error);
@@ -190,6 +196,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       browserTasksLimit,
       codeExecutionsUsed,
       codeExecutionsLimit,
+      appBuildsUsed,
+      appBuildsLimit,
       refreshSubscription
     }}>
       {children}
