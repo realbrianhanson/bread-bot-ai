@@ -196,6 +196,7 @@ const CALLBACK_URL = process.env.CALLBACK_URL || '';
 const PROXY_URL = process.env.PROXY_URL || '';
 const MODEL = process.env.MODEL || 'claude-sonnet-4-6';
 const FALLBACK_MODEL = 'claude-opus-4-8';
+const PREVIEW_URL = process.env.PREVIEW_URL || '';
 const APP_DIR = '/home/user/app';
 const MAX_TURNS = 30;
 
@@ -339,6 +340,8 @@ const SYSTEM_PROMPT = [
   'Tool results are truncated to 8000 chars. Be efficient: do not re-read files you just wrote.',
 ].join('\\n');
 
+function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
 async function callModel(messages, model) {
   const body = {
     model: model,
@@ -347,20 +350,83 @@ async function callModel(messages, model) {
     tools: TOOLS,
     messages: messages,
   };
-  const res = await fetch(PROXY_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-build-token': BUILD_TOKEN,
-      'x-task-id': TASK_ID,
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error('Model call failed (' + res.status + '): ' + cap(t, 500));
+  // Retry ladder: 3 attempts with exponential backoff on 429/5xx/network.
+  let lastErr = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(PROXY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-build-token': BUILD_TOKEN, 'x-task-id': TASK_ID },
+        body: JSON.stringify(body),
+      });
+      if (res.status === 429 || res.status >= 500) {
+        const t = await res.text();
+        lastErr = new Error('Model call ' + res.status + ': ' + cap(t, 300));
+        log('Retryable model error (' + res.status + '), attempt ' + (attempt + 1));
+        await sleep(1500 * Math.pow(2, attempt));
+        continue;
+      }
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error('Model call failed (' + res.status + '): ' + cap(t, 500));
+      }
+      return await res.json();
+    } catch (e) {
+      lastErr = e;
+      const msg = String(e && e.message || e);
+      // Retry only on network-ish errors; if the previous branch already threw a non-retryable, rethrow.
+      if (attempt < 2 && /fetch|network|ECONN|timeout|Failed to fetch/i.test(msg)) {
+        log('Network error, retrying: ' + msg);
+        await sleep(1500 * Math.pow(2, attempt));
+        continue;
+      }
+      throw e;
+    }
   }
-  return await res.json();
+  throw lastErr || new Error('Model call failed after retries');
+}
+
+// Runtime verification: after check_build passes, confirm the dev server actually renders
+// and all script/link references in index.html resolve.
+async function verifyRuntime() {
+  if (!PREVIEW_URL) return { ok: true, notes: 'skipped (no preview url)' };
+  try {
+    const rootRes = await fetch(PREVIEW_URL, { redirect: 'follow' });
+    if (!rootRes.ok) return { ok: false, notes: 'Preview root returned HTTP ' + rootRes.status };
+    const html = await rootRes.text();
+    if (!html || html.length < 40) return { ok: false, notes: 'Preview HTML was empty or too small (' + html.length + ' bytes)' };
+    if (!/<div[^>]+id=["']root["']/i.test(html)) return { ok: false, notes: 'Preview HTML is missing the #root mount point' };
+
+    // Extract same-origin asset refs
+    const refs = [];
+    const scriptRe = /<script[^>]+src=["']([^"']+)["'][^>]*>/gi;
+    const linkRe = /<link[^>]+href=["']([^"']+)["'][^>]*rel=["'](?:stylesheet|modulepreload)["'][^>]*>/gi;
+    let m;
+    while ((m = scriptRe.exec(html)) !== null) refs.push(m[1]);
+    while ((m = linkRe.exec(html)) !== null) refs.push(m[1]);
+
+    const failures = [];
+    for (const ref of refs) {
+      if (/^https?:/i.test(ref) || ref.startsWith('//')) continue; // external
+      const abs = new URL(ref, PREVIEW_URL).toString();
+      try {
+        const r = await fetch(abs, { method: 'GET' });
+        if (!r.ok) failures.push(ref + ' → HTTP ' + r.status);
+        else {
+          const body = await r.text();
+          if (/^\s*<!doctype|^\s*<html/i.test(body) && !ref.endsWith('.html')) {
+            failures.push(ref + ' → returned HTML instead of the expected asset (likely 404 SPA fallback)');
+          }
+        }
+      } catch (e) {
+        failures.push(ref + ' → fetch failed: ' + (e && e.message || e));
+      }
+    }
+    if (failures.length > 0) return { ok: false, notes: 'Broken asset references:\\n' + failures.join('\\n') };
+    return { ok: true, notes: 'Runtime OK (' + refs.length + ' assets)' };
+  } catch (e) {
+    return { ok: false, notes: 'Runtime check errored: ' + (e && e.message || e) };
+  }
 }
 
 function executeTool(name, input) {
