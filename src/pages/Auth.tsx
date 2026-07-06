@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { lovable } from '@/integrations/lovable/index';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Loader2, ArrowRight, Bot, Zap, Globe } from 'lucide-react';
+import { Loader2, ArrowRight, Bot, Zap, Globe, Mail, ArrowLeft } from 'lucide-react';
 import { GarlicLogo } from '@/components/ui/logo-icon';
 import { AuroraBackground } from '@/components/ui/aurora-background';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -17,6 +18,11 @@ export default function Auth() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [signupPassword, setSignupPassword] = useState('');
+  const [pendingConfirmEmail, setPendingConfirmEmail] = useState<string | null>(null);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   // Redirect to dashboard if already authenticated
   useEffect(() => {
@@ -37,12 +43,41 @@ export default function Auth() {
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (signupPassword.length < 8) {
+      toast.error('Password must be at least 8 characters.');
+      return;
+    }
     setIsLoading(true);
     const formData = new FormData(e.currentTarget);
-    const { error } = await signUp(formData.get('email') as string, formData.get('password') as string, formData.get('fullName') as string);
+    const email = formData.get('email') as string;
+    const { error, needsEmailConfirmation } = await signUp(email, signupPassword, formData.get('fullName') as string);
     if (error) toast.error(error.message || 'Failed to sign up');
+    else if (needsEmailConfirmation) setPendingConfirmEmail(email);
     else toast.success('Account created successfully!');
     setIsLoading(false);
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setForgotLoading(false);
+    if (error) {
+      toast.error(error.message || 'Could not send reset email.');
+      return;
+    }
+    toast.success('Password reset link sent. Check your email.');
+    setForgotOpen(false);
+    setForgotEmail('');
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!pendingConfirmEmail) return;
+    const { error } = await supabase.auth.resend({ type: 'signup', email: pendingConfirmEmail });
+    if (error) toast.error(error.message || 'Could not resend.');
+    else toast.success('Confirmation email resent.');
   };
 
   const handleGoogleSignIn = async () => {
@@ -73,6 +108,55 @@ export default function Auth() {
     { icon: Bot, label: "AI Agents", desc: "Intelligent task execution" },
     { icon: Zap, label: "Instant Deploy", desc: "Ship in seconds" },
   ];
+
+  if (pendingConfirmEmail) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-6">
+        <div className="max-w-md w-full text-center space-y-6">
+          <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+            <Mail className="w-8 h-8 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Check your email</h1>
+            <p className="text-sm text-muted-foreground mt-2">
+              We sent a confirmation link to <strong className="text-foreground">{pendingConfirmEmail}</strong>. Click it to finish creating your account.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3">
+            <Button variant="outline" onClick={handleResendConfirmation}>Resend confirmation email</Button>
+            <Button variant="ghost" onClick={() => setPendingConfirmEmail(null)}>
+              <ArrowLeft className="w-4 h-4 mr-2" /> Back to sign in
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (forgotOpen) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-6">
+        <form onSubmit={handleForgotPassword} className="max-w-md w-full space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Reset your password</h1>
+            <p className="text-sm text-muted-foreground mt-2">
+              Enter your account email and we'll send you a reset link.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="forgot-email">Email</Label>
+            <Input id="forgot-email" type="email" required value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} className="h-11" />
+          </div>
+          <Button type="submit" className="w-full h-11" disabled={forgotLoading}>
+            {forgotLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send reset link'}
+          </Button>
+          <Button type="button" variant="ghost" className="w-full" onClick={() => setForgotOpen(false)}>
+            <ArrowLeft className="w-4 h-4 mr-2" /> Back to sign in
+          </Button>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex">
@@ -186,7 +270,12 @@ export default function Auth() {
                   <Input id="signin-email" name="email" type="email" placeholder="you@example.com" required disabled={isLoading} className="h-11 bg-secondary/50 border-border focus:border-primary transition-colors" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signin-password" className="text-sm font-medium">Password</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="signin-password" className="text-sm font-medium">Password</Label>
+                    <button type="button" onClick={() => setForgotOpen(true)} className="text-xs text-primary hover:underline">
+                      Forgot password?
+                    </button>
+                  </div>
                   <Input id="signin-password" name="password" type="password" required disabled={isLoading} className="h-11 bg-secondary/50 border-border focus:border-primary transition-colors" />
                 </div>
                 <Button type="submit" className="w-full h-11 font-medium shadow-glow hover:shadow-glow-lg transition-all duration-300 group" disabled={isLoading}>
@@ -207,7 +296,20 @@ export default function Auth() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-password" className="text-sm font-medium">Password</Label>
-                  <Input id="signup-password" name="password" type="password" required disabled={isLoading} className="h-11 bg-secondary/50 border-border focus:border-primary transition-colors" />
+                  <Input
+                    id="signup-password"
+                    name="password"
+                    type="password"
+                    required
+                    minLength={8}
+                    disabled={isLoading}
+                    value={signupPassword}
+                    onChange={(e) => setSignupPassword(e.target.value)}
+                    className="h-11 bg-secondary/50 border-border focus:border-primary transition-colors"
+                  />
+                  <p className={`text-xs ${signupPassword.length > 0 && signupPassword.length < 8 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                    At least 8 characters.
+                  </p>
                 </div>
                 <Button type="submit" className="w-full h-11 font-medium shadow-glow hover:shadow-glow-lg transition-all duration-300 group" disabled={isLoading}>
                   {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <>Create Account<ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-0.5 transition-transform" /></>}
@@ -217,7 +319,9 @@ export default function Auth() {
           </Tabs>
 
           <p className="text-xs text-center text-muted-foreground mt-8">
-            By continuing, you agree to our Terms of Service and Privacy Policy.
+            By continuing, you agree to our{' '}
+            <Link to="/terms" className="underline hover:text-foreground">Terms of Service</Link>{' '}and{' '}
+            <Link to="/privacy" className="underline hover:text-foreground">Privacy Policy</Link>.
           </p>
         </div>
       </div>
