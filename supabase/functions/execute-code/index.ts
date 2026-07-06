@@ -53,7 +53,12 @@ serve(async (req) => {
         .eq('provider', 'e2b')
         .eq('is_active', true)
         .maybeSingle();
-      if (apiKeyData?.encrypted_key) e2bApiKey = apiKeyData.encrypted_key;
+      if (apiKeyData?.encrypted_key) {
+        try {
+          const { decryptSecret } = await import("../_shared/crypto.ts");
+          e2bApiKey = await decryptSecret(apiKeyData.encrypted_key);
+        } catch (e) { console.warn('Decrypt user e2b key failed:', e); }
+      }
     }
     if (!e2bApiKey) {
       return new Response(JSON.stringify({ error: 'E2B API key not configured' }), { status: 500, headers: jsonHeaders });

@@ -57,7 +57,10 @@ export function useSubscription() {
   const getRemainingCodeExecutions = () => codeExecutionsLimit - codeExecutionsUsed;
   
   const getUsagePercentage = (used: number, limit: number) => {
-    return Math.round((used / limit) * 100);
+    // -1 is the unlimited sentinel; treat as 0% used.
+    if (limit === -1) return 0;
+    if (!limit || limit <= 0) return 0;
+    return Math.min(100, Math.round((used / limit) * 100));
   };
 
   return {

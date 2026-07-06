@@ -20,9 +20,8 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-    logStep("Stripe key verified");
+    const url = new URL(req.url);
+    const refresh = url.searchParams.get('refresh') === 'true';
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) throw new Error("No authorization header provided");
@@ -76,90 +75,57 @@ serve(async (req) => {
       });
     }
 
-    if (!userId) {
-      logStep("No user ID found, returning free tier defaults");
-      return new Response(JSON.stringify({
-        subscribed: false, tier: 'free', can_use_own_keys: false,
-        chat_messages_used: 0, browser_tasks_used: 0, code_executions_used: 0,
-        chat_messages_limit: 100, browser_tasks_limit: 10, code_executions_limit: 5,
-      }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
-    }
-
-    const { data: profile, error: profileError } = await supabaseClient
-      .from("profiles")
-      .select("id, email")
-      .eq("id", userId)
-      .single();
-
-    if (profileError || !profile?.email) {
-      throw new Error("Authentication error: Profile not found");
-    }
-
-    const userEmail = profile.email;
-    logStep("User authenticated", { userId, email: userEmail });
-
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
-    
-    if (customers.data.length === 0) {
-      logStep("No customer found, returning free tier");
-      
-      // Get free tier limits
-      const { data: tierData } = await supabaseClient
-        .from('tier_limits')
-        .select('*')
-        .eq('tier', 'free')
-        .single();
-      
-      return new Response(JSON.stringify({ 
-        subscribed: false,
-        tier: 'free',
-        can_use_own_keys: false,
-        chat_messages_used: 0,
-        browser_tasks_used: 0,
-        code_executions_used: 0,
-        chat_messages_limit: tierData?.chat_messages_per_month || 100,
-        browser_tasks_limit: tierData?.browser_tasks_per_month || 10,
-        code_executions_limit: tierData?.code_executions_per_month || 5,
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-    }
-
-    const customerId = customers.data[0].id;
-    logStep("Found Stripe customer", { customerId });
-
-    const subscriptions = await stripe.subscriptions.list({
-      customer: customerId,
-      status: "active",
-      limit: 1,
-    });
-    
-    const hasActiveSub = subscriptions.data.length > 0;
-    let tier = 'free';
-    let subscriptionEnd = null;
-    let canUseOwnKeys = false;
-
-    if (hasActiveSub) {
-      const subscription = subscriptions.data[0];
-      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-      const priceId = subscription.items.data[0].price.id;
-      logStep("Active subscription found", { subscriptionId: subscription.id, priceId, endDate: subscriptionEnd });
-      
-      // Map price ID to tier
-      const { data: tierData } = await supabaseClient
-        .from('tier_limits')
-        .select('tier, chat_messages_per_month, browser_tasks_per_month')
-        .eq('stripe_price_id', priceId)
-        .single();
-      
-      if (tierData) {
-        tier = tierData.tier;
-        canUseOwnKeys = tier === 'lifetime' || tier === 'enterprise';
-        logStep("Determined subscription tier", { tier, canUseOwnKeys });
+    // Optional forced refresh path — hits Stripe live to reconcile local table.
+    if (refresh) {
+      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+      if (stripeKey) {
+        try {
+          const { data: profile } = await supabaseClient
+            .from("profiles").select("id, email").eq("id", userId).single();
+          if (profile?.email) {
+            const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+            const customers = await stripe.customers.list({ email: profile.email, limit: 1 });
+            if (customers.data.length > 0) {
+              const subs = await stripe.subscriptions.list({
+                customer: customers.data[0].id, status: "active", limit: 1,
+              });
+              if (subs.data.length > 0) {
+                const sub = subs.data[0];
+                const priceId = sub.items.data[0].price.id;
+                const { data: tierData } = await supabaseClient
+                  .from('tier_limits')
+                  .select('tier').eq('stripe_price_id', priceId).single();
+                if (tierData) {
+                  await supabaseClient.from('subscriptions').upsert({
+                    user_id: userId,
+                    tier: tierData.tier,
+                    status: 'active',
+                    stripe_customer_id: customers.data[0].id,
+                    stripe_subscription_id: sub.id,
+                    current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+                  }, { onConflict: 'user_id' });
+                }
+              }
+            }
+          }
+        } catch (e) {
+          logStep('Refresh error', { error: String(e) });
+        }
       }
     }
+
+    // Read tier/status from local subscriptions table (fast, no Stripe call).
+    const { data: subRow } = await supabaseClient
+      .from('subscriptions')
+      .select('tier, status, current_period_end')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    let tier: string = subRow?.tier || 'free';
+    const hasActiveSub = subRow?.status === 'active' && tier !== 'free';
+    const subscriptionEnd: string | null = subRow?.current_period_end ?? null;
+    const canUseOwnKeys = tier === 'lifetime' || tier === 'enterprise';
+    logStep("Loaded local subscription", { tier, hasActiveSub });
 
     // Get usage for current period
     const { data: usageData } = await supabaseClient.rpc('get_user_tier_and_usage', {

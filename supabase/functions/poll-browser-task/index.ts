@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
+import { decryptSecret } from "../_shared/crypto.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -92,7 +93,12 @@ serve(async (req) => {
         .eq('provider', 'browser_use')
         .eq('is_active', true)
         .maybeSingle();
-      browserUseApiKey = apiKeyData?.encrypted_key || (Deno.env.get('BROWSER_USE_API_KEY') ?? '');
+      let userKey = '';
+      if (apiKeyData?.encrypted_key) {
+        try { userKey = await decryptSecret(apiKeyData.encrypted_key); }
+        catch (e) { console.warn('Decrypt user browser_use key failed:', e); }
+      }
+      browserUseApiKey = userKey || (Deno.env.get('BROWSER_USE_API_KEY') ?? '');
     } else {
       browserUseApiKey = Deno.env.get('BROWSER_USE_API_KEY') ?? '';
     }

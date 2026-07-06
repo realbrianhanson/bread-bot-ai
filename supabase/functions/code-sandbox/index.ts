@@ -1,3 +1,4 @@
+import { decryptSecret } from "../_shared/crypto.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
@@ -61,7 +62,8 @@ serve(async (req) => {
         .maybeSingle();
 
       if (apiKeyData?.encrypted_key) {
-        e2bApiKey = apiKeyData.encrypted_key;
+        try { e2bApiKey = await decryptSecret(apiKeyData.encrypted_key); }
+        catch (e) { console.warn('Decrypt user e2b key failed:', e); }
       }
     }
 

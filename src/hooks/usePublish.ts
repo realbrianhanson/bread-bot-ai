@@ -93,18 +93,27 @@ ${js.trim() ? `<script>\n${js}\n</script>` : ''}
         await navigator.clipboard.writeText(url);
         toast.success('Page updated!', { description: url });
       } else {
-        currentSlug = generateSlug();
-        const { error } = await supabase
-          .from('shared_previews')
-          .insert({
-            user_id: user.id,
-            html_content: fullHtml,
-            title,
-            conversation_id: conversationId || null,
-            is_published: true,
-            slug: currentSlug,
-          });
-        if (error) throw error;
+        // Retry on slug collision (unique constraint) up to 5 attempts
+        let inserted = false;
+        let lastError: unknown = null;
+        for (let attempt = 0; attempt < 5 && !inserted; attempt++) {
+          currentSlug = generateSlug();
+          const { error } = await supabase
+            .from('shared_previews')
+            .insert({
+              user_id: user.id,
+              html_content: fullHtml,
+              title,
+              conversation_id: conversationId || null,
+              is_published: true,
+              slug: currentSlug,
+            });
+          if (!error) { inserted = true; break; }
+          // Unique-violation on slug — retry with a fresh one
+          if ((error as any).code === '23505') { lastError = error; continue; }
+          throw error;
+        }
+        if (!inserted) throw lastError ?? new Error('Failed to reserve a unique slug');
         setPublishedSlug(currentSlug);
 
         const url = `${window.location.origin}/p/${currentSlug}`;

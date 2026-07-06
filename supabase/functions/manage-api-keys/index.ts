@@ -1,43 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
+import { encryptSecret, decryptSecret, maskKey } from "../_shared/crypto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
-
-// Simple AES-GCM encryption using a server-side secret
-const ENCRYPTION_KEY_RAW = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-async function getEncryptionKey(): Promise<CryptoKey> {
-  const keyData = new TextEncoder().encode(ENCRYPTION_KEY_RAW);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", keyData);
-  return crypto.subtle.importKey("raw", hashBuffer, "AES-GCM", false, ["encrypt", "decrypt"]);
-}
-
-async function encryptKey(plaintext: string): Promise<string> {
-  const key = await getEncryptionKey();
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const encoded = new TextEncoder().encode(plaintext);
-  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
-  // Store as base64: iv:ciphertext
-  const ivB64 = btoa(String.fromCharCode(...iv));
-  const ctB64 = btoa(String.fromCharCode(...new Uint8Array(ciphertext)));
-  return `${ivB64}:${ctB64}`;
-}
-
-export async function decryptKey(encrypted: string): Promise<string> {
-  // If it doesn't contain ":", it's a legacy plaintext key
-  if (!encrypted.includes(":")) return encrypted;
-
-  const key = await getEncryptionKey();
-  const [ivB64, ctB64] = encrypted.split(":");
-  const iv = Uint8Array.from(atob(ivB64), (c) => c.charCodeAt(0));
-  const ciphertext = Uint8Array.from(atob(ctB64), (c) => c.charCodeAt(0));
-  const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
-  return new TextDecoder().decode(decrypted);
-}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -101,7 +70,7 @@ serve(async (req) => {
         });
       }
 
-      const encryptedKey = await encryptKey(key);
+      const encryptedKey = await encryptSecret(key);
 
       const { error } = await supabase
         .from("api_keys")
@@ -129,7 +98,7 @@ serve(async (req) => {
     if (action === "list") {
       const { data, error } = await supabase
         .from("api_keys")
-        .select("provider, is_active")
+        .select("provider, is_active, encrypted_key")
         .eq("user_id", userId);
 
       if (error) {
@@ -139,8 +108,20 @@ serve(async (req) => {
         });
       }
 
-      // Return only provider names + active status, never the keys
-      return new Response(JSON.stringify({ keys: data }), {
+      // Return provider, active status, and a masked preview (last 4 chars only).
+      const keys = await Promise.all(
+        (data ?? []).map(async (row: any) => {
+          let masked = '';
+          try {
+            const plain = await decryptSecret(row.encrypted_key);
+            masked = maskKey(plain);
+          } catch {
+            masked = '';
+          }
+          return { provider: row.provider, is_active: row.is_active, masked };
+        }),
+      );
+      return new Response(JSON.stringify({ keys }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

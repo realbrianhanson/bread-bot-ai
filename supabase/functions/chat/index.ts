@@ -1,13 +1,15 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
+import { ANTHROPIC_API_URL, HONCHO_API_URL, MODELS, fetchWithTimeout, TIMEOUT_AI_MS, TIMEOUT_DEFAULT_MS, isAbortError } from "../_shared/config.ts";
+import { decryptSecret } from "../_shared/crypto.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const HONCHO_API_BASE = 'https://api.honcho.dev/v1';
+const HONCHO_API_BASE = HONCHO_API_URL;
 
 async function getHonchoContext(userId: string): Promise<string> {
   const apiKey = Deno.env.get('HONCHO_API_KEY');
@@ -146,8 +148,13 @@ serve(async (req) => {
         .maybeSingle();
 
       if (apiKeyData?.encrypted_key) {
-        anthropicApiKey = apiKeyData.encrypted_key;
-        console.log('Using user\'s own Anthropic API key');
+        try {
+          anthropicApiKey = await decryptSecret(apiKeyData.encrypted_key);
+          console.log("Using user's own Anthropic API key");
+        } catch (e) {
+          console.warn('Failed to decrypt user Anthropic key, falling back:', e);
+          anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
+        }
       } else {
         anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
         console.log('Using shared Anthropic API key (user has BYOK but no key configured)');
@@ -607,7 +614,7 @@ When the user's message includes sections labeled "CURRENT HTML:", "CURRENT CSS:
       }
     }
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetchWithTimeout(ANTHROPIC_API_URL, {
       method: 'POST',
       headers: {
         'x-api-key': anthropicApiKey,
@@ -615,13 +622,13 @@ When the user's message includes sections labeled "CURRENT HTML:", "CURRENT CSS:
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
+        model: MODELS.CHAT,
         max_tokens: 32000,
         system: enrichedPrompt,
         messages,
         stream: true,
       }),
-    });
+    }, TIMEOUT_AI_MS);
 
     if (!response.ok) {
       const errorText = await response.text();

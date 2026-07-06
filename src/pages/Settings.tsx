@@ -108,12 +108,12 @@ export default function Settings() {
 
   const loadApiKeys = async () => {
     if (!user) return;
-    const { data, error } = await supabase.from('api_keys').select('provider, encrypted_key').eq('user_id', user.id);
+    const { data, error } = await supabase.functions.invoke('manage-api-keys', { body: { action: 'list' } });
     if (error) { toast.error('Failed to load API keys'); return; }
     const keys: Record<KeyProvider, string> = { browserUse: '', anthropic: '', e2b: '', firecrawl: '', openai: '' };
-    for (const item of data || []) {
+    for (const item of (data?.keys ?? []) as Array<{ provider: string; masked: string }>) {
       const field = API_KEY_FIELDS.find(f => f.provider === item.provider);
-      if (field) keys[field.id] = item.encrypted_key;
+      if (field) keys[field.id] = item.masked || '';
     }
     setApiKeys(keys);
   };
