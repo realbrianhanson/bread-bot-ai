@@ -77,6 +77,47 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_domains: {
+        Row: {
+          created_at: string
+          domain: string
+          id: string
+          shared_preview_id: string
+          user_id: string
+          verification_token: string
+          verified: boolean
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          domain: string
+          id?: string
+          shared_preview_id: string
+          user_id: string
+          verification_token?: string
+          verified?: boolean
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          domain?: string
+          id?: string
+          shared_preview_id?: string
+          user_id?: string
+          verification_token?: string
+          verified?: boolean
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_domains_shared_preview_id_fkey"
+            columns: ["shared_preview_id"]
+            isOneToOne: false
+            referencedRelation: "shared_previews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       design_templates: {
         Row: {
           category: string | null
