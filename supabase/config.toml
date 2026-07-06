@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.serve-page]
 verify_jwt = false
+
+[functions.submit-form]
+verify_jwt = false
