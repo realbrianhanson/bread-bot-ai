@@ -2,7 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
 import { Sandbox } from "npm:e2b@1.13.0";
-import { DESIGN_CONSTITUTION } from "../_shared/design-constitution.ts";
+import { DESIGN_CONSTITUTION, FORMS_INSTRUCTIONS } from "../_shared/design-constitution.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
