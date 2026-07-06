@@ -720,7 +720,9 @@ function renderRunnerSource(): string {
     .replace(/\\/g, '\\\\')
     .replace(/'/g, "\\'")
     .replace(/\r?\n/g, '\\n');
-  return RUNNER_SOURCE.replace(/__DESIGN_CONSTITUTION__/g, safe);
+  // Use a function replacer so `$` sequences in the constitution are not
+  // interpreted by String.replace (e.g. $&, $1).
+  return RUNNER_SOURCE.replace(/__DESIGN_CONSTITUTION__/g, () => safe);
 }
 
 async function loadUserContextForBuild(supabase: any, userId: string): Promise<{ knowledgeMd: string }> {
