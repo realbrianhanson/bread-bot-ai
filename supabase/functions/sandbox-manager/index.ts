@@ -711,6 +711,31 @@ function generateToken(): string {
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+function renderRunnerSource(): string {
+  // Inject the shared design constitution into the runner (which cannot import Deno modules).
+  // Escape backslashes and backticks so the string is safe inside the runner's template.
+  const safe = DESIGN_CONSTITUTION.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+  return RUNNER_SOURCE.replace(/__DESIGN_CONSTITUTION__/g, safe);
+}
+
+async function loadUserContextForBuild(supabase: any, userId: string): Promise<{ knowledgeMd: string }> {
+  try {
+    const { data } = await supabase
+      .from('knowledge_entries')
+      .select('title, content')
+      .eq('user_id', userId)
+      .limit(12);
+    if (!data || data.length === 0) return { knowledgeMd: '' };
+    const md = data
+      .map((e: any) => '## ' + String(e.title || 'Entry').slice(0, 80) + '\n' + String(e.content || '').slice(0, 800))
+      .join('\n\n')
+      .slice(0, 8000);
+    return { knowledgeMd: md };
+  } catch (_) {
+    return { knowledgeMd: '' };
+  }
+}
+
 function serviceClient() {
   return createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
