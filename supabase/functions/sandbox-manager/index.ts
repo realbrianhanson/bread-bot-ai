@@ -216,7 +216,7 @@ async function callback(payload) {
     await fetch(CALLBACK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(Object.assign({ action: 'callback', taskId: TASK_ID, token: BUILD_TOKEN }, payload)),
+      body: JSON.stringify(Object.assign({ action: 'callback', taskId: TASK_ID, token: BUILD_TOKEN, todos: CURRENT_TODOS }, payload)),
     });
   } catch (e) {
     log('callback failed: ' + e.message);
