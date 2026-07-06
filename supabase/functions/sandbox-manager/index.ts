@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
 import { Sandbox } from "npm:e2b@1.13.0";
+import { DESIGN_CONSTITUTION } from "../_shared/design-constitution.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -201,6 +202,10 @@ const APP_DIR = '/home/user/app';
 const MAX_TURNS = 30;
 
 const USER_PROMPT = Buffer.from(process.env.PROMPT_B64 || '', 'base64').toString('utf8');
+const DESIGN_MD = Buffer.from(process.env.DESIGN_MD_B64 || '', 'base64').toString('utf8');
+const MARKETING_MD = Buffer.from(process.env.MARKETING_MD_B64 || '', 'base64').toString('utf8');
+const KNOWLEDGE_MD = Buffer.from(process.env.KNOWLEDGE_MD_B64 || '', 'base64').toString('utf8');
+const IS_EDIT = process.env.IS_EDIT === '1';
 
 function log(msg) {
   console.log('[RUNNER] ' + msg);
@@ -301,35 +306,84 @@ const TOOLS = [
     input_schema: { type: 'object', properties: {} },
   },
   {
+    name: 'update_todos',
+    description: 'Report the current TODO checklist state so the UI can render a live checklist. Send the full ordered list every time you update it. Also write/replace the same list into TODO.md so it survives snapshots. Statuses: "pending", "in_progress", "done", "dropped" (with reason).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        items: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              text: { type: 'string' },
+              status: { type: 'string', enum: ['pending', 'in_progress', 'done', 'dropped'] },
+              reason: { type: 'string' },
+            },
+            required: ['id', 'text', 'status'],
+          },
+        },
+      },
+      required: ['items'],
+    },
+  },
+  {
     name: 'finish',
     description: 'Declare the build complete. Only call after check_build returns BUILD OK.',
     input_schema: { type: 'object', properties: { summary: { type: 'string' } }, required: ['summary'] },
   },
 ];
 
-const SYSTEM_PROMPT = [
+const PROJECT_SETUP = 'PROJECT SETUP: Vite + React 18, entry src/main.jsx renders src/App.jsx, Tailwind via CDN. Design tokens are CSS variables in src/index.css. Tailwind is mapped so the tokens are consumed via hsl(): tokens live in src/index.css as bare HSL triples (e.g. --primary: 244 75% 57%) and are used as hsl(var(--primary)) or via mapped Tailwind classes (bg-background, text-foreground, bg-primary, text-primary-foreground, bg-secondary, bg-accent, bg-muted, text-muted-foreground, bg-card, border-border, bg-hero, text-hero-foreground, text-hero-muted, font-display, font-sans, rounded, rounded-lg, rounded-xl). Do NOT edit vite.config.js, package.json scripts, or index.html.';
+
+const PLAN_FIRST_CREATE = [
+  'REQUIRED FIRST ACTIONS on a NEW build, in this order, before any components:',
+  '1. write_file PLAN.md — cover: pages/sections list, signature element for this project, palette rationale (name the colors, not just "blue"), font pairing rationale, one paragraph explaining how this brief maps to the design plan.',
+  '2. write_file TODO.md — a markdown checklist of the concrete build steps in order. Use "- [ ] step" for each item. Include tokens step, each page section, wiring, responsive pass, and check_build.',
+  '3. update_todos — call with the same items you put in TODO.md so the UI checklist appears live.',
+  '4. Rewrite src/index.css tokens for this project (from the design plan). Then start building.',
+  '',
+  'As you complete each step, call update_todos with the new statuses AND call replace_in_file on TODO.md to tick the matching checkbox ("- [ ] X" -> "- [x] X"). If you decide a step is no longer necessary, mark it status "dropped" with a short reason instead of deleting it.',
+].join('\\n');
+
+const PLAN_FIRST_EDIT = [
+  'REQUIRED FIRST ACTIONS on an EDIT run:',
+  '1. read_file PLAN.md — respect the original design decisions. Do not change palette, fonts, or radius unless the change request explicitly asks for it. If PLAN.md is missing, create one from what the existing code implies before making edits.',
+  '2. read_file TODO.md if it exists so you know what was already done.',
+  '3. list_files, then read only the files relevant to the change request.',
+  '4. Add new TODO items for this edit via update_todos (and append to TODO.md). Tick them off as you go.',
+  '5. Prefer replace_in_file for targeted edits over rewriting whole files.',
+].join('\\n');
+
+const FINISH_GATE_NOTE = 'FINISH GATE: finish is only accepted when (a) check_build returns BUILD OK, (b) runtime verification passes, and (c) every TODO item is either "done" or "dropped" with a reason. Unchecked items will block finish.';
+
+const SYSTEM_PROMPT_BASE = [
   'You are the design lead and senior React engineer at a studio known for giving every client a visual identity that could not be mistaken for anyone else. You work inside a LIVE Vite + React project at /home/user/app and the user watches a hot-reloading preview as you edit files.',
   '',
-  'PROJECT SETUP: Vite + React 18, entry src/main.jsx renders src/App.jsx, Tailwind via CDN. Design tokens are CSS variables in src/index.css and are mapped into Tailwind, so semantic classes work everywhere: bg-background, text-foreground, bg-primary, text-primary-foreground, bg-secondary, bg-accent, bg-muted, text-muted-foreground, bg-card, border-border, bg-hero, text-hero-foreground, text-hero-muted, font-display, font-sans, rounded, rounded-lg, rounded-xl. Do NOT edit vite.config.js, package.json scripts, or index.html.',
+  PROJECT_SETUP,
   '',
-  'YOUR WORKFLOW:',
-  '1. ART DIRECTION FIRST. Before any components, write a 3-line design plan as a CSS comment at the top of src/index.css: the direction in one sentence, the palette as named hex values, the font pairing and radius. Ground it in the subject of the brief, in its world and materials and vernacular. Then rewrite the token values in src/index.css to match: one dominant color used with restraint, one sharp accent, --font-display and --font-body chosen from the loaded families (Inter, Space Grotesk, Fraunces, Lora, Bricolage Grotesque, JetBrains Mono), and --radius (0px sharp editorial, 8-12px modern, 16-24px soft friendly). NEVER ship the default indigo theme.',
+  '__PLAN_FIRST__',
+  '',
+  '__DESIGN_CONSTITUTION__',
+  '',
+  'USER DESIGN SYSTEM (from the picker — apply as extra constraints on top of the constitution; if empty, ignore):',
+  '__DESIGN_MD__',
+  '',
+  'MARKETING / PAGE PURPOSE FRAMEWORK (from the picker — apply to structure, copy and conversion elements; if empty, ignore):',
+  '__MARKETING_MD__',
+  '',
+  'USER KNOWLEDGE BASE SUMMARY (facts about the user or their business; use only if relevant):',
+  '__KNOWLEDGE_MD__',
+  '',
+  'WORKFLOW:',
+  '1. Follow the REQUIRED FIRST ACTIONS above.',
   '2. Build the app: components in src/components/, composed in src/App.jsx. Use write_file for new files and replace_in_file for edits.',
   '3. After writing or editing files, ALWAYS call check_build. If it fails, read the errors and fix them. Repeat until BUILD OK.',
-  '4. Only then call finish with a one-paragraph summary.',
+  '4. Keep calling update_todos as you progress.',
+  '5. Only then call finish with a one-paragraph summary.',
   '',
-  'DESIGN RULES:',
-  '- The hero is a thesis: open with the most characteristic thing in the subject world. A big number with a small label over a gradient is the template answer; only use it if it is truly the best option.',
-  '- Typography carries the personality. Pair display and body deliberately and set a real scale: font-display headlines at text-5xl to text-7xl on desktop with tracking-tight, font-sans body at text-base or text-lg with leading-relaxed, and an obvious size gap between levels.',
-  '- All color comes from the tokens via the semantic classes above or arbitrary values like bg-[var(--primary)]. Never use raw Tailwind palette colors (no text-gray-400, no bg-blue-600).',
-  '- Avoid the three default AI looks unless the brief asks for them: cream background with a serif and terracotta accent, near-black with one acid-green accent, and broadsheet hairline-rule layouts. Make choices specific to THIS brief.',
-  '- One signature element per page: a striking hero treatment, an unexpected layout, or a bold typographic moment. Spend your boldness there and keep everything else quiet and disciplined.',
-  '- Backgrounds carry mood: layered gradients, subtle radial glows, or alternating section tints from the tokens rather than flat white everywhere. Keep contrast high; never light text on light backgrounds.',
-  '- Depth and polish: consistent radii from the token, soft layered shadows on cards, visible hover states (color shift, slight translate or scale) and transition-all duration-200 on every interactive element.',
-  '- Structure encodes information: numbered markers, eyebrows, and dividers only when the content really is a sequence or a taxonomy, never as decoration.',
-  '- Direct-response copy: benefit-driven headlines, active voice, one clear primary CTA per screen with an action verb and reassurance micro-copy, social proof near the CTA. Specific beats clever.',
-  '- Imagery: prefer crafted CSS and inline SVG visuals (gradient meshes, abstract shapes, simple UI mockups built from divs) over stock photos. When a real photo is genuinely needed use https://picsum.photos/seed/SOMEWORD/800/600 with a descriptive seed and alt text. Inline SVGs or emoji for icons. Never use placehold.co.',
-  '- Quality floor: responsive at sm/md/lg, generous section spacing (py-20 to py-28), visible focus states on inputs and buttons.',
+  FINISH_GATE_NOTE,
   '',
   'TECHNICAL RULES:',
   '- React 18 function components with hooks. No TypeScript (use .jsx).',
@@ -339,6 +393,15 @@ const SYSTEM_PROMPT = [
   '',
   'Tool results are truncated to 8000 chars. Be efficient: do not re-read files you just wrote.',
 ].join('\\n');
+
+const SYSTEM_PROMPT = SYSTEM_PROMPT_BASE
+  .replace('__PLAN_FIRST__', IS_EDIT ? PLAN_FIRST_EDIT : PLAN_FIRST_CREATE)
+  .replace('__DESIGN_MD__', DESIGN_MD || '(none provided)')
+  .replace('__MARKETING_MD__', MARKETING_MD || '(none provided)')
+  .replace('__KNOWLEDGE_MD__', KNOWLEDGE_MD || '(none provided)');
+// Note: the __DESIGN_CONSTITUTION__ placeholder is filled by the SANDBOX MANAGER
+// before this runner source is written into the sandbox, because the runner
+// cannot import Deno modules. See RUNNER_SOURCE.replace(...) below.
 
 function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
