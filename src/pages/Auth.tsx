@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/contexts/AuthContext';
 import { lovable } from '@/integrations/lovable/index';
 import { supabase } from '@/integrations/supabase/client';
@@ -160,6 +161,12 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen flex">
+      <Helmet>
+        <title>Sign in — GarlicBread.ai</title>
+        <meta name="description" content="Sign in or create your GarlicBread.ai account to run AI browser automations, generate code, and build web apps." />
+        <link rel="canonical" href="https://garlicbread.ai/auth" />
+        <meta name="robots" content="noindex" />
+      </Helmet>
       {/* Left: Visual Panel */}
       <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden bg-background">
         <AuroraBackground />
