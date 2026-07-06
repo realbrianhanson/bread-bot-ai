@@ -762,7 +762,7 @@ async function appendLog(supabase: any, taskId: string, current: any, fields: Re
 
 // ---------- Bootstrap (runs in background after `create` responds) ----------
 
-async function bootstrapBuild(taskId: string, buildToken: string, prompt: string, model: string) {
+async function bootstrapBuild(taskId: string, buildToken: string, prompt: string, model: string, ctx: { designMd?: string; marketingMd?: string; knowledgeMd?: string } = {}) {
   const supabase = serviceClient();
   const e2bApiKey = Deno.env.get('E2B_API_KEY') ?? '';
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
@@ -792,7 +792,7 @@ async function bootstrapBuild(taskId: string, buildToken: string, prompt: string
       { path: '/home/user/app/src/main.jsx', data: FILE_MAIN_JSX },
       { path: '/home/user/app/src/App.jsx', data: FILE_APP_JSX },
       { path: '/home/user/app/src/index.css', data: FILE_INDEX_CSS },
-      { path: '/home/user/runner.cjs', data: RUNNER_SOURCE },
+      { path: '/home/user/runner.cjs', data: renderRunnerSource() },
     ]);
 
     od = await appendLog(supabase, taskId, od, { output_data: { phase: 'installing_deps' } }, 'Installing dependencies (npm install)');
@@ -814,6 +814,9 @@ async function bootstrapBuild(taskId: string, buildToken: string, prompt: string
     const callbackUrl = supabaseUrl + '/functions/v1/sandbox-manager';
     const proxyUrl = supabaseUrl + '/functions/v1/anthropic-proxy';
     const promptB64 = btoa(unescape(encodeURIComponent(prompt)));
+    const designB64 = btoa(unescape(encodeURIComponent(ctx.designMd || '')));
+    const marketingB64 = btoa(unescape(encodeURIComponent(ctx.marketingMd || '')));
+    const knowledgeB64 = btoa(unescape(encodeURIComponent(ctx.knowledgeMd || '')));
 
     await sandbox.commands.run('nohup node /home/user/runner.cjs > /home/user/runner.log 2>&1 &', {
       timeoutMs: 15000,
@@ -825,6 +828,10 @@ async function bootstrapBuild(taskId: string, buildToken: string, prompt: string
         MODEL: model,
         PROMPT_B64: promptB64,
         PREVIEW_URL: previewUrl,
+        DESIGN_MD_B64: designB64,
+        MARKETING_MD_B64: marketingB64,
+        KNOWLEDGE_MD_B64: knowledgeB64,
+        IS_EDIT: '0',
       },
     });
 
