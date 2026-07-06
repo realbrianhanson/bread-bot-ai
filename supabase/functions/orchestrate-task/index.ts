@@ -734,7 +734,7 @@ async function executeTool(
         const res = await fetch(`${supabaseUrl}/functions/v1/sandbox-manager`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-          body: JSON.stringify({ action: 'create', prompt: toolInput.prompt, model: toolInput.model || 'claude-sonnet-4-6' }),
+          body: JSON.stringify({ action: 'create', prompt: toolInput.prompt, model: toolInput.model || MODELS.BUILDER_FAST }),
         });
         const data = await res.json();
         if (data.error) return `Build error: ${data.message || data.error}`;
