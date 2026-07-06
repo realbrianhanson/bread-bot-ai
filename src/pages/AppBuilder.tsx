@@ -10,6 +10,7 @@ import garlicSpin from '@/assets/garlic-spin.png';
 import { StylePicker } from '@/components/chat/StylePicker';
 import { PurposePicker } from '@/components/chat/PurposePicker';
 import TodoChecklist, { type TodoItem } from '@/components/chat/TodoChecklist';
+import ForwardingConfig from '@/components/chat/ForwardingConfig';
 
 interface BuildLogEntry {
   t: string;
