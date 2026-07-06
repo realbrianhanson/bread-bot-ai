@@ -531,6 +531,18 @@ export default function AppBuilder() {
             </div>
           )}
 
+          {task?.output_data?.todos && task.output_data.todos.length > 0 && (
+            <TodoChecklist
+              title="Build checklist"
+              items={task.output_data.todos.map<TodoItem>((t) => ({
+                id: t.id,
+                text: t.status === 'dropped' && t.reason ? `${t.text} — skipped: ${t.reason}` : t.text,
+                completed: t.status === 'done' || t.status === 'dropped',
+                inProgress: t.status === 'in_progress',
+              }))}
+            />
+          )}
+
           <div className="flex-1 overflow-y-auto rounded-md border border-border bg-muted/40 p-3 text-xs font-mono space-y-1 min-h-[100px]">
             {log.length === 0 && <span className="text-muted-foreground">Build log will stream here…</span>}
             {log.map((entry, i) => (
