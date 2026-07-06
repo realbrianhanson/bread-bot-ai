@@ -173,6 +173,45 @@ export type Database = {
         }
         Relationships: []
       }
+      form_submissions: {
+        Row: {
+          created_at: string
+          data: Json
+          form_name: string | null
+          forwarded_status: string
+          id: string
+          ip: string | null
+          source_id: string
+          source_type: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          form_name?: string | null
+          forwarded_status?: string
+          id?: string
+          ip?: string | null
+          source_id: string
+          source_type: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          form_name?: string | null
+          forwarded_status?: string
+          id?: string
+          ip?: string | null
+          source_id?: string
+          source_type?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       knowledge_entries: {
         Row: {
           content: string
@@ -386,6 +425,8 @@ export type Database = {
       published_apps: {
         Row: {
           created_at: string
+          form_key: string
+          forward_url: string | null
           id: string
           is_published: boolean
           name: string
@@ -398,6 +439,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          form_key?: string
+          forward_url?: string | null
           id?: string
           is_published?: boolean
           name: string
@@ -410,6 +453,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          form_key?: string
+          forward_url?: string | null
           id?: string
           is_published?: boolean
           name?: string
@@ -490,6 +535,8 @@ export type Database = {
         Row: {
           conversation_id: string | null
           created_at: string | null
+          form_key: string
+          forward_url: string | null
           html_content: string
           id: string
           is_published: boolean
@@ -502,6 +549,8 @@ export type Database = {
         Insert: {
           conversation_id?: string | null
           created_at?: string | null
+          form_key?: string
+          forward_url?: string | null
           html_content: string
           id?: string
           is_published?: boolean
@@ -514,6 +563,8 @@ export type Database = {
         Update: {
           conversation_id?: string | null
           created_at?: string | null
+          form_key?: string
+          forward_url?: string | null
           html_content?: string
           id?: string
           is_published?: boolean
@@ -675,6 +726,7 @@ export type Database = {
           chat_messages_per_month: number
           code_executions_per_month: number
           features: Json | null
+          form_submissions_per_month: number
           price_monthly_cents: number
           stripe_price_id: string | null
           stripe_price_id_annual: string | null
@@ -686,6 +738,7 @@ export type Database = {
           chat_messages_per_month: number
           code_executions_per_month?: number
           features?: Json | null
+          form_submissions_per_month?: number
           price_monthly_cents: number
           stripe_price_id?: string | null
           stripe_price_id_annual?: string | null
@@ -697,6 +750,7 @@ export type Database = {
           chat_messages_per_month?: number
           code_executions_per_month?: number
           features?: Json | null
+          form_submissions_per_month?: number
           price_monthly_cents?: number
           stripe_price_id?: string | null
           stripe_price_id_annual?: string | null
@@ -898,6 +952,7 @@ export type Database = {
         Args: { p_usage_type: string; p_user_id: string }
         Returns: Json
       }
+      gen_form_key: { Args: never; Returns: string }
       get_user_tier_and_usage: {
         Args: { p_user_id: string }
         Returns: {
