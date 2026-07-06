@@ -1365,6 +1365,113 @@ serve(async (req) => {
       }
     }
 
+    if (action === 'versions') {
+      // Walk the parent chain to find the root of this lineage, then return every
+      // build in the same chain (root + descendants) so the UI can show version history.
+      const startId = body.taskId;
+      if (!startId) return new Response(JSON.stringify({ error: 'taskId required' }), { status: 400, headers: jsonHeaders });
+      const { data: startTask } = await supabase.from('tasks').select('*').eq('id', startId).eq('user_id', user.id).maybeSingle();
+      if (!startTask) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: jsonHeaders });
+
+      let rootId = startTask.id;
+      let cursor: any = startTask;
+      for (let i = 0; i < 40; i++) {
+        const parentId = cursor?.input_data?.parent_task_id || cursor?.output_data?.parent_task_id;
+        if (!parentId) { rootId = cursor.id; break; }
+        const { data: p } = await supabase.from('tasks').select('*').eq('id', parentId).eq('user_id', user.id).maybeSingle();
+        if (!p) { rootId = cursor.id; break; }
+        cursor = p;
+        rootId = p.id;
+      }
+
+      // Collect every user app_build task and keep those whose ancestor chain contains rootId.
+      const { data: all } = await supabase
+        .from('tasks')
+        .select('id, status, completed_at, created_at, input_data, output_data')
+        .eq('user_id', user.id)
+        .eq('task_type', 'app_build')
+        .order('created_at', { ascending: false })
+        .limit(200);
+      const byId = new Map<string, any>();
+      for (const t of (all || [])) byId.set(t.id, t);
+      const inLineage = (t: any): boolean => {
+        let c: any = t;
+        for (let i = 0; i < 40 && c; i++) {
+          if (c.id === rootId) return true;
+          const pid = c?.input_data?.parent_task_id || c?.output_data?.parent_task_id;
+          if (!pid) return false;
+          c = byId.get(pid);
+        }
+        return false;
+      };
+      const versions = (all || []).filter(inLineage).map((t: any) => ({
+        id: t.id,
+        status: t.status,
+        created_at: t.created_at,
+        completed_at: t.completed_at,
+        prompt: t.input_data?.prompt || '',
+        edit: !!t.input_data?.edit,
+        parent_task_id: t.input_data?.parent_task_id || t.output_data?.parent_task_id || null,
+        has_snapshot: !!t.output_data?.snapshot_path,
+        preview_url: t.output_data?.preview_url || null,
+      }));
+      return new Response(JSON.stringify({ rootId, versions }), { headers: jsonHeaders });
+    }
+
+    if (action === 'restore') {
+      // Relaunch a sandbox from a saved snapshot as a brand new edit lineage entry.
+      // Uses the atomic edit path with a "no-op" prompt so the model just re-verifies.
+      const parentTaskId = body.taskId;
+      const model = ['claude-sonnet-4-6', 'claude-fable-5'].includes(body.model) ? body.model : 'claude-sonnet-4-6';
+      if (!parentTaskId) return new Response(JSON.stringify({ error: 'taskId required' }), { status: 400, headers: jsonHeaders });
+      const { data: parent } = await supabase.from('tasks').select('*').eq('id', parentTaskId).eq('user_id', user.id).single();
+      if (!parent || parent.task_type !== 'app_build') return new Response(JSON.stringify({ error: 'Build not found' }), { status: 404, headers: jsonHeaders });
+      if (!parent.output_data?.snapshot_path) return new Response(JSON.stringify({ error: 'This version has no saved snapshot to restore from' }), { status: 409, headers: jsonHeaders });
+
+      const { data: quota, error: quotaErr } = await supabase.rpc('check_and_increment_usage', { p_user_id: user.id, p_usage_type: 'app_build' });
+      if (quotaErr) return new Response(JSON.stringify({ error: 'Unable to check quota' }), { status: 500, headers: jsonHeaders });
+      if (quota && (quota as any).allowed === false) {
+        const q = quota as any;
+        return new Response(JSON.stringify({ error: 'quota_exceeded', message: `Monthly app build limit reached (${q.used}/${q.limit}).`, limit_exceeded: true }), { status: 402, headers: jsonHeaders });
+      }
+
+      const restorePrompt = 'RESTORE VERSION: The saved project files have been restored. Do not modify any files. Just run check_build to confirm it still compiles, add a DECISIONS.md entry titled `## <today> — Restored earlier version` noting which version was restored, then call finish immediately.';
+      const buildToken = generateToken();
+      const { data: taskRecord, error: taskError } = await supabase
+        .from('tasks')
+        .insert({
+          user_id: user.id,
+          project_id: parent.project_id || null,
+          task_type: 'app_build',
+          status: 'initializing',
+          started_at: new Date().toISOString(),
+          input_data: { prompt: 'Restore earlier version', model, parent_task_id: parentTaskId, edit: true, restore: true },
+          output_data: { build_token: buildToken, log: [], phase: 'queued', parent_task_id: parentTaskId },
+        })
+        .select()
+        .single();
+      if (taskError || !taskRecord) return new Response(JSON.stringify({ error: 'Failed to create restore record' }), { status: 500, headers: jsonHeaders });
+
+      await supabase.from('usage_tracking').update({ task_id: taskRecord.id })
+        .eq('user_id', user.id).eq('usage_type', 'app_build').is('task_id', null)
+        .order('created_at', { ascending: false }).limit(1);
+
+      const { knowledgeMd } = await loadUserContextForBuild(supabase, user.id);
+      // Force snapshot-based restore (do not reuse a warm sandbox from parent — restore semantics require the exact files).
+      const editPromise = bootstrapEdit(taskRecord.id, buildToken, restorePrompt, model, {
+        snapshot_path: parent.output_data?.snapshot_path,
+      }, { knowledgeMd });
+      // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
+      if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(editPromise);
+      } else {
+        editPromise.catch((e) => console.error('[SANDBOX-MANAGER] restore background error:', e));
+      }
+
+      return new Response(JSON.stringify({ taskId: taskRecord.id, status: 'initializing' }), { headers: jsonHeaders });
+    }
+
     return new Response(JSON.stringify({ error: 'Unknown action' }), { status: 400, headers: jsonHeaders });
   } catch (error) {
     console.error('[SANDBOX-MANAGER] Error:', error);
