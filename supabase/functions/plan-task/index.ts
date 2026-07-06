@@ -34,6 +34,24 @@ serve(async (req) => {
       });
     }
 
+    // Enforce quota
+    const userId = (claimsData.claims as any).sub;
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      { auth: { persistSession: false } }
+    );
+    const { data: quota } = await admin.rpc('check_and_increment_usage', {
+      p_user_id: userId, p_usage_type: 'chat_message',
+    });
+    if (quota && !quota.allowed) {
+      return new Response(JSON.stringify({
+        error: 'quota_exceeded',
+        message: `You have used all ${quota.limit} chat messages for this billing period. Please upgrade your plan.`,
+        usage: { used: quota.used, limit: quota.limit },
+      }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const { prompt } = await req.json();
     if (!prompt) {
       return new Response(JSON.stringify({ error: "Missing prompt" }), {

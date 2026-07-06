@@ -37,6 +37,18 @@ serve(async (req) => {
       });
     }
 
+    // Enforce quota (atomic check + increment via RPC)
+    const { data: quota } = await supabaseClient.rpc('check_and_increment_usage', {
+      p_user_id: user.id, p_usage_type: 'chat_message',
+    });
+    if (quota && !quota.allowed) {
+      return new Response(JSON.stringify({
+        error: 'quota_exceeded',
+        message: `You have used all ${quota.limit} chat messages for this billing period. Please upgrade your plan.`,
+        usage: { used: quota.used, limit: quota.limit },
+      }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     const { topic, content, numSlides, style } = await req.json();
     if (!topic || !content) {
       return new Response(JSON.stringify({ error: 'topic and content are required' }), {
@@ -180,12 +192,7 @@ serve(async (req) => {
       },
     });
 
-    // Track usage
-    await supabaseClient.from('usage_tracking').insert({
-      user_id: user.id,
-      usage_type: 'chat_message',
-      quantity: 1,
-    });
+    // Usage already tracked atomically in check_and_increment_usage above.
 
     return new Response(JSON.stringify({
       success: true,

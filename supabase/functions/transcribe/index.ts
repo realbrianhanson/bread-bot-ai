@@ -36,6 +36,18 @@ serve(async (req) => {
       });
     }
 
+    // Enforce quota
+    const { data: quota } = await supabaseClient.rpc('check_and_increment_usage', {
+      p_user_id: user.id, p_usage_type: 'chat_message',
+    });
+    if (quota && !quota.allowed) {
+      return new Response(JSON.stringify({
+        error: 'quota_exceeded',
+        message: `You have used all ${quota.limit} chat messages for this billing period. Please upgrade your plan.`,
+        usage: { used: quota.used, limit: quota.limit },
+      }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     const openaiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openaiKey) {
       return new Response(JSON.stringify({ error: 'OpenAI API key not configured' }), {

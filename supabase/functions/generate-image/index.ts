@@ -41,6 +41,23 @@ serve(async (req) => {
       });
     }
 
+    // Enforce quota (atomic check + increment)
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      { auth: { persistSession: false } }
+    );
+    const { data: quota } = await admin.rpc('check_and_increment_usage', {
+      p_user_id: user.id, p_usage_type: 'chat_message',
+    });
+    if (quota && !quota.allowed) {
+      return new Response(JSON.stringify({
+        error: 'quota_exceeded',
+        message: `You have used all ${quota.limit} image generations for this billing period. Please upgrade your plan.`,
+        usage: { used: quota.used, limit: quota.limit },
+      }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const { prompt, referenceImage } = await req.json();
 
     if (!prompt || typeof prompt !== "string") {
@@ -119,10 +136,7 @@ serve(async (req) => {
     const binaryData = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
     const fileName = `${user.id}/${crypto.randomUUID()}.png`;
 
-    const serviceClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const serviceClient = admin;
 
     const { error: uploadError } = await serviceClient.storage
       .from("user-images")
