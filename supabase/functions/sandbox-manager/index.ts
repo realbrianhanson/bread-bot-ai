@@ -728,13 +728,16 @@ function renderRunnerSource(): string {
   // The placeholder lands inside a JS single-quoted string literal in the runner
   // source, so escape backslashes, single quotes, and newlines. Backticks and
   // ${...} sequences do not need escaping inside single quotes.
-  const safe = DESIGN_CONSTITUTION
+  const escapeForJsString = (s: string) => s
     .replace(/\\/g, '\\\\')
     .replace(/'/g, "\\'")
     .replace(/\r?\n/g, '\\n');
-  // Use a function replacer so `$` sequences in the constitution are not
-  // interpreted by String.replace (e.g. $&, $1).
-  return RUNNER_SOURCE.replace(/__DESIGN_CONSTITUTION__/g, () => safe);
+  const safeConstitution = escapeForJsString(DESIGN_CONSTITUTION);
+  const safeForms = escapeForJsString(FORMS_INSTRUCTIONS);
+  // Use function replacers so `$` sequences are not interpreted by String.replace.
+  return RUNNER_SOURCE
+    .replace(/__DESIGN_CONSTITUTION__/g, () => safeConstitution)
+    .replace(/__FORMS_TEMPLATE__/g, () => safeForms);
 }
 
 async function loadUserContextForBuild(supabase: any, userId: string): Promise<{ knowledgeMd: string }> {
