@@ -1,0 +1,141 @@
+# Custom Domains — Production Wiring
+
+This project ships the app-layer plumbing for connecting user-owned domains to
+published pages (`custom_domains` table, `serve-page` function, `verify-domain`
+function, and the Connect Domain UI). To actually serve customer traffic on
+their own hostname you also need the edge/TLS layer described here.
+
+## Overview
+
+```
+ customer.example.com ─┐            ┌── serve-page (Supabase Edge Function)
+                       │            │      https://<project-ref>.functions.supabase.co/serve-page
+                       ▼            │
+          Cloudflare for SaaS  ─►  Fallback Origin Worker  ─►  serve-page?host=<hostname>
+          (per-hostname TLS)
+```
+
+1. Customer adds a `CNAME` (or apex ALIAS) pointing their domain at
+   `pages.garlicbread.ai`.
+2. Cloudflare for SaaS (Custom Hostnames) issues a TLS certificate per hostname
+   automatically (HTTP-01 or TXT validation).
+3. Cloudflare routes the request to the SaaS zone's **fallback origin**, a
+   tiny Cloudflare Worker.
+4. The Worker forwards the request (preserving the original `Host` header via
+   `x-forwarded-host`) to the `serve-page` edge function, which looks the host
+   up in `custom_domains`, streams the published HTML, and injects meta tags.
+
+## 1. DNS: `pages.garlicbread.ai`
+
+Create a single fallback record in the `garlicbread.ai` zone that customers
+will CNAME to:
+
+```
+pages.garlicbread.ai   CNAME   <cloudflare-for-saas-fallback-hostname>
+```
+
+The exact target is provided when you enable Custom Hostnames on the zone.
+
+## 2. Cloudflare for SaaS setup
+
+In the Cloudflare dashboard for the `garlicbread.ai` zone:
+
+- **SSL/TLS → Custom Hostnames → Enable**
+- Fallback origin: `pages.garlicbread.ai`
+- Certificate authority: Let's Encrypt (default) or Google Trust Services
+- Validation methods: HTTP + TXT (enable both — customers behind proxies often
+  can't do HTTP-01)
+- Wildcards: off (we issue per-hostname)
+
+Customers register hostnames via the Cloudflare API (`POST
+/zones/{zone_id}/custom_hostnames`), typically triggered by a future
+`register-hostname` edge function. For MVP the customer's CNAME to
+`pages.garlicbread.ai` and TXT ownership record are enough — you can add
+hostnames manually in the dashboard.
+
+## 3. The fallback-origin Worker
+
+Deploy a Cloudflare Worker at `pages.garlicbread.ai` (route:
+`pages.garlicbread.ai/*`). It only exists to preserve the original Host and
+forward to the Supabase function.
+
+```js
+// worker.js
+const TARGET = 'https://<project-ref>.functions.supabase.co/serve-page';
+const ANON  = '<SUPABASE_ANON_KEY>'; // publishable key, safe to bundle
+
+export default {
+  async fetch(request) {
+    const original = new URL(request.url);
+    const host = request.headers.get('host') || '';
+    const target = new URL(TARGET);
+    // preserve path for future extensions; serve-page currently ignores it
+    target.pathname += original.pathname === '/' ? '' : original.pathname;
+    target.search = original.search;
+
+    const headers = new Headers(request.headers);
+    headers.set('x-forwarded-host', host);
+    headers.set('apikey', ANON);
+    headers.set('Authorization', `Bearer ${ANON}`);
+
+    return fetch(target.toString(), {
+      method: request.method,
+      headers,
+      body: ['GET','HEAD'].includes(request.method) ? undefined : request.body,
+    });
+  },
+};
+```
+
+`wrangler.toml`:
+
+```toml
+name = "garlicbread-pages"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+routes = [ { pattern = "pages.garlicbread.ai/*", zone_name = "garlicbread.ai" } ]
+```
+
+## 4. Supabase env / secrets referenced
+
+`serve-page` and `verify-domain` use:
+
+| Secret                       | Where                                | Purpose                             |
+| ---------------------------- | ------------------------------------ | ----------------------------------- |
+| `SUPABASE_URL`               | auto-provided                        | Supabase project URL                |
+| `SUPABASE_ANON_KEY`          | auto-provided                        | Anon key for auth-scoped clients    |
+| `SUPABASE_SERVICE_ROLE_KEY`  | auto-provided                        | Server-role lookups + updates       |
+
+No new secrets needed for MVP.
+
+## 5. Supabase function URL pattern
+
+```
+https://<PROJECT_REF>.functions.supabase.co/serve-page?host=<domain>
+https://<PROJECT_REF>.functions.supabase.co/serve-page?slug=<slug>
+https://<PROJECT_REF>.functions.supabase.co/verify-domain      (POST, Bearer JWT)
+```
+
+The Worker forwards the original `Host` as `x-forwarded-host`; `serve-page`
+prefers that header over `Host` when present.
+
+## 6. Customer setup they see in the UI
+
+In the Connect Domain dialog we show:
+
+1. `TXT`  `_garlicbread-verify.{domain}`  →  `{verification_token}`
+2. `CNAME`  `{domain}`  →  `pages.garlicbread.ai`
+
+Once (1) resolves, `verify-domain` flips `verified=true`. Once (2) resolves and
+Cloudflare for SaaS has issued a certificate for `{domain}`, the site is live.
+
+## 7. Operational notes
+
+- Rate-limit: `serve-page` has a small in-process IP limiter (60 req/min per
+  cold-start) as basic enumeration protection. Push serious limits to the
+  Cloudflare layer (WAF / rate-limiting rules on `pages.garlicbread.ai`).
+- Caching: `serve-page` returns `Cache-Control: public, max-age=60, s-maxage=300`.
+  Cloudflare edge caches per hostname automatically.
+- Removal: deleting the row in `custom_domains` immediately breaks resolution
+  because `serve-page` will 404 on lookup. Also remove the hostname from
+  Cloudflare for SaaS to release the cert slot.
