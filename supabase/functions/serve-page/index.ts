@@ -98,11 +98,23 @@ Deno.serve(async (req) => {
   } else if (host) {
     const { data: domain } = await supabase
       .from('custom_domains')
-      .select('shared_preview_id, verified')
+      .select('shared_preview_id, published_app_id, verified')
       .eq('domain', host)
       .eq('verified', true)
       .maybeSingle();
     if (!domain) return notFound();
+    if (domain.published_app_id) {
+      // Domain targets a published App Builder app — hand off to serve-app.
+      const { data: app } = await supabase
+        .from('published_apps')
+        .select('slug')
+        .eq('id', domain.published_app_id)
+        .eq('is_published', true)
+        .maybeSingle();
+      if (!app) return notFound();
+      const target = `${SUPABASE_URL}/functions/v1/serve-app/${app.slug}${url.pathname}${url.search}`;
+      return Response.redirect(target, 307);
+    }
     previewId = domain.shared_preview_id;
   } else {
     return notFound();

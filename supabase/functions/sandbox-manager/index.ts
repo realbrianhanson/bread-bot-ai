@@ -10,7 +10,7 @@ const corsHeaders = {
 
 const jsonHeaders = { ...corsHeaders, 'Content-Type': 'application/json' };
 
-const SANDBOX_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes per build sandbox (v1)
+const SANDBOX_TIMEOUT_MS = 45 * 60 * 1000; // 45 minutes per build sandbox (slow-build keepalive)
 const DEV_PORT = 5173;
 
 // ---------- Project skeleton written into every new build sandbox ----------
@@ -38,6 +38,7 @@ const FILE_VITE_CONFIG = `import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
+  base: './',
   plugins: [react()],
   server: {
     host: true,
@@ -195,6 +196,7 @@ const CALLBACK_URL = process.env.CALLBACK_URL || '';
 const PROXY_URL = process.env.PROXY_URL || '';
 const MODEL = process.env.MODEL || 'claude-sonnet-4-6';
 const FALLBACK_MODEL = 'claude-opus-4-8';
+const PREVIEW_URL = process.env.PREVIEW_URL || '';
 const APP_DIR = '/home/user/app';
 const MAX_TURNS = 30;
 
@@ -338,6 +340,8 @@ const SYSTEM_PROMPT = [
   'Tool results are truncated to 8000 chars. Be efficient: do not re-read files you just wrote.',
 ].join('\\n');
 
+function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
 async function callModel(messages, model) {
   const body = {
     model: model,
@@ -346,20 +350,83 @@ async function callModel(messages, model) {
     tools: TOOLS,
     messages: messages,
   };
-  const res = await fetch(PROXY_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-build-token': BUILD_TOKEN,
-      'x-task-id': TASK_ID,
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error('Model call failed (' + res.status + '): ' + cap(t, 500));
+  // Retry ladder: 3 attempts with exponential backoff on 429/5xx/network.
+  let lastErr = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(PROXY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-build-token': BUILD_TOKEN, 'x-task-id': TASK_ID },
+        body: JSON.stringify(body),
+      });
+      if (res.status === 429 || res.status >= 500) {
+        const t = await res.text();
+        lastErr = new Error('Model call ' + res.status + ': ' + cap(t, 300));
+        log('Retryable model error (' + res.status + '), attempt ' + (attempt + 1));
+        await sleep(1500 * Math.pow(2, attempt));
+        continue;
+      }
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error('Model call failed (' + res.status + '): ' + cap(t, 500));
+      }
+      return await res.json();
+    } catch (e) {
+      lastErr = e;
+      const msg = String(e && e.message || e);
+      // Retry only on network-ish errors; if the previous branch already threw a non-retryable, rethrow.
+      if (attempt < 2 && /fetch|network|ECONN|timeout|Failed to fetch/i.test(msg)) {
+        log('Network error, retrying: ' + msg);
+        await sleep(1500 * Math.pow(2, attempt));
+        continue;
+      }
+      throw e;
+    }
   }
-  return await res.json();
+  throw lastErr || new Error('Model call failed after retries');
+}
+
+// Runtime verification: after check_build passes, confirm the dev server actually renders
+// and all script/link references in index.html resolve.
+async function verifyRuntime() {
+  if (!PREVIEW_URL) return { ok: true, notes: 'skipped (no preview url)' };
+  try {
+    const rootRes = await fetch(PREVIEW_URL, { redirect: 'follow' });
+    if (!rootRes.ok) return { ok: false, notes: 'Preview root returned HTTP ' + rootRes.status };
+    const html = await rootRes.text();
+    if (!html || html.length < 40) return { ok: false, notes: 'Preview HTML was empty or too small (' + html.length + ' bytes)' };
+    if (!/<div[^>]+id=["']root["']/i.test(html)) return { ok: false, notes: 'Preview HTML is missing the #root mount point' };
+
+    // Extract same-origin asset refs
+    const refs = [];
+    const scriptRe = /<script[^>]+src=["']([^"']+)["'][^>]*>/gi;
+    const linkRe = /<link[^>]+href=["']([^"']+)["'][^>]*rel=["'](?:stylesheet|modulepreload)["'][^>]*>/gi;
+    let m;
+    while ((m = scriptRe.exec(html)) !== null) refs.push(m[1]);
+    while ((m = linkRe.exec(html)) !== null) refs.push(m[1]);
+
+    const failures = [];
+    for (const ref of refs) {
+      if (/^https?:/i.test(ref) || ref.startsWith('//')) continue; // external
+      const abs = new URL(ref, PREVIEW_URL).toString();
+      try {
+        const r = await fetch(abs, { method: 'GET' });
+        if (!r.ok) failures.push(ref + ' → HTTP ' + r.status);
+        else {
+          const body = await r.text();
+          if (/^\s*<!doctype|^\s*<html/i.test(body) && !ref.endsWith('.html')) {
+            failures.push(ref + ' → returned HTML instead of the expected asset (likely 404 SPA fallback)');
+          }
+        }
+      } catch (e) {
+        failures.push(ref + ' → fetch failed: ' + (e && e.message || e));
+      }
+    }
+    if (failures.length > 0) return { ok: false, notes: 'Broken asset references:\\n' + failures.join('\\n') };
+    return { ok: true, notes: 'Runtime OK (' + refs.length + ' assets)' };
+  } catch (e) {
+    return { ok: false, notes: 'Runtime check errored: ' + (e && e.message || e) };
+  }
 }
 
 function executeTool(name, input) {
@@ -429,15 +496,29 @@ async function main() {
 
     messages.push({ role: 'assistant', content: result.content });
 
+    // Handle context / max_tokens: instruct the model to split large writes and continue.
+    if (result.stop_reason === 'max_tokens') {
+      log('Model hit max_tokens — asking it to continue in smaller chunks');
+      messages.push({ role: 'user', content: 'Your previous response was cut off at the token limit. Continue where you left off. If you were writing a large file, split it into smaller components (each under 200 lines) and write them separately with write_file so nothing gets truncated.' });
+      await callback({ step: 'Turn ' + turn + ': continuing after token limit', log: 'max_tokens continue' });
+      continue;
+    }
+
     const toolUses = (result.content || []).filter(function (b) { return b.type === 'tool_use'; });
 
     if (toolUses.length === 0) {
       // Model stopped without tools — verify build before accepting.
       const buildStatus = checkBuild();
       if (buildStatus === 'BUILD OK') {
-        finished = true;
-        const textBlocks = (result.content || []).filter(function (b) { return b.type === 'text'; });
-        finalSummary = textBlocks.map(function (b) { return b.text; }).join('\\n');
+        const runtime = await verifyRuntime();
+        if (runtime.ok) {
+          finished = true;
+          const textBlocks = (result.content || []).filter(function (b) { return b.type === 'text'; });
+          finalSummary = textBlocks.map(function (b) { return b.text; }).join('\\n');
+        } else {
+          messages.push({ role: 'user', content: 'The production build passes but the running preview has problems. Fix these and call check_build then finish again:\\n' + runtime.notes });
+          await callback({ step: 'Runtime verification failed — agent is fixing', log: runtime.notes.slice(0, 200) });
+        }
       } else {
         messages.push({ role: 'user', content: 'The build is not passing yet. Fix these errors, then call finish:\\n' + buildStatus });
         await callback({ step: 'Build verification failed — agent is fixing errors', log: 'Auto-verify caught build errors' });
@@ -451,9 +532,15 @@ async function main() {
       if (tu.name === 'finish') {
         const buildStatus = checkBuild();
         if (buildStatus === 'BUILD OK') {
-          finished = true;
-          finalSummary = (tu.input && tu.input.summary) || 'Build complete.';
-          output = 'Confirmed. Build is clean.';
+          const runtime = await verifyRuntime();
+          if (runtime.ok) {
+            finished = true;
+            finalSummary = (tu.input && tu.input.summary) || 'Build complete.';
+            output = 'Confirmed. Build is clean and runtime looks healthy.';
+          } else {
+            output = 'Cannot finish yet — runtime verification failed:\\n' + runtime.notes + '\\nFix these and try again.';
+            await callback({ step: 'Finish rejected — runtime issues', log: 'runtime verification failed' });
+          }
         } else {
           output = 'Cannot finish — build is failing. Fix these errors first:\\n' + buildStatus;
           await callback({ step: 'Finish rejected — build errors found', log: 'finish rejected by auto-verify' });
@@ -499,8 +586,15 @@ async function main() {
     });
     log('Done.');
   } else {
-    await callback({ status: 'failed', error: 'Agent hit the ' + MAX_TURNS + '-turn limit without completing. Partial work is visible in the preview.' });
-    log('Turn limit reached.');
+    // Partial completion: preserve what exists so the user can continue instead of failing outright.
+    await callback({
+      status: 'completed_partial',
+      step: 'Reached step limit — partial build saved',
+      summary: 'Agent reached the ' + MAX_TURNS + '-turn limit before wrapping up. Everything written so far is saved — click Continue building to pick up where it left off.',
+      files_changed: filesChanged,
+      log: 'Turn limit reached; partial build preserved',
+    });
+    log('Turn limit reached — completed_partial.');
   }
 }
 
@@ -607,6 +701,7 @@ async function bootstrapBuild(taskId: string, buildToken: string, prompt: string
         PROXY_URL: proxyUrl,
         MODEL: model,
         PROMPT_B64: promptB64,
+        PREVIEW_URL: previewUrl,
       },
     });
 
@@ -706,7 +801,7 @@ async function bootstrapEdit(taskId: string, buildToken: string, prompt: string,
 
     await sandbox.commands.run('nohup node /home/user/runner.cjs > /home/user/runner.log 2>&1 &', {
       timeoutMs: 15000,
-      envs: { TASK_ID: taskId, BUILD_TOKEN: buildToken, CALLBACK_URL: callbackUrl, PROXY_URL: proxyUrl, MODEL: model, PROMPT_B64: promptB64 },
+      envs: { TASK_ID: taskId, BUILD_TOKEN: buildToken, CALLBACK_URL: callbackUrl, PROXY_URL: proxyUrl, MODEL: model, PROMPT_B64: promptB64, PREVIEW_URL: previewUrl },
     });
 
     await appendLog(supabase, taskId, od, { status: 'running', output_data: { phase: 'agent_running', reused_sandbox: reused } }, 'Edit agent launched');
@@ -744,7 +839,7 @@ serve(async (req) => {
       if (!task || task.task_type !== 'app_build' || task.output_data?.build_token !== token) {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: jsonHeaders });
       }
-      if (['completed', 'failed', 'stopped'].includes(task.status)) {
+      if (['completed', 'failed', 'stopped', 'completed_partial'].includes(task.status)) {
         return new Response(JSON.stringify({ ok: true, note: 'terminal' }), { headers: jsonHeaders });
       }
 
@@ -755,6 +850,11 @@ serve(async (req) => {
       if (status === 'completed') {
         fields.status = 'completed';
         fields.completed_at = new Date().toISOString();
+        fields.output_data.qa_pending = true;
+      } else if (status === 'completed_partial') {
+        fields.status = 'completed_partial';
+        fields.completed_at = new Date().toISOString();
+        fields.output_data.needs_continue = true;
       } else if (status === 'failed') {
         fields.status = 'failed';
         fields.error_message = (error || 'Build failed').slice(0, 500);
@@ -764,7 +864,7 @@ serve(async (req) => {
       }
 
       await appendLog(supabase, taskId, task.output_data, fields, log);
-      if ((status === 'completed' || status === 'failed') && task.output_data?.sandbox_id && task.user_id) {
+      if ((status === 'completed' || status === 'failed' || status === 'completed_partial') && task.output_data?.sandbox_id && task.user_id) {
         const snapPromise = snapshotSandbox(taskId, task.user_id, task.output_data.sandbox_id);
         // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
         if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
@@ -932,6 +1032,179 @@ serve(async (req) => {
         completed_at: new Date().toISOString(),
       }, 'Stopped by user');
       return new Response(JSON.stringify({ ok: true }), { headers: jsonHeaders });
+    }
+
+    if (action === 'attach_qa') {
+      // Client-side QA runner tells us the browser-task id it kicked off (and, when ready, the report).
+      const { taskId, qaTaskId, report } = body;
+      const { data: task } = await supabase.from('tasks').select('output_data').eq('id', taskId).eq('user_id', user.id).single();
+      if (!task) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: jsonHeaders });
+      const fields: Record<string, any> = { output_data: {} };
+      if (qaTaskId) fields.output_data.qa_task_id = qaTaskId;
+      if (report) fields.output_data.qa_report = String(report).slice(0, 20000);
+      fields.output_data.qa_pending = false;
+      await appendLog(supabase, taskId, task.output_data, fields, report ? 'QA report attached' : 'QA dispatched');
+      return new Response(JSON.stringify({ ok: true }), { headers: jsonHeaders });
+    }
+
+    if (action === 'publish' || action === 'unpublish' || action === 'export') {
+      const { taskId } = body;
+      const { data: task } = await supabase.from('tasks').select('*').eq('id', taskId).eq('user_id', user.id).single();
+      if (!task) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: jsonHeaders });
+      if (task.task_type !== 'app_build') return new Response(JSON.stringify({ error: 'Not an app build' }), { status: 400, headers: jsonHeaders });
+      if (!['completed', 'completed_partial'].includes(task.status)) {
+        return new Response(JSON.stringify({ error: 'Build must be complete before ' + action }), { status: 409, headers: jsonHeaders });
+      }
+
+      // Locate the existing published_app in this task chain, if any.
+      async function findExistingApp(): Promise<any | null> {
+        let cursor: any = task;
+        for (let i = 0; i < 20 && cursor; i++) {
+          const pid = cursor.output_data?.published_app_id;
+          if (pid) {
+            const { data } = await supabase.from('published_apps').select('*').eq('id', pid).maybeSingle();
+            if (data) return data;
+          }
+          const parentId = cursor.input_data?.parent_task_id || cursor.output_data?.parent_task_id;
+          if (!parentId) break;
+          const { data: p } = await supabase.from('tasks').select('*').eq('id', parentId).maybeSingle();
+          cursor = p;
+        }
+        // Also look up by task_id foreign key
+        const { data: byTask } = await supabase.from('published_apps').select('*').eq('user_id', user.id).eq('task_id', task.id).maybeSingle();
+        return byTask || null;
+      }
+
+      if (action === 'unpublish') {
+        const existing = await findExistingApp();
+        if (!existing) return new Response(JSON.stringify({ error: 'Not published' }), { status: 404, headers: jsonHeaders });
+        await supabase.from('published_apps').update({ is_published: false }).eq('id', existing.id);
+        await appendLog(supabase, taskId, task.output_data, {}, 'Unpublished ' + existing.slug);
+        return new Response(JSON.stringify({ ok: true, slug: existing.slug }), { headers: jsonHeaders });
+      }
+
+      // publish + export both need a live sandbox with the project restored.
+      const e2bApiKey = Deno.env.get('E2B_API_KEY') ?? '';
+      let sandbox: Sandbox | null = null;
+      let createdSandbox = false;
+      try {
+        if (task.output_data?.sandbox_id) {
+          try {
+            sandbox = await Sandbox.connect(task.output_data.sandbox_id, { apiKey: e2bApiKey });
+            await sandbox.setTimeout(SANDBOX_TIMEOUT_MS);
+          } catch (_) { sandbox = null; }
+        }
+        if (!sandbox) {
+          if (!task.output_data?.snapshot_path) {
+            return new Response(JSON.stringify({ error: 'No snapshot available for this build' }), { status: 409, headers: jsonHeaders });
+          }
+          sandbox = await Sandbox.create('base', { apiKey: e2bApiKey, timeoutMs: SANDBOX_TIMEOUT_MS, metadata: { taskId, app: 'garlicbread-build', mode: action } });
+          createdSandbox = true;
+          const { data: blob, error: dlErr } = await supabase.storage.from('app-builds').download(task.output_data.snapshot_path);
+          if (dlErr || !blob) throw new Error('Snapshot download failed: ' + (dlErr?.message || 'no data'));
+          await sandbox.files.write([{ path: '/home/user/restore.tar.gz', data: blob }]);
+          const untar = await sandbox.commands.run('mkdir -p /home/user/app && cd /home/user/app && tar -xzf /home/user/restore.tar.gz', { timeoutMs: 60000 });
+          if (untar.exitCode !== 0) throw new Error('Restore failed: ' + (untar.stderr || '').slice(0, 300));
+          if (action === 'publish') {
+            const install = await sandbox.commands.run('cd /home/user/app && npm install --no-audit --no-fund', { timeoutMs: 240000 });
+            if (install.exitCode !== 0) throw new Error('npm install failed: ' + (install.stderr || install.stdout || '').slice(0, 500));
+          }
+        }
+
+        if (action === 'export') {
+          const zipRes = await sandbox.commands.run(
+            "cd /home/user/app && (which zip >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq zip)) && rm -f /home/user/export.zip && zip -r /home/user/export.zip . -x 'node_modules/*' 'dist/*' '.git/*'",
+            { timeoutMs: 120000 },
+          );
+          if (zipRes.exitCode !== 0) throw new Error('zip failed: ' + (zipRes.stderr || '').slice(0, 300));
+          const bytes = await sandbox.files.read('/home/user/export.zip', { format: 'bytes' });
+          const exportPath = `${user.id}/${task.id}/exports/${Date.now()}.zip`;
+          const { error: upErr } = await supabase.storage.from('app-builds').upload(exportPath, new Blob([bytes], { type: 'application/zip' }), { contentType: 'application/zip', upsert: true });
+          if (upErr) throw new Error('Upload failed: ' + upErr.message);
+          const { data: signed, error: signErr } = await supabase.storage.from('app-builds').createSignedUrl(exportPath, 600);
+          if (signErr || !signed) throw new Error('Signed URL failed: ' + (signErr?.message || 'unknown'));
+          if (createdSandbox) { try { await sandbox.kill(); } catch (_) { /* ignore */ } }
+          return new Response(JSON.stringify({ url: signed.signedUrl, expiresIn: 600 }), { headers: jsonHeaders });
+        }
+
+        // action === 'publish'
+        // Ensure vite base is './' so assets resolve under /{slug}/
+        await sandbox.files.write([{ path: '/home/user/app/vite.config.js', data: FILE_VITE_CONFIG }]);
+        const buildRes = await sandbox.commands.run('cd /home/user/app && npx vite build --logLevel error', { timeoutMs: 240000 });
+        if (buildRes.exitCode !== 0) {
+          throw new Error('Production build failed: ' + ((buildRes.stderr || buildRes.stdout || '').slice(0, 500)));
+        }
+
+        // List dist files
+        const listRes = await sandbox.commands.run("cd /home/user/app/dist && find . -type f -printf '%P\\n'", { timeoutMs: 30000 });
+        if (listRes.exitCode !== 0) throw new Error('Failed to list dist: ' + (listRes.stderr || '').slice(0, 200));
+        const files = String(listRes.stdout || '').split('\n').map((s) => s.trim()).filter(Boolean);
+        if (files.length === 0) throw new Error('Build produced no files');
+
+        const existing = await findExistingApp();
+        const nextVersion = (existing?.version || 0) + 1;
+        let slug = existing?.slug;
+        let appId = existing?.id;
+
+        if (!slug) {
+          const namePart = (task.input_data?.prompt || 'app')
+            .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'app';
+          for (let i = 0; i < 6; i++) {
+            const rand = Math.random().toString(36).slice(2, 8);
+            const candidate = `${namePart}-${rand}`.slice(0, 60);
+            const { data: clash } = await supabase.from('published_apps').select('id').eq('slug', candidate).maybeSingle();
+            if (!clash) { slug = candidate; break; }
+          }
+          if (!slug) throw new Error('Could not generate unique slug');
+        }
+
+        const storagePrefix = `${user.id}/apps/${slug}/v${nextVersion}`;
+
+        // Upload dist files
+        for (const rel of files) {
+          const src = '/home/user/app/dist/' + rel;
+          const bytes = await sandbox.files.read(src, { format: 'bytes' });
+          const dest = `${storagePrefix}/${rel}`;
+          const ext = rel.split('.').pop()?.toLowerCase() || '';
+          const mime = ({ html: 'text/html; charset=utf-8', js: 'application/javascript; charset=utf-8', css: 'text/css; charset=utf-8', json: 'application/json; charset=utf-8', svg: 'image/svg+xml', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', ico: 'image/x-icon', woff2: 'font/woff2', woff: 'font/woff', txt: 'text/plain; charset=utf-8', map: 'application/json; charset=utf-8' } as Record<string, string>)[ext] || 'application/octet-stream';
+          const { error: upErr } = await supabase.storage.from('app-builds').upload(dest, new Blob([bytes], { type: mime }), { contentType: mime, upsert: true });
+          if (upErr) throw new Error('Upload failed for ' + rel + ': ' + upErr.message);
+        }
+
+        // Upsert published_apps row
+        const namePretty = (task.input_data?.prompt || 'Untitled app').slice(0, 80);
+        if (appId) {
+          await supabase.from('published_apps').update({
+            task_id: task.id,
+            version: nextVersion,
+            storage_prefix: storagePrefix,
+            is_published: true,
+            name: existing.name || namePretty,
+          }).eq('id', appId);
+        } else {
+          const { data: inserted, error: insErr } = await supabase.from('published_apps').insert({
+            user_id: user.id, task_id: task.id, name: namePretty, slug, storage_prefix: storagePrefix, version: nextVersion, is_published: true,
+          }).select().single();
+          if (insErr || !inserted) throw new Error('Failed to record published app: ' + (insErr?.message || 'unknown'));
+          appId = inserted.id;
+        }
+
+        // Remember the published_app_id on the task so subsequent republishes find it
+        await appendLog(supabase, taskId, task.output_data, {
+          output_data: { published_app_id: appId, published_slug: slug, published_version: nextVersion, published_at: new Date().toISOString() },
+        }, 'Published as ' + slug + ' v' + nextVersion + ' (' + files.length + ' files)');
+
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+        const publicUrl = `${supabaseUrl}/functions/v1/serve-app/${slug}/`;
+
+        if (createdSandbox) { try { await sandbox.kill(); } catch (_) { /* ignore */ } }
+
+        return new Response(JSON.stringify({ ok: true, slug, version: nextVersion, url: publicUrl, appId }), { headers: jsonHeaders });
+      } catch (err) {
+        if (createdSandbox && sandbox) { try { await sandbox.kill(); } catch (_) { /* ignore */ } }
+        console.error('[SANDBOX-MANAGER] ' + action + ' failed:', err);
+        return new Response(JSON.stringify({ error: (err instanceof Error ? err.message : String(err)).slice(0, 500) }), { status: 500, headers: jsonHeaders });
+      }
     }
 
     return new Response(JSON.stringify({ error: 'Unknown action' }), { status: 400, headers: jsonHeaders });

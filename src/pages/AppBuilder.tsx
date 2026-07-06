@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, Hammer, Square, ExternalLink, Loader2, Sparkles, Zap, History, Wand2, Bug } from 'lucide-react';
+import { ArrowLeft, Hammer, Square, ExternalLink, Loader2, Sparkles, Zap, History, Wand2, Bug, Rocket, Download, Copy, EyeOff, PlayCircle, CheckCircle2 } from 'lucide-react';
 import garlicSpin from '@/assets/garlic-spin.png';
 
 interface BuildLogEntry {
@@ -34,6 +34,14 @@ interface BuildTask {
     parent_task_id?: string;
     sandbox_id?: string;
     log?: BuildLogEntry[];
+    published_app_id?: string;
+    published_slug?: string;
+    published_version?: number;
+    published_at?: string;
+    qa_task_id?: string;
+    qa_report?: string;
+    qa_pending?: boolean;
+    needs_continue?: boolean;
   } | null;
 }
 
@@ -41,11 +49,14 @@ const STATUS_STYLES: Record<string, string> = {
   initializing: 'bg-blue-500/15 text-blue-600 border-blue-500/30',
   running: 'bg-amber-500/15 text-amber-600 border-amber-500/30',
   completed: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30',
+  completed_partial: 'bg-amber-500/15 text-amber-700 border-amber-500/40',
   failed: 'bg-red-500/15 text-red-600 border-red-500/30',
   stopped: 'bg-slate-500/15 text-slate-600 border-slate-500/30',
 };
 
 const SANDBOX_TTL_MS = 30 * 60 * 1000;
+
+const CONTINUE_PROMPT = 'Continue where you left off. Finish any sections that were cut short, wire up any placeholder buttons, and make sure the whole app is complete and polished. Then run check_build and call finish.';
 
 export default function AppBuilder() {
   const [prompt, setPrompt] = useState('');
@@ -56,12 +67,20 @@ export default function AppBuilder() {
   const [recentBuilds, setRecentBuilds] = useState<BuildTask[]>([]);
   const [isStarting, setIsStarting] = useState(false);
   const [isQaStarting, setIsQaStarting] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [qaDispatched, setQaDispatched] = useState<string | null>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
 
   const isActive = task ? ['initializing', 'running'].includes(task.status) : false;
-  const isTerminal = task ? ['completed', 'failed', 'stopped'].includes(task.status) : false;
+  const isTerminal = task ? ['completed', 'completed_partial', 'failed', 'stopped'].includes(task.status) : false;
+  const isPartial = task?.status === 'completed_partial';
+  const isComplete = task?.status === 'completed' || isPartial;
   const canEdit = isTerminal && !!(task?.output_data?.snapshot_path || task?.output_data?.sandbox_id);
   const previewExpired = isTerminal && !!task?.completed_at && Date.now() - new Date(task.completed_at).getTime() > SANDBOX_TTL_MS;
+  const publishedSlug = task?.output_data?.published_slug;
+  const publishedVersion = task?.output_data?.published_version;
+  const publishedUrl = publishedSlug ? `${(import.meta.env.VITE_SUPABASE_URL as string) || ''}/functions/v1/serve-app/${publishedSlug}/` : null;
 
   const loadRecentBuilds = useCallback(async () => {
     const { data } = await supabase
@@ -98,7 +117,7 @@ export default function AppBuilder() {
         (payload) => {
           const next = payload.new as BuildTask;
           setTask(next);
-          if (['completed', 'failed', 'stopped'].includes(next.status)) {
+          if (['completed', 'completed_partial', 'failed', 'stopped'].includes(next.status)) {
             loadRecentBuilds();
           }
         }
@@ -114,6 +133,53 @@ export default function AppBuilder() {
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [task?.output_data?.log?.length]);
+
+  // Auto-dispatch QA on first observation of a completed build with qa_pending.
+  useEffect(() => {
+    if (!task || !taskId) return;
+    if (task.status !== 'completed') return;
+    if (!task.output_data?.qa_pending) return;
+    if (task.output_data?.qa_task_id) return;
+    if (qaDispatched === taskId) return;
+    setQaDispatched(taskId);
+    (async () => {
+      const url = task.output_data?.preview_url;
+      if (!url) return;
+      try {
+        const appDesc = task.input_data?.prompt ? ` The app was built from this brief: "${task.input_data.prompt.slice(0, 400)}".` : '';
+        const qaTask = `Open ${url} and act as a meticulous QA tester.${appDesc} Click every navigation link and button, fill and submit any forms with realistic test data, scroll through every section, and check that nothing is broken, overlapping, or unreadable. Then give a concise QA report: 1) what works, 2) what is broken or looks off, 3) the top 3 improvements you would make.`;
+        const { data, error } = await supabase.functions.invoke('browser-task', { body: { task: qaTask, metadata: { source: 'auto_qa', build_task_id: taskId } } });
+        if (error || !data?.taskId) {
+          // Quota or other rejection — silently mark qa_pending false so we don't retry every render
+          await supabase.functions.invoke('sandbox-manager', { body: { action: 'attach_qa', taskId, report: null } });
+          return;
+        }
+        await supabase.functions.invoke('sandbox-manager', { body: { action: 'attach_qa', taskId, qaTaskId: data.taskId } });
+      } catch (e) {
+        console.error('auto-QA dispatch failed:', e);
+      }
+    })();
+  }, [task, taskId, qaDispatched]);
+
+  // When a QA task id is present, poll for its result and persist when done.
+  useEffect(() => {
+    const qaId = task?.output_data?.qa_task_id;
+    if (!qaId || !taskId) return;
+    if (task?.output_data?.qa_report) return;
+    let cancelled = false;
+    const poll = async () => {
+      const { data: qa } = await supabase.from('tasks').select('id, status, output_data').eq('id', qaId).maybeSingle();
+      if (cancelled || !qa) return;
+      if (['finished', 'completed', 'failed', 'stopped'].includes(qa.status)) {
+        const od = (qa.output_data || {}) as any;
+        const report = od.output || od.summary || (od.actions ? JSON.stringify(od.actions).slice(0, 4000) : '') || 'QA finished with no report.';
+        await supabase.functions.invoke('sandbox-manager', { body: { action: 'attach_qa', taskId, report } });
+      }
+    };
+    const interval = setInterval(poll, 8000);
+    poll();
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [task?.output_data?.qa_task_id, task?.output_data?.qa_report, taskId]);
 
   const startBuild = async () => {
     if (prompt.trim().length < 10) {
@@ -137,15 +203,16 @@ export default function AppBuilder() {
     }
   };
 
-  const sendEdit = async () => {
-    if (!taskId || editPrompt.trim().length < 5) {
+  const sendEdit = async (overridePrompt?: string) => {
+    const usePrompt = (overridePrompt ?? editPrompt).trim();
+    if (!taskId || usePrompt.length < 5) {
       toast({ title: 'Describe your change', description: 'Tell the agent what to update.', variant: 'destructive' });
       return;
     }
     setIsStarting(true);
     try {
       const { data, error } = await supabase.functions.invoke('sandbox-manager', {
-        body: { action: 'edit', taskId, prompt: editPrompt.trim(), model },
+        body: { action: 'edit', taskId, prompt: usePrompt, model },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.message || data.error);
@@ -160,6 +227,68 @@ export default function AppBuilder() {
     }
   };
 
+  const publishBuild = async () => {
+    if (!taskId) return;
+    setIsPublishing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sandbox-manager', { body: { action: 'publish', taskId } });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: publishedSlug ? `Republished v${data.version}` : 'Published', description: 'Live at ' + data.url });
+    } catch (e: any) {
+      toast({ title: 'Publish failed', description: e.message || 'Unknown error', variant: 'destructive' });
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const unpublishBuild = async () => {
+    if (!taskId) return;
+    setIsPublishing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sandbox-manager', { body: { action: 'unpublish', taskId } });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: 'Unpublished', description: 'Your app is no longer public.' });
+    } catch (e: any) {
+      toast({ title: 'Unpublish failed', description: e.message || 'Unknown error', variant: 'destructive' });
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const exportBuild = async () => {
+    if (!taskId) return;
+    setIsExporting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sandbox-manager', { body: { action: 'export', taskId } });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      window.open(data.url, '_blank', 'noopener');
+      toast({ title: 'Download ready', description: 'Zip is opening — link expires in 10 minutes.' });
+    } catch (e: any) {
+      toast({ title: 'Export failed', description: e.message || 'Unknown error', variant: 'destructive' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const copyPublishedUrl = async () => {
+    if (!publishedUrl) return;
+    try {
+      await navigator.clipboard.writeText(publishedUrl);
+      toast({ title: 'URL copied' });
+    } catch { /* ignore */ }
+  };
+
+  const applyQaFixes = () => {
+    const report = task?.output_data?.qa_report;
+    if (!report) return;
+    const fixPrompt = `A QA agent tested the app and reported the following. Please fix every "broken or looks off" issue and the top improvements, then run check_build and finish.\n\n${report}`;
+    setEditPrompt(fixPrompt);
+    sendEdit(fixPrompt);
+  };
+
   const runQA = async () => {
     const url = task?.output_data?.preview_url;
     if (!url) return;
@@ -167,11 +296,12 @@ export default function AppBuilder() {
     try {
       const appDesc = task?.input_data?.prompt ? ` The app was built from this brief: "${task.input_data.prompt.slice(0, 400)}".` : '';
       const qaTask = `Open ${url} and act as a meticulous QA tester.${appDesc} Click every navigation link and button, fill and submit any forms with realistic test data, scroll through every section, and check that nothing is broken, overlapping, or unreadable. Then give a concise QA report: 1) what works, 2) what is broken or looks off, 3) the top 3 improvements you would make.`;
-      const { data, error } = await supabase.functions.invoke('browser-task', {
-        body: { task: qaTask },
-      });
+      const { data, error } = await supabase.functions.invoke('browser-task', { body: { task: qaTask, metadata: { source: 'manual_qa', build_task_id: taskId } } });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      if (taskId && data?.taskId) {
+        await supabase.functions.invoke('sandbox-manager', { body: { action: 'attach_qa', taskId, qaTaskId: data.taskId } });
+      }
       toast({ title: 'QA agent dispatched', description: 'The browser agent is now testing your app. Watch it in your tasks.' });
     } catch (e: any) {
       toast({ title: 'Failed to start QA', description: e.message || 'Unknown error', variant: 'destructive' });
@@ -189,6 +319,8 @@ export default function AppBuilder() {
 
   const previewUrl = task?.output_data?.preview_url;
   const log = task?.output_data?.log || [];
+  const qaReport = task?.output_data?.qa_report;
+  const qaRunning = !!task?.output_data?.qa_task_id && !qaReport;
 
   return (
     <div className="min-h-screen bg-background">
@@ -208,9 +340,14 @@ export default function AppBuilder() {
         {task && (
           <div className="flex items-center gap-2">
             {task.input_data?.edit && <Badge variant="outline" className="text-xs">edit</Badge>}
+            {publishedSlug && (
+              <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">
+                <Rocket className="h-3 w-3 mr-1" /> published v{publishedVersion}
+              </Badge>
+            )}
             <Badge variant="outline" className={STATUS_STYLES[task.status] || ''}>
               {isActive && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-              {task.status}
+              {task.status === 'completed_partial' ? 'partial' : task.status}
             </Badge>
           </div>
         )}
@@ -259,6 +396,19 @@ export default function AppBuilder() {
             </Button>
           )}
 
+          {isPartial && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
+              <p className="text-xs font-semibold text-amber-700 flex items-center gap-1">
+                <PlayCircle className="h-3 w-3" /> Build paused at step limit
+              </p>
+              <p className="text-xs text-muted-foreground">Everything so far is saved. Continue to finish it.</p>
+              <Button size="sm" className="w-full" onClick={() => sendEdit(CONTINUE_PROMPT)} disabled={isStarting}>
+                {isStarting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <PlayCircle className="h-4 w-4 mr-2" />}
+                Continue building
+              </Button>
+            </div>
+          )}
+
           {canEdit && (
             <div className="rounded-md border border-border p-3 space-y-2 bg-muted/30">
               <p className="text-xs font-semibold flex items-center gap-1"><Wand2 className="h-3 w-3" /> Continue building</p>
@@ -268,18 +418,70 @@ export default function AppBuilder() {
                 onChange={(e) => setEditPrompt(e.target.value)}
                 className="min-h-[70px] resize-none text-sm"
               />
-              <Button size="sm" onClick={sendEdit} disabled={isStarting} className="w-full">
+              <Button size="sm" onClick={() => sendEdit()} disabled={isStarting} className="w-full">
                 {isStarting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
                 Send Edit
               </Button>
             </div>
           )}
 
-          {task?.status === 'completed' && previewUrl && !previewExpired && (
-            <Button variant="outline" size="sm" onClick={runQA} disabled={isQaStarting} className="w-full">
-              {isQaStarting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Bug className="h-4 w-4 mr-2" />}
-              QA Test with Browser Agent
-            </Button>
+          {isComplete && (
+            <div className="rounded-md border border-border p-3 space-y-2 bg-card">
+              <p className="text-xs font-semibold flex items-center gap-1"><Rocket className="h-3 w-3" /> Publish &amp; export</p>
+              {publishedSlug && publishedUrl && (
+                <div className="text-xs bg-muted rounded px-2 py-1.5 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />
+                  <a href={publishedUrl} target="_blank" rel="noopener noreferrer" className="truncate text-primary hover:underline flex-1" title={publishedUrl}>
+                    {publishedUrl.replace(/^https?:\/\//, '')}
+                  </a>
+                  <button aria-label="Copy URL" onClick={copyPublishedUrl} className="p-1 hover:bg-background rounded">
+                    <Copy className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <Button size="sm" onClick={publishBuild} disabled={isPublishing}>
+                  {isPublishing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Rocket className="h-4 w-4 mr-1" />}
+                  {publishedSlug ? `Republish v${(publishedVersion || 0) + 1}` : 'Publish'}
+                </Button>
+                <Button size="sm" variant="outline" onClick={exportBuild} disabled={isExporting}>
+                  {isExporting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}
+                  Download code
+                </Button>
+              </div>
+              {publishedSlug && (
+                <Button size="sm" variant="ghost" onClick={unpublishBuild} disabled={isPublishing} className="w-full text-muted-foreground">
+                  <EyeOff className="h-4 w-4 mr-1" /> Unpublish
+                </Button>
+              )}
+              {previewUrl && !previewExpired && (
+                <Button variant="outline" size="sm" onClick={runQA} disabled={isQaStarting} className="w-full">
+                  {isQaStarting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Bug className="h-4 w-4 mr-2" />}
+                  Re-run QA
+                </Button>
+              )}
+            </div>
+          )}
+
+          {isComplete && (qaRunning || qaReport) && (
+            <div className="rounded-md border border-border p-3 space-y-2 bg-card">
+              <p className="text-xs font-semibold flex items-center gap-1"><Bug className="h-3 w-3" /> QA report</p>
+              {qaRunning && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Browser agent is testing your app…
+                </p>
+              )}
+              {qaReport && (
+                <>
+                  <div className="text-xs whitespace-pre-wrap max-h-40 overflow-y-auto bg-muted/50 rounded p-2 leading-relaxed">
+                    {qaReport}
+                  </div>
+                  <Button size="sm" onClick={applyQaFixes} disabled={isStarting} className="w-full">
+                    <Wand2 className="h-4 w-4 mr-2" /> Apply these fixes
+                  </Button>
+                </>
+              )}
+            </div>
           )}
 
           {task?.output_data?.current_step && (
