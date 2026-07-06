@@ -389,11 +389,14 @@ LAYOUT AND TYPOGRAPHY:
 ${HERO_PATTERNS}
 
 CODE OUTPUT:
-1. ALWAYS provide complete working code in three blocks: html, css, javascript
-2. The HTML MUST include the design token <style> block above in the <head>
-3. ALL color references in the HTML must use var(--token-name) syntax
-4. JavaScript block is REQUIRED for any interactive features
-5. Include meta viewport tag for mobile
+1. DEFAULT SHAPE: return ONE self-contained HTML file in a single \`\`\`html code block. The HTML must include the design token <style> block above in the <head>, all CSS inline in a <style> tag, and all JavaScript inline in a <script> tag before </body>. This is the format users can download and open directly.
+2. THREE-BLOCK SHAPE (only when the user explicitly asks for separate files): return exactly three blocks in this order — \`\`\`html, \`\`\`css, \`\`\`javascript — and in that mode the HTML MUST explicitly link the sibling files with:
+   <link rel="stylesheet" href="./styles.css" />
+   <script src="./index.js" defer></script>
+   so nothing orphans when the files are saved side by side.
+3. ALL color references must use hsl(var(--token-name)) or var(--token-name) syntax — never raw hex or Tailwind color classes.
+4. Include meta viewport tag for mobile in every page.
+5. Any interactive feature (mobile nav toggle, FAQ accordion, back-to-top, form validation) requires JS — inline it in the default shape.
 
 USER-UPLOADED IMAGES:
 When the user uploads images, use the provided URLs in <img> tags. Do NOT use placeholder URLs when real images are provided.
