@@ -542,6 +542,9 @@ export default function AppBuilder() {
                   <EyeOff className="h-4 w-4 mr-1" /> Unpublish
                 </Button>
               )}
+              {publishedSlug && task?.output_data?.published_app_id && (
+                <ForwardingConfig kind="app" siteId={task.output_data.published_app_id} formKey={task.output_data.form_key} />
+              )}
               {previewUrl && !previewExpired && (
                 <Button variant="outline" size="sm" onClick={runQA} disabled={isQaStarting} className="w-full">
                   {isQaStarting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Bug className="h-4 w-4 mr-2" />}
