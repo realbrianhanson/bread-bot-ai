@@ -198,7 +198,7 @@ export default function AppBuilder() {
     setTask(null);
     try {
       const { data, error } = await supabase.functions.invoke('sandbox-manager', {
-        body: { action: 'create', prompt: prompt.trim(), model },
+        body: { action: 'create', prompt: prompt.trim(), model, designMd, marketingMd: purposeMd },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.message || data.error);
@@ -220,7 +220,7 @@ export default function AppBuilder() {
     setIsStarting(true);
     try {
       const { data, error } = await supabase.functions.invoke('sandbox-manager', {
-        body: { action: 'edit', taskId, prompt: usePrompt, model },
+        body: { action: 'edit', taskId, prompt: usePrompt, model, designMd, marketingMd: purposeMd },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.message || data.error);
