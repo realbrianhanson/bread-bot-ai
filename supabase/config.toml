@@ -50,3 +50,9 @@ verify_jwt = false
 
 [functions.anthropic-proxy]
 verify_jwt = false
+
+[functions.serve-app]
+verify_jwt = false
+
+[functions.serve-page]
+verify_jwt = false
