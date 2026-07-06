@@ -544,13 +544,17 @@ When the user's message includes sections labeled "CURRENT HTML:", "CURRENT CSS:
     if (!clientDesignMd && detectedCategory) {
       const override = industryOverrides[detectedCategory];
       if (override) {
-        enrichedPrompt += '\n\nINDUSTRY-SPECIFIC DESIGN ADJUSTMENTS (auto-detected: ' + detectedCategory + '):\n';
-        enrichedPrompt += '- Hero background: ' + override.heroGradient + '\n';
-        enrichedPrompt += '- Primary color: ' + override.primary + '\n';
-        enrichedPrompt += '- Accent color: ' + override.accent + '\n';
-        enrichedPrompt += '- Typography mood: ' + override.fontMood + '\n';
-        enrichedPrompt += '- Design direction: ' + override.extraInstruction + '\n';
-        enrichedPrompt += 'These adjustments override the default template colors for this specific industry. All contrast and readability rules still apply.';
+        const t = override.tokens;
+        enrichedPrompt += '\n\nINDUSTRY TOKEN PRESET (auto-detected: ' + detectedCategory + '). Starting point only — adapt during the art-direction step so this page does not look interchangeable with every other ' + detectedCategory + ' page. Values are bare HSL triples for the token block:\n';
+        enrichedPrompt += '  --background: ' + t.background + ';\n';
+        enrichedPrompt += '  --foreground: ' + t.foreground + ';\n';
+        enrichedPrompt += '  --primary: ' + t.primary + ';\n';
+        enrichedPrompt += '  --accent: ' + t.accent + ';\n';
+        enrichedPrompt += '  --hero-bg: ' + t.heroBg + ';\n';
+        enrichedPrompt += '  --hero-foreground: ' + t.heroForeground + ';\n';
+        enrichedPrompt += 'Typography mood: ' + override.fontMood + '.\n';
+        enrichedPrompt += 'Design direction: ' + override.extraInstruction + '\n';
+        enrichedPrompt += 'Contrast and readability rules from the constitution still apply — verify every text/background pair.';
       }
     }
 
