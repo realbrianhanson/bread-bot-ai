@@ -1,12 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
+import { RESEND_GATEWAY_URL, BRAND_NAME, fetchWithTimeout, TIMEOUT_DEFAULT_MS } from "../_shared/config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const GATEWAY_URL = 'https://connector-gateway.lovable.dev/resend';
+const GATEWAY_URL = RESEND_GATEWAY_URL;
+const DEFAULT_FROM = Deno.env.get('RESEND_FROM') || `${BRAND_NAME} <onboarding@resend.dev>`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -70,7 +72,7 @@ serve(async (req) => {
       });
     }
 
-    const response = await fetch(`${GATEWAY_URL}/emails`, {
+    const response = await fetchWithTimeout(`${GATEWAY_URL}/emails`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -78,12 +80,12 @@ serve(async (req) => {
         'X-Connection-Api-Key': RESEND_API_KEY,
       },
       body: JSON.stringify({
-        from: from || 'BreadBot AI <onboarding@resend.dev>',
+        from: from || DEFAULT_FROM,
         to: Array.isArray(to) ? to : [to],
         subject,
         html,
       }),
-    });
+    }, TIMEOUT_DEFAULT_MS);
 
     const data = await response.json();
 
