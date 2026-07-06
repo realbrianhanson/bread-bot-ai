@@ -139,3 +139,61 @@ Cloudflare for SaaS has issued a certificate for `{domain}`, the site is live.
 - Removal: deleting the row in `custom_domains` immediately breaks resolution
   because `serve-page` will 404 on lookup. Also remove the hostname from
   Cloudflare for SaaS to release the cert slot.
+## Published apps (App Builder)
+
+Custom domains can point at either a **published page** (`shared_previews`) or a
+**published app** (`published_apps`, built by App Builder and served from the
+`app-builds` storage bucket). The `custom_domains.published_app_id` column
+distinguishes the two; a CHECK constraint enforces that exactly one target is
+set per row.
+
+Routing is unchanged at the edge — the Worker still forwards every request to
+`serve-page`. `serve-page` looks up the host in `custom_domains`:
+
+- If the row has `shared_preview_id` set, it serves the page HTML directly (as
+  before).
+- If the row has `published_app_id` set, it returns a `307` redirect to
+  `serve-app` with the resolved slug in the path. The browser then loads the
+  app's `index.html`, `/assets/*`, and any subroutes from the new function.
+
+### `serve-app` function URL
+
+```
+https://<project-ref>.functions.supabase.co/serve-app/{slug}/
+https://<project-ref>.functions.supabase.co/serve-app/{slug}/assets/<file>
+```
+
+The trailing slash on `/{slug}/` matters: apps are built with Vite `base: './'`,
+so asset URLs are relative to the current directory. Requests to `/{slug}`
+without a trailing slash get a `301` back to `/{slug}/` automatically.
+
+### Storage layout
+
+```
+app-builds/
+  <userId>/
+    apps/
+      <slug>/
+        v1/    index.html, assets/…
+        v2/    (bumped on republish)
+    <taskId>/
+      snapshot.tar.gz   (project source for edits + export)
+      exports/<ts>.zip  (short-lived download bundles)
+```
+
+Only `serve-app` (and the sandbox-manager service role) needs to read the
+`apps/` prefix. The bucket is private; all public reads flow through the edge
+function so we can enforce `is_published` and set correct MIME + cache headers.
+
+### Worker update (no change required, but for clarity)
+
+The same fallback Worker used for pages already handles apps: it forwards the
+original `Host` to `serve-page`, and `serve-page` transparently redirects to
+`serve-app` for app-targeted domains. If you'd prefer to short-circuit the
+redirect (one less hop), you can teach the Worker to detect the redirect
+response and re-issue the request against `serve-app` directly.
+
+### Environment
+
+No new secrets are required beyond the existing `SUPABASE_URL` /
+`SUPABASE_SERVICE_ROLE_KEY` used by every edge function.
