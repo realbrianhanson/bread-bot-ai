@@ -424,6 +424,11 @@ const Dashboard = () => {
         </div>
         {/* Mobile: scrollable icon row */}
         <div className="flex md:hidden items-center gap-1 overflow-x-auto scrollbar-none">
+          <TaskTemplatesPanel onSelectTemplate={handleQuickStart} />
+          <WorkflowBuilder onExecuteWorkflow={handleExecuteWorkflow} />
+          <ScheduledTasksPanel />
+          <WebhookManager />
+          <TaskHistory onRerunTask={handleRerunTask} />
           <BuildHistory onOpenBuild={handleSelectConversation} />
           <ResultsDashboard />
           <ThemeToggle />
