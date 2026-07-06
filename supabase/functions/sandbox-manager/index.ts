@@ -492,6 +492,17 @@ async function verifyRuntime() {
   }
 }
 
+let CURRENT_TODOS = [];
+
+function todoGateOk() {
+  if (!Array.isArray(CURRENT_TODOS) || CURRENT_TODOS.length === 0) return { ok: false, note: 'You have not called update_todos yet — the UI has no checklist. Report the TODO state before finishing.' };
+  const unfinished = CURRENT_TODOS.filter(function (t) { return t && t.status !== 'done' && t.status !== 'dropped'; });
+  if (unfinished.length > 0) {
+    return { ok: false, note: 'These TODO items are still unfinished: ' + unfinished.map(function (t) { return '"' + (t.text || t.id) + '"'; }).join(', ') + '. Either complete them or mark them dropped with a reason via update_todos before finishing.' };
+  }
+  return { ok: true, note: '' };
+}
+
 function executeTool(name, input) {
   if (name === 'write_file') {
     const full = safePath(input.path);
@@ -525,6 +536,18 @@ function executeTool(name, input) {
   }
   if (name === 'check_build') {
     return checkBuild();
+  }
+  if (name === 'update_todos') {
+    const items = Array.isArray(input.items) ? input.items.slice(0, 60) : [];
+    CURRENT_TODOS = items.map(function (it, i) {
+      return {
+        id: String(it.id || ('t' + i)).slice(0, 40),
+        text: String(it.text || '').slice(0, 200),
+        status: ['pending', 'in_progress', 'done', 'dropped'].indexOf(String(it.status)) >= 0 ? String(it.status) : 'pending',
+        reason: it.reason ? String(it.reason).slice(0, 200) : undefined,
+      };
+    });
+    return 'Todos updated (' + CURRENT_TODOS.length + ' items). Remember to also write TODO.md so it survives snapshots.';
   }
   return 'Unknown tool: ' + name;
 }
