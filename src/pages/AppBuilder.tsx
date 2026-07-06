@@ -393,6 +393,26 @@ export default function AppBuilder() {
             </Button>
           </div>
 
+          <div className="flex gap-2 items-center">
+            <StylePicker
+              selectedId={styleId}
+              disabled={isActive}
+              onSelect={(id, customMd, marketingFromStyle) => {
+                setStyleId(id);
+                setDesignMd(customMd || '');
+                if (marketingFromStyle && !purposeMd) setPurposeMd(marketingFromStyle);
+              }}
+            />
+            <PurposePicker
+              selectedId={purposeId}
+              disabled={isActive}
+              onSelect={(id, md) => {
+                setPurposeId(id);
+                setPurposeMd(md || '');
+              }}
+            />
+          </div>
+
           {isActive ? (
             <Button variant="destructive" onClick={() => taskId && supabase.functions.invoke('sandbox-manager', { body: { action: 'stop', taskId } })} className="w-full">
               <Square className="h-4 w-4 mr-2" /> Stop Build
