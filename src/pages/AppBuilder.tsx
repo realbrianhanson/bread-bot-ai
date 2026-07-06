@@ -168,12 +168,11 @@ export default function AppBuilder() {
     if (task?.output_data?.qa_report) return;
     let cancelled = false;
     const poll = async () => {
-      const { data: qa } = await supabase.from('tasks').select('id, status').eq('id', qaId).maybeSingle();
+      const { data: qa } = await supabase.from('tasks').select('id, status, output_data').eq('id', qaId).maybeSingle();
       if (cancelled || !qa) return;
       if (['finished', 'completed', 'failed', 'stopped'].includes(qa.status)) {
-        const { data: results } = await supabase.from('task_results').select('result_data').eq('task_id', qaId).order('created_at', { ascending: false }).limit(1);
-        const first: any = results?.[0]?.result_data as any;
-        const report = first?.output || first?.summary || first?.result || JSON.stringify(first || {}).slice(0, 4000);
+        const od = (qa.output_data || {}) as any;
+        const report = od.output || od.summary || (od.actions ? JSON.stringify(od.actions).slice(0, 4000) : '') || 'QA finished with no report.';
         await supabase.functions.invoke('sandbox-manager', { body: { action: 'attach_qa', taskId, report } });
       }
     };
