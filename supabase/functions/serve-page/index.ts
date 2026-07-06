@@ -108,13 +108,13 @@ Deno.serve(async (req) => {
     return notFound();
   }
 
-  const q = supabase
+  const base = supabase
     .from('shared_previews')
-    .select('id, slug, title, description, html_content, is_published')
-    .eq('is_published', true)
-    .maybeSingle();
-
-  const { data: page } = previewId ? await q.eq('id', previewId) : await q.eq('slug', slug!);
+    .select('id, slug, title, html_content, is_published')
+    .eq('is_published', true);
+  const { data: page } = previewId
+    ? await base.eq('id', previewId).maybeSingle()
+    : await base.eq('slug', slug!).maybeSingle();
   if (!page || !page.html_content) return notFound();
 
   // fire-and-forget view increment
@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
 
   const html = injectHead(page.html_content, {
     title: page.title || 'Published page',
-    description: page.description || 'A page published with GarlicBread.ai',
+    description: 'A page published with GarlicBread.ai',
     canonical,
   });
 
