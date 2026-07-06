@@ -496,15 +496,29 @@ async function main() {
 
     messages.push({ role: 'assistant', content: result.content });
 
+    // Handle context / max_tokens: instruct the model to split large writes and continue.
+    if (result.stop_reason === 'max_tokens') {
+      log('Model hit max_tokens — asking it to continue in smaller chunks');
+      messages.push({ role: 'user', content: 'Your previous response was cut off at the token limit. Continue where you left off. If you were writing a large file, split it into smaller components (each under 200 lines) and write them separately with write_file so nothing gets truncated.' });
+      await callback({ step: 'Turn ' + turn + ': continuing after token limit', log: 'max_tokens continue' });
+      continue;
+    }
+
     const toolUses = (result.content || []).filter(function (b) { return b.type === 'tool_use'; });
 
     if (toolUses.length === 0) {
       // Model stopped without tools — verify build before accepting.
       const buildStatus = checkBuild();
       if (buildStatus === 'BUILD OK') {
-        finished = true;
-        const textBlocks = (result.content || []).filter(function (b) { return b.type === 'text'; });
-        finalSummary = textBlocks.map(function (b) { return b.text; }).join('\\n');
+        const runtime = await verifyRuntime();
+        if (runtime.ok) {
+          finished = true;
+          const textBlocks = (result.content || []).filter(function (b) { return b.type === 'text'; });
+          finalSummary = textBlocks.map(function (b) { return b.text; }).join('\\n');
+        } else {
+          messages.push({ role: 'user', content: 'The production build passes but the running preview has problems. Fix these and call check_build then finish again:\\n' + runtime.notes });
+          await callback({ step: 'Runtime verification failed — agent is fixing', log: runtime.notes.slice(0, 200) });
+        }
       } else {
         messages.push({ role: 'user', content: 'The build is not passing yet. Fix these errors, then call finish:\\n' + buildStatus });
         await callback({ step: 'Build verification failed — agent is fixing errors', log: 'Auto-verify caught build errors' });
@@ -518,9 +532,15 @@ async function main() {
       if (tu.name === 'finish') {
         const buildStatus = checkBuild();
         if (buildStatus === 'BUILD OK') {
-          finished = true;
-          finalSummary = (tu.input && tu.input.summary) || 'Build complete.';
-          output = 'Confirmed. Build is clean.';
+          const runtime = await verifyRuntime();
+          if (runtime.ok) {
+            finished = true;
+            finalSummary = (tu.input && tu.input.summary) || 'Build complete.';
+            output = 'Confirmed. Build is clean and runtime looks healthy.';
+          } else {
+            output = 'Cannot finish yet — runtime verification failed:\\n' + runtime.notes + '\\nFix these and try again.';
+            await callback({ step: 'Finish rejected — runtime issues', log: 'runtime verification failed' });
+          }
         } else {
           output = 'Cannot finish — build is failing. Fix these errors first:\\n' + buildStatus;
           await callback({ step: 'Finish rejected — build errors found', log: 'finish rejected by auto-verify' });
@@ -566,8 +586,15 @@ async function main() {
     });
     log('Done.');
   } else {
-    await callback({ status: 'failed', error: 'Agent hit the ' + MAX_TURNS + '-turn limit without completing. Partial work is visible in the preview.' });
-    log('Turn limit reached.');
+    // Partial completion: preserve what exists so the user can continue instead of failing outright.
+    await callback({
+      status: 'completed_partial',
+      step: 'Reached step limit — partial build saved',
+      summary: 'Agent reached the ' + MAX_TURNS + '-turn limit before wrapping up. Everything written so far is saved — click Continue building to pick up where it left off.',
+      files_changed: filesChanged,
+      log: 'Turn limit reached; partial build preserved',
+    });
+    log('Turn limit reached — completed_partial.');
   }
 }
 
