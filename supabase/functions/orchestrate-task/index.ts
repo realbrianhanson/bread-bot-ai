@@ -536,7 +536,7 @@ async function executeTool(
             'content-type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'claude-sonnet-4-6',
+            model: MODELS.CHAT,
             max_tokens: 8192,
             messages: [{
               role: 'user',
