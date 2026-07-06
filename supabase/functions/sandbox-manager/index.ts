@@ -701,6 +701,7 @@ async function bootstrapBuild(taskId: string, buildToken: string, prompt: string
         PROXY_URL: proxyUrl,
         MODEL: model,
         PROMPT_B64: promptB64,
+        PREVIEW_URL: previewUrl,
       },
     });
 
@@ -800,7 +801,7 @@ async function bootstrapEdit(taskId: string, buildToken: string, prompt: string,
 
     await sandbox.commands.run('nohup node /home/user/runner.cjs > /home/user/runner.log 2>&1 &', {
       timeoutMs: 15000,
-      envs: { TASK_ID: taskId, BUILD_TOKEN: buildToken, CALLBACK_URL: callbackUrl, PROXY_URL: proxyUrl, MODEL: model, PROMPT_B64: promptB64 },
+      envs: { TASK_ID: taskId, BUILD_TOKEN: buildToken, CALLBACK_URL: callbackUrl, PROXY_URL: proxyUrl, MODEL: model, PROMPT_B64: promptB64, PREVIEW_URL: previewUrl },
     });
 
     await appendLog(supabase, taskId, od, { status: 'running', output_data: { phase: 'agent_running', reused_sandbox: reused } }, 'Edit agent launched');
