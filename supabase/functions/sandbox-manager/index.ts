@@ -1045,14 +1045,14 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Prompt is required (min 10 chars)' }), { status: 400, headers: jsonHeaders });
       }
 
-      // Usage gate (reuses chat message quota for v1)
-      const { data: usageData } = await supabase.rpc('get_user_tier_and_usage', { p_user_id: user.id });
-      const usage = usageData?.[0];
-      if (!usage) {
-        return new Response(JSON.stringify({ error: 'Unable to fetch usage data' }), { status: 500, headers: jsonHeaders });
+      // Atomic app_build quota gate — check + increment in one transaction.
+      const { data: quota, error: quotaErr } = await supabase.rpc('check_and_increment_usage', { p_user_id: user.id, p_usage_type: 'app_build' });
+      if (quotaErr) {
+        return new Response(JSON.stringify({ error: 'Unable to check quota' }), { status: 500, headers: jsonHeaders });
       }
-      if (usage.chat_messages_used >= usage.chat_messages_limit) {
-        return new Response(JSON.stringify({ error: 'quota_exceeded', message: 'Monthly limit reached. Please upgrade your plan.', limit_exceeded: true }), { status: 402, headers: jsonHeaders });
+      if (quota && (quota as any).allowed === false) {
+        const q = quota as any;
+        return new Response(JSON.stringify({ error: 'quota_exceeded', message: `Monthly app build limit reached (${q.used}/${q.limit}). Please upgrade your plan.`, limit_exceeded: true, used: q.used, limit: q.limit }), { status: 402, headers: jsonHeaders });
       }
 
       const buildToken = generateToken();
@@ -1074,7 +1074,10 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Failed to create build record' }), { status: 500, headers: jsonHeaders });
       }
 
-      await supabase.from('usage_tracking').insert({ user_id: user.id, usage_type: 'chat_message', quantity: 1, task_id: taskRecord.id });
+      // Backfill the task_id on the usage row we just inserted atomically.
+      await supabase.from('usage_tracking').update({ task_id: taskRecord.id })
+        .eq('user_id', user.id).eq('usage_type', 'app_build').is('task_id', null)
+        .order('created_at', { ascending: false }).limit(1);
 
       const { knowledgeMd } = await loadUserContextForBuild(supabase, user.id);
       const bootstrapPromise = bootstrapBuild(taskRecord.id, buildToken, prompt, model, { designMd, marketingMd, knowledgeMd });
@@ -1109,13 +1112,13 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: 'This build has no saved files to resume from' }), { status: 409, headers: jsonHeaders });
       }
 
-      const { data: usageData } = await supabase.rpc('get_user_tier_and_usage', { p_user_id: user.id });
-      const usage = usageData?.[0];
-      if (!usage) {
-        return new Response(JSON.stringify({ error: 'Unable to fetch usage data' }), { status: 500, headers: jsonHeaders });
+      const { data: quota, error: quotaErr } = await supabase.rpc('check_and_increment_usage', { p_user_id: user.id, p_usage_type: 'app_build' });
+      if (quotaErr) {
+        return new Response(JSON.stringify({ error: 'Unable to check quota' }), { status: 500, headers: jsonHeaders });
       }
-      if (usage.chat_messages_used >= usage.chat_messages_limit) {
-        return new Response(JSON.stringify({ error: 'quota_exceeded', message: 'Monthly limit reached. Please upgrade your plan.', limit_exceeded: true }), { status: 402, headers: jsonHeaders });
+      if (quota && (quota as any).allowed === false) {
+        const q = quota as any;
+        return new Response(JSON.stringify({ error: 'quota_exceeded', message: `Monthly app build limit reached (${q.used}/${q.limit}). Please upgrade your plan.`, limit_exceeded: true, used: q.used, limit: q.limit }), { status: 402, headers: jsonHeaders });
       }
 
       const buildToken = generateToken();
@@ -1137,7 +1140,9 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Failed to create edit record' }), { status: 500, headers: jsonHeaders });
       }
 
-      await supabase.from('usage_tracking').insert({ user_id: user.id, usage_type: 'chat_message', quantity: 1, task_id: taskRecord.id });
+      await supabase.from('usage_tracking').update({ task_id: taskRecord.id })
+        .eq('user_id', user.id).eq('usage_type', 'app_build').is('task_id', null)
+        .order('created_at', { ascending: false }).limit(1);
 
       const { knowledgeMd } = await loadUserContextForBuild(supabase, user.id);
       const editPromise = bootstrapEdit(taskRecord.id, buildToken, prompt, model, {
