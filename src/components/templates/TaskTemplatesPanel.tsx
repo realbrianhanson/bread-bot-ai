@@ -80,7 +80,7 @@ export function TaskTemplatesPanel({ onSelectTemplate }: TaskTemplatesPanelProps
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+        <Button variant="ghost" size="icon" title="Task templates" className="h-8 w-8 text-muted-foreground hover:text-foreground">
           <BookTemplate className="h-4 w-4" />
         </Button>
       </SheetTrigger>
