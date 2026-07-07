@@ -344,7 +344,7 @@ const PLAN_FIRST_CREATE = [
   '1. write_file PLAN.md — cover: pages/sections list, signature element for this project, palette rationale (name the colors, not just "blue"), font pairing rationale, one paragraph explaining how this brief maps to the design plan.',
   '2. write_file TODO.md — a markdown checklist of the concrete build steps in order. Use "- [ ] step" for each item. Include tokens step, each page section, wiring, responsive pass, and check_build.',
   '3. update_todos — call with the same items you put in TODO.md so the UI checklist appears live.',
-  '4. write_file DECISIONS.md — start the design & build journal with a first entry: `## <today\\'s date> — Initial build` followed by 3–8 bullets covering the brief in your own words and the key design choices you are locking in (palette, fonts, radius, hero pattern, signature element). This file is the memory across future edits.',
+  "4. write_file DECISIONS.md — start the design & build journal with a first entry: `## <today's date> — Initial build` followed by 3–8 bullets covering the brief in your own words and the key design choices you are locking in (palette, fonts, radius, hero pattern, signature element). This file is the memory across future edits.",
   '5. Rewrite src/index.css tokens for this project (from the design plan). Then start building.',
   '',
   'As you complete each step, call update_todos with the new statuses AND call replace_in_file on TODO.md to tick the matching checkbox ("- [ ] X" -> "- [x] X"). If you decide a step is no longer necessary, mark it status "dropped" with a short reason instead of deleting it.',
