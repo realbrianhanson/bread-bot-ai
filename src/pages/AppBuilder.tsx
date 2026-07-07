@@ -187,7 +187,24 @@ export default function AppBuilder() {
       if (!url) return;
       try {
         const appDesc = task.input_data?.prompt ? ` The app was built from this brief: "${task.input_data.prompt.slice(0, 400)}".` : '';
-        const qaTask = `Open ${url} and act as a meticulous QA tester.${appDesc} Click every navigation link and button, fill and submit any forms with realistic test data, scroll through every section, and check that nothing is broken, overlapping, or unreadable. Then give a concise QA report: 1) what works, 2) what is broken or looks off, 3) the top 3 improvements you would make.`;
+        const qaTask = `Open ${url} and act as a meticulous QA tester AND design reviewer.${appDesc}
+
+FUNCTIONAL PASS — Click every navigation link and button, fill and submit any forms with realistic test data (a form named "contact" should get a real-looking name/email/message), scroll through every section, and check that nothing errors, 404s, or hangs.
+
+VISUAL PASS — Capture a full-page screenshot at desktop width (1280px), then a second screenshot at mobile width (390px). Study both carefully and specifically call out:
+  - LOW CONTRAST or unreadable text (light text on light backgrounds, muted text that fails against its surface)
+  - OVERLAPPING or OVERFLOWING elements (text pushing outside its container, images cropped strangely, buttons colliding)
+  - UNSTYLED / DEFAULT-LOOKING sections (raw browser fonts, default blue links, unthemed form controls, sections that look like a wireframe next to the rest of the site)
+  - BROKEN IMAGES (missing src, alt-text placeholder squares, wrong aspect ratios)
+  - CRAMPED SPACING (sections without breathing room, cards packed edge-to-edge, insufficient padding on mobile)
+  - MOBILE LAYOUT BREAKAGE (horizontal scroll, tap targets under 44px, text cut off, nav that doesn't collapse)
+  - MISSING SIGNATURE ELEMENT (hero has no distinctive visual, page looks like a template with the placeholder never replaced)
+
+Return a concise report with this structure:
+  1) WHAT WORKS (2–4 bullets)
+  2) FUNCTIONAL ISSUES (bullets, each one a specific reproducible defect)
+  3) VISUAL ISSUES (bullets, each tagged with which of the categories above it hits — e.g. "[contrast] hero subhead is nearly invisible on the gradient")
+  4) TOP 3 DESIGN POLISH FIXES (concrete, one-line each — these will be fed back into the builder as an "Apply these fixes" prompt, so phrase them as instructions the builder can act on directly)`;
         const { data, error } = await supabase.functions.invoke('browser-task', { body: { task: qaTask, metadata: { source: 'auto_qa', build_task_id: taskId } } });
         if (error || !data?.taskId) {
           // Quota or other rejection — silently mark qa_pending false so we don't retry every render
