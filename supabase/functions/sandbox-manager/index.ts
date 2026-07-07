@@ -359,7 +359,7 @@ const PLAN_FIRST_EDIT = [
   '5. Add new TODO items for this edit via update_todos (and append to TODO.md). Tick them off as you go.',
   '6. Prefer replace_in_file for targeted edits over rewriting whole files.',
   '',
-  'BEFORE calling finish: append a new entry to DECISIONS.md using replace_in_file — one section titled `## <today\\'s date> — <one-line summary of the edit>` followed by short bullets covering: what the user asked for, what you changed, and any tradeoffs or choices worth remembering. This journal is included in every future snapshot.',
+  "BEFORE calling finish: append a new entry to DECISIONS.md using replace_in_file — one section titled `## <today's date> — <one-line summary of the edit>` followed by short bullets covering: what the user asked for, what you changed, and any tradeoffs or choices worth remembering. This journal is included in every future snapshot.",
 ].join('\\n');
 
 const FINISH_GATE_NOTE = 'FINISH GATE: finish is only accepted when (a) check_build returns BUILD OK, (b) runtime verification passes, and (c) every TODO item is either "done" or "dropped" with a reason. Unchecked items will block finish.';
