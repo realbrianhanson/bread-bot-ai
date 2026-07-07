@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -16,129 +16,135 @@
 
 @layer base {
   :root {
-    --background: 220 20% 97%;
-    --foreground: 222 47% 11%;
+    /* Warm cream light theme — toasted amber on parchment */
+    --background: 36 33% 96%;
+    --foreground: 24 20% 12%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card: 40 40% 99%;
+    --card-foreground: 24 20% 12%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover: 40 40% 99%;
+    --popover-foreground: 24 20% 12%;
 
-    --primary: 250 89% 62%;
-    --primary-foreground: 0 0% 100%;
+    /* Toasted garlic-amber */
+    --primary: 32 92% 48%;
+    --primary-foreground: 40 40% 99%;
 
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 34 25% 92%;
+    --secondary-foreground: 24 20% 12%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    --muted: 34 22% 92%;
+    --muted-foreground: 26 12% 42%;
 
-    --accent: 250 89% 62%;
-    --accent-foreground: 0 0% 100%;
+    /* Crisp cool accent — sage/teal cuts through warmth */
+    --accent: 175 55% 38%;
+    --accent-foreground: 40 40% 99%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 8 78% 52%;
+    --destructive-foreground: 40 40% 99%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 250 89% 62%;
+    --border: 32 20% 86%;
+    --input: 32 20% 88%;
+    --ring: 32 92% 48%;
 
-    --radius: 0.75rem;
+    --radius: 0.875rem;
 
     /* Brand tokens */
-    --brand-glow: 250 89% 62%;
-    --brand-warm: 24 95% 53%;
-    --brand-emerald: 160 84% 39%;
-    --brand-rose: 350 89% 60%;
+    --brand-glow: 32 92% 55%;
+    --brand-warm: 22 90% 52%;
+    --brand-emerald: 175 55% 38%;
+    --brand-rose: 12 82% 58%;
 
-    /* Gradient tokens */
-    --gradient-from: 250 89% 62%;
-    --gradient-via: 280 80% 55%;
-    --gradient-to: 320 80% 55%;
+    /* Layered warm gradient */
+    --gradient-from: 32 92% 55%;
+    --gradient-via: 22 90% 52%;
+    --gradient-to: 12 82% 55%;
 
     /* Surfaces */
-    --surface-elevated: 0 0% 100%;
-    --surface-sunken: 220 20% 95%;
+    --surface-elevated: 40 40% 99%;
+    --surface-sunken: 34 28% 93%;
 
-    /* Shadows */
-    --shadow-xs: 0 1px 2px hsl(222 47% 11% / 0.05);
-    --shadow-sm: 0 2px 8px hsl(222 47% 11% / 0.06);
-    --shadow-md: 0 4px 16px hsl(222 47% 11% / 0.08);
-    --shadow-lg: 0 8px 32px hsl(222 47% 11% / 0.1);
-    --shadow-glow: 0 0 40px hsl(250 89% 62% / 0.25);
-    --shadow-glow-lg: 0 0 80px hsl(250 89% 62% / 0.35);
+    /* Shadows tinted from primary */
+    --shadow-xs: 0 1px 2px hsl(24 40% 20% / 0.06);
+    --shadow-sm: 0 2px 8px hsl(24 40% 20% / 0.07);
+    --shadow-md: 0 6px 20px hsl(24 40% 20% / 0.09);
+    --shadow-lg: 0 14px 40px hsl(24 40% 20% / 0.12);
+    --shadow-glow: 0 0 40px hsl(32 92% 55% / 0.28);
+    --shadow-glow-lg: 0 0 90px hsl(32 92% 55% / 0.4);
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 250 89% 62%;
+    --sidebar-background: 34 30% 96%;
+    --sidebar-foreground: 24 15% 28%;
+    --sidebar-primary: 32 92% 48%;
+    --sidebar-primary-foreground: 40 40% 99%;
+    --sidebar-accent: 34 22% 92%;
+    --sidebar-accent-foreground: 24 20% 12%;
+    --sidebar-border: 32 20% 86%;
+    --sidebar-ring: 32 92% 48%;
   }
 
   .dark {
-    --background: 224 30% 6%;
-    --foreground: 210 20% 95%;
+    /* Warm charcoal dark — never pure black */
+    --background: 24 14% 8%;
+    --foreground: 36 25% 94%;
 
-    --card: 224 25% 9%;
-    --card-foreground: 210 20% 95%;
+    --card: 24 14% 11%;
+    --card-foreground: 36 25% 94%;
 
-    --popover: 224 25% 9%;
-    --popover-foreground: 210 20% 95%;
+    --popover: 24 14% 11%;
+    --popover-foreground: 36 25% 94%;
 
-    --primary: 250 89% 65%;
-    --primary-foreground: 0 0% 100%;
+    /* Garlic-gold amber, slightly lifted for dark */
+    --primary: 36 96% 58%;
+    --primary-foreground: 24 30% 10%;
 
-    --secondary: 224 20% 14%;
-    --secondary-foreground: 210 20% 95%;
+    --secondary: 24 12% 16%;
+    --secondary-foreground: 36 25% 94%;
 
-    --muted: 224 20% 14%;
-    --muted-foreground: 218 11% 55%;
+    --muted: 24 12% 15%;
+    --muted-foreground: 34 12% 65%;
 
-    --accent: 224 20% 14%;
-    --accent-foreground: 210 20% 95%;
+    /* Cool sage accent */
+    --accent: 172 45% 55%;
+    --accent-foreground: 24 30% 10%;
 
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 8 74% 58%;
+    --destructive-foreground: 40 40% 99%;
 
-    --border: 224 15% 16%;
-    --input: 224 15% 16%;
-    --ring: 250 89% 65%;
+    --border: 26 12% 18%;
+    --input: 26 12% 18%;
+    --ring: 36 96% 58%;
 
     /* Brand tokens dark */
-    --brand-glow: 250 89% 65%;
-    --brand-warm: 24 95% 58%;
-    --brand-emerald: 160 70% 45%;
-    --brand-rose: 350 89% 65%;
+    --brand-glow: 36 96% 58%;
+    --brand-warm: 22 92% 60%;
+    --brand-emerald: 172 45% 55%;
+    --brand-rose: 12 82% 62%;
 
-    /* Gradient tokens dark */
-    --gradient-from: 250 89% 65%;
-    --gradient-via: 280 80% 58%;
-    --gradient-to: 320 80% 58%;
+    /* Layered warm gradient dark */
+    --gradient-from: 36 96% 58%;
+    --gradient-via: 22 92% 55%;
+    --gradient-to: 12 82% 55%;
 
     /* Surfaces dark */
-    --surface-elevated: 224 25% 12%;
-    --surface-sunken: 224 30% 4%;
+    --surface-elevated: 24 14% 13%;
+    --surface-sunken: 24 16% 5%;
 
-    /* Shadows dark */
-    --shadow-xs: 0 1px 2px hsl(0 0% 0% / 0.2);
-    --shadow-sm: 0 2px 8px hsl(0 0% 0% / 0.25);
-    --shadow-md: 0 4px 16px hsl(0 0% 0% / 0.3);
-    --shadow-lg: 0 8px 32px hsl(0 0% 0% / 0.4);
-    --shadow-glow: 0 0 40px hsl(250 89% 65% / 0.2);
-    --shadow-glow-lg: 0 0 80px hsl(250 89% 65% / 0.3);
+    /* Shadows dark, tinted amber-black */
+    --shadow-xs: 0 1px 2px hsl(20 40% 2% / 0.4);
+    --shadow-sm: 0 2px 10px hsl(20 40% 2% / 0.5);
+    --shadow-md: 0 6px 24px hsl(20 40% 2% / 0.55);
+    --shadow-lg: 0 16px 48px hsl(20 40% 2% / 0.6);
+    --shadow-glow: 0 0 40px hsl(36 96% 58% / 0.22);
+    --shadow-glow-lg: 0 0 100px hsl(36 96% 58% / 0.38);
 
-    --sidebar-background: 224 25% 9%;
-    --sidebar-foreground: 210 15% 80%;
-    --sidebar-primary: 250 89% 65%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 224 20% 14%;
-    --sidebar-accent-foreground: 210 15% 80%;
-    --sidebar-border: 224 15% 16%;
-    --sidebar-ring: 250 89% 65%;
+    --sidebar-background: 24 14% 10%;
+    --sidebar-foreground: 34 18% 78%;
+    --sidebar-primary: 36 96% 58%;
+    --sidebar-primary-foreground: 24 30% 10%;
+    --sidebar-accent: 24 12% 15%;
+    --sidebar-accent-foreground: 36 25% 94%;
+    --sidebar-border: 26 12% 18%;
+    --sidebar-ring: 36 96% 58%;
   }
 }
 
@@ -158,6 +164,24 @@
 
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  .font-display,
+  .display {
+    font-family: 'Bricolage Grotesque', 'Inter', system-ui, sans-serif;
+    font-optical-sizing: auto;
+    font-variation-settings: "opsz" 96;
+    letter-spacing: -0.025em;
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: calc(var(--radius) - 4px);
+  }
+
+  a, button {
+    transition: color 200ms ease, background-color 200ms ease, border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
   }
 }
 
