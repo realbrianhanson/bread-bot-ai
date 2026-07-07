@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { STYLE_ARCHETYPES, type StyleArchetype } from '@/lib/styleArchetypes';
 
 interface DesignTemplate {
   id: string;
@@ -48,9 +49,43 @@ export function StylePicker({ selectedId, onSelect, disabled }: StylePickerProps
   const userTemplates = templates.filter((t) => t.source === 'user_created');
   const globalTemplates = templates.filter((t) => t.source !== 'user_created');
 
+  const selectedArchetype = selectedId?.startsWith('archetype:')
+    ? STYLE_ARCHETYPES.find((a) => `archetype:${a.slug}` === selectedId)
+    : undefined;
   const selected = templates.find((t) => t.id === selectedId);
   const defaultTemplate = templates.find((t) => t.is_default);
-  const displayName = selected?.name || defaultTemplate?.name || null;
+  const displayName = selectedArchetype?.name || selected?.name || defaultTemplate?.name || null;
+
+  const ArchetypeCard = ({ a }: { a: StyleArchetype }) => {
+    const id = `archetype:${a.slug}`;
+    const isSelected = selectedId === id;
+    return (
+      <button
+        onClick={() => {
+          onSelect(id, a.designMd, undefined);
+          setOpen(false);
+        }}
+        className={cn(
+          'text-left w-full p-2.5 rounded-lg border transition-all group',
+          isSelected
+            ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
+            : 'border-border/50 hover:border-primary/40 hover:bg-muted/30'
+        )}
+        title={a.note}
+      >
+        <div className="flex h-9 rounded-md overflow-hidden mb-2 border border-border/30">
+          {a.swatch.map((c, i) => (
+            <div key={i} className="flex-1" style={{ backgroundColor: c }} />
+          ))}
+        </div>
+        <div className="flex items-center justify-between gap-1">
+          <span className="text-xs font-medium text-foreground truncate">{a.name}</span>
+          {isSelected && <Check className="h-3 w-3 text-primary shrink-0" />}
+        </div>
+        <div className="text-[10px] text-muted-foreground truncate">{a.category}</div>
+      </button>
+    );
+  };
 
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from('design_templates').delete().eq('id', id);
@@ -160,15 +195,26 @@ export function StylePicker({ selectedId, onSelect, disabled }: StylePickerProps
       <PopoverContent
         side="top"
         align="start"
-        className="w-[360px] max-h-[420px] overflow-y-auto p-3"
+        className="w-[400px] max-h-[520px] overflow-y-auto p-3"
       >
         <h4 className="text-sm font-semibold text-foreground mb-2">Design Style</h4>
         <p className="text-xs text-muted-foreground mb-3">
-          Choose a pre-built design system for generated pages
+          Pick a direction — sets colors, fonts, and art direction for what the AI builds.
         </p>
 
         {!showCustom ? (
           <>
+            {/* Archetype directions */}
+            <div className="mb-3">
+              <h5 className="text-xs font-medium text-foreground mb-2">Style directions</h5>
+              <div className="grid grid-cols-2 gap-2">
+                {STYLE_ARCHETYPES.map((a) => (
+                  <ArchetypeCard key={a.slug} a={a} />
+                ))}
+              </div>
+              <div className="border-b border-border/30 mt-3" />
+            </div>
+
             {/* My Templates Section */}
             {userTemplates.length > 0 ? (
               <div className="mb-3">
@@ -181,17 +227,18 @@ export function StylePicker({ selectedId, onSelect, disabled }: StylePickerProps
                 </div>
                 <div className="border-b border-border/30 mb-2" />
               </div>
-            ) : (
-              <div className="mb-3 p-2 rounded-lg bg-muted/30 text-[10px] text-muted-foreground">
-                💡 Save any page as a template using the bookmark icon in the preview
-              </div>
-            )}
+            ) : null}
 
-            <div className="grid grid-cols-2 gap-2">
-              {globalTemplates.map((t) => (
-                <TemplateCard key={t.id} t={t} />
-              ))}
-            </div>
+            {globalTemplates.length > 0 && (
+              <>
+                <h5 className="text-xs font-medium text-foreground mb-2">Saved templates</h5>
+                <div className="grid grid-cols-2 gap-2">
+                  {globalTemplates.map((t) => (
+                    <TemplateCard key={t.id} t={t} />
+                  ))}
+                </div>
+              </>
+            )}
             <button
               onClick={() => setShowCustom(true)}
               className="mt-2 w-full text-left p-2 rounded-lg border border-dashed border-border/60 text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors"

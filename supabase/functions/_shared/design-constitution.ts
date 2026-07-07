@@ -115,7 +115,67 @@ When a color/size/state changes in one spot, add a variant (Tailwind class, cva 
   - Social proof near the CTA. Testimonials with realistic names and titles, not lorem ipsum.
   - Mobile responsive at sm/md/lg breakpoints, min 44px tap targets, min 16px font on mobile.
 
-12. If any rule above conflicts with the user's explicit brief, the user wins for that project — but call it out in the design plan.`;
+12. MOTION AND LIFE — every generated page should feel alive without feeling noisy.
+  - Entrance animations: on scroll, fade + slide-up (10–24px) reveal for sections, cards, list items. Stagger children by 60–100ms.
+  - Hover micro-interactions on cards and buttons: subtle lift (translateY -2px), border/glow change, or gentle scale (1.02–1.03). 200ms.
+  - Smooth scrolling on anchor navigation (html { scroll-behavior: smooth }) and honor scroll-padding for sticky nav.
+  - The hero must have one subtle continuous movement — a slow gradient shift, a floating signature element, or a light parallax on scroll.
+  - Durations 200–400ms, easing cubic-bezier(0.22, 1, 0.36, 1) (ease-out-expo-ish). Never block content — animations run in parallel to interaction and are non-essential to reading the page.
+  - Respect prefers-reduced-motion: ALL animations gated behind @media (prefers-reduced-motion: no-preference) or a JS check. When reduced-motion is set, elements appear in their final state immediately with no transform.
+  - For React apps: use framer-motion (motion.div with initial/whileInView/transition) and wrap under a MotionConfig where possible.
+  - For plain-HTML pages: use the IntersectionObserver reveal pattern below verbatim.
+
+PLAIN-HTML REVEAL SNIPPET — copy into every generated single-file page (drop <script> in <body>, style block in <head>):
+\`\`\`html
+<style>
+  .reveal { opacity: 0; transform: translateY(16px); transition: opacity 380ms cubic-bezier(0.22, 1, 0.36, 1), transform 380ms cubic-bezier(0.22, 1, 0.36, 1); will-change: opacity, transform; }
+  .reveal.is-visible { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+  }
+  html { scroll-behavior: smooth; }
+</style>
+<script>
+  (function () {
+    var prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var els = document.querySelectorAll('.reveal');
+    if (prefersReduced || !('IntersectionObserver' in window)) {
+      els.forEach(function (el) { el.classList.add('is-visible'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e, i) {
+        if (e.isIntersecting) {
+          setTimeout(function () { e.target.classList.add('is-visible'); }, (i % 6) * 60);
+          io.unobserve(e.target);
+        }
+      });
+    }, { rootMargin: '0px 0px -10% 0px', threshold: 0.08 });
+    els.forEach(function (el) { io.observe(el); });
+  })();
+</script>
+\`\`\`
+Apply class="reveal" to sections, cards, feature rows, and any element that should animate in as it enters the viewport. Do NOT apply it to the hero headline itself — the hero should be visible immediately.
+
+13. SECTION LIBRARY — compose good marketing pages from these building blocks.
+A serious marketing page usually uses 6–10 of these in sequence. Do NOT ship a thin one-section page unless the user explicitly asked for a minimal single-purpose page. Match the user's brief — a landing page should not be padded with sections it doesn't need, but a "build me a homepage for X" request should include most of these:
+  a. Sticky nav: transparent at top, gains a solid background + shadow after scroll (add .scrolled class via a tiny scroll listener). Include logo left, 3–5 nav links, one primary CTA right.
+  b. Hero: H1 (the brand promise, benefit-first, 6–12 words), one supporting subhead, primary CTA + secondary CTA, and the signature visual element from the art direction step. Include one subtle motion (gradient shift or floating element).
+  c. Trust strip: "Trusted by" band with 4–6 partner/customer logos (SVG or muted grayscale). If real logos aren't provided, use tasteful placeholder wordmarks — do not fabricate specific company names as customers.
+  d. Feature grid: 3 or 6 cards with a token-colored icon, title, and 1–2 sentence description. Uniform card heights.
+  e. Alternating feature rows: 2–4 rows, image/screenshot on one side, benefit copy and a bullet list on the other, alternating sides.
+  f. Stats band: 3–4 large numbers with short labels. Only include if the user provides real numbers — otherwise skip. Never fabricate metrics.
+  g. Testimonials: 2–3 quote cards with a realistic name, title, and company. Avatar circle with initials. Use placeholder testimonials only when the brief is generic; call them out as sample copy in a comment.
+  h. Pricing table: 2–3 tiers, feature checklists, one tier highlighted with a ring and "Most popular" badge. Only if the brief implies pricing.
+  i. FAQ accordion: 4–6 questions, native <details><summary> for plain HTML, with a smooth expand transition. Answers 1–3 sentences.
+  j. Final CTA band: full-width dark band (or bold accent band) with a single H2 and a large primary CTA. Reassurance micro-copy under the CTA.
+  k. Rich footer: 3–4 columns (Product, Company, Resources, Legal), small logo + tagline, socials, copyright line. Not just a single copyright line.
+Rules for composition:
+  - Respect the less-is-more principle: a simple ask ("make me a coming-soon page") uses a hero + CTA + footer only.
+  - A "landing page" or "homepage" ask uses at least nav + hero + trust strip + features + testimonials or FAQ + final CTA + footer.
+  - Every section (except the hero) gets class="reveal".
+
+14. If any rule above conflicts with the user's explicit brief, the user wins for that project — but call it out in the design plan.`;
 
 /**
  * FORMS section — injected into runner/chat prompts alongside the constitution.
