@@ -167,6 +167,12 @@ Deno.serve(async (req) => {
       forwarded_status = 'failed';
     } else {
       try {
+        const hostname = new URL(owner.forward_url).hostname;
+        const dnsSafe = await resolvedHostIsSafe(hostname);
+        if (!dnsSafe) {
+          forwarded_status = 'failed';
+          throw new Error('unsafe_resolved_host');
+        }
         const ctrl = new AbortController();
         const t = setTimeout(() => ctrl.abort(), 10_000);
         const r = await fetch(owner.forward_url, {
@@ -179,6 +185,7 @@ Deno.serve(async (req) => {
             source: { type: owner.source_type, id: owner.source_id },
           }),
           signal: ctrl.signal,
+          redirect: 'error',
         });
         clearTimeout(t);
         forwarded_status = r.ok ? 'sent' : 'failed';
