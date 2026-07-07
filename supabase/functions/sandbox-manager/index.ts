@@ -1243,12 +1243,12 @@ serve(async (req) => {
         for (let i = 0; i < 20 && cursor; i++) {
           const pid = cursor.output_data?.published_app_id;
           if (pid) {
-            const { data } = await supabase.from('published_apps').select('*').eq('id', pid).maybeSingle();
+            const { data } = await supabase.from('published_apps').select('*').eq('id', pid).eq('user_id', user.id).maybeSingle();
             if (data) return data;
           }
           const parentId = cursor.input_data?.parent_task_id || cursor.output_data?.parent_task_id;
           if (!parentId) break;
-          const { data: p } = await supabase.from('tasks').select('*').eq('id', parentId).maybeSingle();
+          const { data: p } = await supabase.from('tasks').select('*').eq('id', parentId).eq('user_id', user.id).maybeSingle();
           cursor = p;
         }
         // Also look up by task_id foreign key
