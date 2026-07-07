@@ -404,12 +404,12 @@ const Dashboard = () => {
           <Button variant="ghost" size="icon" aria-label="App Builder" onClick={() => navigate("/builder")} className="h-8 w-8 text-muted-foreground hover:text-foreground" title="App Builder">
             <Hammer className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" aria-label="Settings" onClick={() => navigate("/settings")} className="h-8 w-8 text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="icon" aria-label="Settings" title="Settings" onClick={() => navigate("/settings")} className="h-8 w-8 text-muted-foreground hover:text-foreground">
             <Settings className="h-4 w-4" />
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Sign out" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" size="icon" aria-label="Sign out" title="Sign out" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                 <LogOut className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>
@@ -439,12 +439,12 @@ const Dashboard = () => {
           <Button variant="ghost" size="icon" aria-label="App Builder" onClick={() => navigate("/builder")} className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground" title="App Builder">
             <Hammer className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" aria-label="Settings" onClick={() => navigate("/settings")} className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="icon" aria-label="Settings" title="Settings" onClick={() => navigate("/settings")} className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground">
             <Settings className="h-4 w-4" />
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Sign out" className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" size="icon" aria-label="Sign out" title="Sign out" className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground">
                 <LogOut className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>
