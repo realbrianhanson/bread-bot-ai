@@ -74,7 +74,7 @@ export function ResultsDashboard() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground relative">
+        <Button variant="ghost" size="icon" title="Results" className="h-8 w-8 text-muted-foreground hover:text-foreground relative">
           <BarChart3 className="h-4 w-4" />
           {stats.running > 0 && (
             <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-primary text-[9px] font-bold text-primary-foreground flex items-center justify-center">

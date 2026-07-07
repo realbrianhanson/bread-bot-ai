@@ -412,7 +412,7 @@ Return a concise report with this structure:
     <div className="min-h-screen bg-background">
       <header className="border-b border-border px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link to="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
+          <Link to="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors" title="Back to dashboard">
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div>
