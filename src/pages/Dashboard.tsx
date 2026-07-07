@@ -366,6 +366,7 @@ const Dashboard = () => {
             variant="ghost"
             size="icon"
             aria-label="Open conversations"
+            title="Open conversations"
             onClick={() => setMobileDrawerOpen(true)}
             className="md:hidden h-8 w-8"
           >
