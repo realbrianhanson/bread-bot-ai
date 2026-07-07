@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Globe, Code, FileStack, ArrowRight, Sparkles, Shield, Zap, Bot, CheckCircle2, Clock, Wand2, Layers, MousePointer2 } from "lucide-react";
 import { GarlicLogo } from "@/components/ui/logo-icon";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import heroVisual from "@/assets/hero-visual.jpg";
 
 const Index = () => {
@@ -38,9 +38,9 @@ const Index = () => {
     { label: "Bring your own domain", desc: "Publish agents and pages under your brand, TLS handled." },
   ];
 
-  const fadeUp = {
+  const fadeUp: Variants = {
     hidden: { opacity: 0, y: 24 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } },
+    show: { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] } },
   };
 
   return (
