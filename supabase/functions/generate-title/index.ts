@@ -50,10 +50,45 @@ serve(async (req) => {
       );
     }
 
+    // Only overwrite auto-generated placeholder names, never a user-set title.
+    const AUTO_NAME_PATTERNS = [
+      /^new chat$/i,
+      /^untitled(?: chat)?$/i,
+      /^chat\s+\d/i,
+      /^chat\s+\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/i,
+      /^conversation\s+\d/i,
+    ];
+    const isAutoName = (n: string | null | undefined) => {
+      const s = n?.trim();
+      if (!s) return true;
+      return AUTO_NAME_PATTERNS.some((p) => p.test(s));
+    };
+
+    const cleanTitle = (raw: string) =>
+      raw.replace(/^["']|["']$/g, "").trim().slice(0, 50);
+
+    const fallbackTitle = () =>
+      cleanTitle(message.split(/\s+/).slice(0, 4).join(" ")) || "New Chat";
+
+    const persistTitle = async (title: string) => {
+      const { data: row } = await supabase
+        .from("projects")
+        .select("name")
+        .eq("id", conversationId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!row || !isAutoName(row.name)) return;
+      await supabase
+        .from("projects")
+        .update({ name: title })
+        .eq("id", conversationId)
+        .eq("user_id", user.id);
+    };
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
-      // Fallback: use first 4 words of message
-      const fallback = message.split(/\s+/).slice(0, 4).join(" ");
+      const fallback = fallbackTitle();
+      await persistTitle(fallback);
       return new Response(JSON.stringify({ title: fallback }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -68,7 +103,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash-lite",
+          model: "google/gemini-3-flash-preview",
           messages: [
             {
               role: "system",
@@ -82,26 +117,18 @@ serve(async (req) => {
     );
 
     if (!response.ok) {
-      const fallback = message.split(/\s+/).slice(0, 4).join(" ");
+      const fallback = fallbackTitle();
+      await persistTitle(fallback);
       return new Response(JSON.stringify({ title: fallback }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const data = await response.json();
-    let title =
-      data.choices?.[0]?.message?.content?.trim() ||
-      message.split(/\s+/).slice(0, 4).join(" ");
+    const raw = data.choices?.[0]?.message?.content?.trim() || "";
+    const title = cleanTitle(raw) || fallbackTitle();
 
-    // Clean up: remove quotes, limit length
-    title = title.replace(/^["']|["']$/g, "").slice(0, 50);
-
-    // Update the conversation title
-    await supabase
-      .from("projects")
-      .update({ name: title })
-      .eq("id", conversationId)
-      .eq("user_id", user.id);
+    await persistTitle(title);
 
     return new Response(JSON.stringify({ title }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
