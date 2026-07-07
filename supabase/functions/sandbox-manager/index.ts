@@ -832,7 +832,7 @@ async function bootstrapBuild(taskId: string, buildToken: string, prompt: string
 
     od = await appendLog(supabase, taskId, od, { output_data: { phase: 'starting_dev_server' } }, 'Starting dev server');
 
-    await sandbox.commands.run('cd /home/user/app && nohup npm run dev > /home/user/dev-server.log 2>&1 &', { timeoutMs: 15000 });
+    await sandbox.commands.run('cd /home/user/app && npm run dev > /home/user/dev-server.log 2>&1', { background: true, timeoutMs: 0 } as any);
 
     const host = sandbox.getHost(DEV_PORT);
     const previewUrl = 'https://' + host;
@@ -846,8 +846,9 @@ async function bootstrapBuild(taskId: string, buildToken: string, prompt: string
     const marketingB64 = btoa(unescape(encodeURIComponent(ctx.marketingMd || '')));
     const knowledgeB64 = btoa(unescape(encodeURIComponent(ctx.knowledgeMd || '')));
 
-    await sandbox.commands.run('nohup node /home/user/runner.cjs > /home/user/runner.log 2>&1 &', {
-      timeoutMs: 15000,
+    await sandbox.commands.run('node /home/user/runner.cjs > /home/user/runner.log 2>&1', {
+      background: true,
+      timeoutMs: 0,
       envs: {
         TASK_ID: taskId,
         BUILD_TOKEN: buildToken,
@@ -863,7 +864,7 @@ async function bootstrapBuild(taskId: string, buildToken: string, prompt: string
         FORM_KEY: formKey,
         FORM_ENDPOINT_URL: formEndpoint,
       },
-    });
+    } as any);
 
     await appendLog(supabase, taskId, od, { status: 'running', output_data: { phase: 'agent_running' } }, 'Build agent launched');
   } catch (err) {
@@ -953,7 +954,7 @@ async function bootstrapEdit(taskId: string, buildToken: string, prompt: string,
       const install = await sandbox.commands.run('cd /home/user/app && npm install --no-audit --no-fund', { timeoutMs: 240000 });
       if (install.exitCode !== 0) throw new Error('npm install failed: ' + (install.stderr || install.stdout || '').slice(0, 500));
       od = await appendLog(supabase, taskId, od, { output_data: { phase: 'starting_dev_server' } }, 'Starting dev server');
-      await sandbox.commands.run('cd /home/user/app && nohup npm run dev > /home/user/dev-server.log 2>&1 &', { timeoutMs: 15000 });
+      await sandbox.commands.run('cd /home/user/app && npm run dev > /home/user/dev-server.log 2>&1', { background: true, timeoutMs: 0 } as any);
     }
 
     const host = sandbox.getHost(DEV_PORT);
@@ -967,10 +968,11 @@ async function bootstrapEdit(taskId: string, buildToken: string, prompt: string,
     const marketingB64 = btoa(unescape(encodeURIComponent(ctx.marketingMd || '')));
     const knowledgeB64 = btoa(unescape(encodeURIComponent(ctx.knowledgeMd || '')));
 
-    await sandbox.commands.run('nohup node /home/user/runner.cjs > /home/user/runner.log 2>&1 &', {
-      timeoutMs: 15000,
+    await sandbox.commands.run('node /home/user/runner.cjs > /home/user/runner.log 2>&1', {
+      background: true,
+      timeoutMs: 0,
       envs: { TASK_ID: taskId, BUILD_TOKEN: buildToken, CALLBACK_URL: callbackUrl, PROXY_URL: proxyUrl, MODEL: model, PROMPT_B64: promptB64, PREVIEW_URL: previewUrl, DESIGN_MD_B64: designB64, MARKETING_MD_B64: marketingB64, KNOWLEDGE_MD_B64: knowledgeB64, IS_EDIT: '1', FORM_KEY: formKey, FORM_ENDPOINT_URL: formEndpoint },
-    });
+    } as any);
 
     await appendLog(supabase, taskId, od, { status: 'running', output_data: { phase: 'agent_running', reused_sandbox: reused, form_key: formKey } }, 'Edit agent launched');
   } catch (err) {
