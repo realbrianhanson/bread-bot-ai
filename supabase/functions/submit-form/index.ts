@@ -53,6 +53,28 @@ function isSafeForwardUrl(raw: string): boolean {
   } catch { return false; }
 }
 
+async function resolvedHostIsSafe(hostname: string): Promise<boolean> {
+  // Reject if any A/AAAA record resolves to a private/loopback/link-local range.
+  try {
+    for (const type of ['A', 'AAAA']) {
+      const r = await fetch(
+        `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(hostname)}&type=${type}`,
+        { headers: { accept: 'application/dns-json' } },
+      );
+      if (!r.ok) return false;
+      const j = await r.json();
+      const answers: Array<{ data: string; type: number }> = j.Answer ?? [];
+      for (const a of answers) {
+        const ip = (a.data || '').trim();
+        if (ip && isPrivateHost(ip)) return false;
+      }
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json(405, { error: 'method_not_allowed' });
