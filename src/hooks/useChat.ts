@@ -182,6 +182,7 @@ async function buildFileContext(files: File[], userId: string, conversationId: s
 }
 
 export const useChat = (projectId?: string) => {
+  // no-op placeholder below; reducer defined at module scope
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
