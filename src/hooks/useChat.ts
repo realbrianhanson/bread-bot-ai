@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useReducer } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -187,41 +187,25 @@ export const useChat = (projectId?: string) => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isInspirationLoading, setIsInspirationLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
-  const [activeCode, setActiveCodeRaw] = useState<{ html: string; css: string; js: string } | null>(null);
-  const [codeVersion, setCodeVersion] = useState(0);
-  const [codeHistory, setCodeHistory] = useState<Array<{ html: string; css: string; js: string }>>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
+  // Consolidated code + history + index state — single atomic reducer.
+  // Previous version used 3 separate setState calls that interleaved via
+  // functional updaters, which double-fired in StrictMode (duplicate entries,
+  // double-incremented index) and was timing-fragile. All transitions here
+  // are pure and atomic.
+  const [codeState, dispatchCode] = useReducer(codeHistoryReducer, INITIAL_CODE_STATE);
+  const activeCode = codeState.current;
+  const codeHistory = codeState.history;
+  const historyIndex = codeState.index;
+  const codeVersion = codeState.version;
+  const setActiveCode = useCallback(
+    (newCode: { html: string; css: string; js: string } | null) => {
+      dispatchCode({ type: 'set', code: newCode });
+    },
+    []
+  );
 
-  // Wrap setActiveCode to track history
-  const setActiveCode = useCallback((newCode: { html: string; css: string; js: string } | null) => {
-    if (newCode === null) {
-      setActiveCodeRaw(null);
-      setCodeHistory([]);
-      setHistoryIndex(-1);
-      return;
-    }
-    setActiveCodeRaw((prev) => {
-      // Push previous onto history
-      if (prev) {
-        setCodeHistory((h) => {
-          // Trim any "future" entries when new code arrives after an undo
-          const trimmed = h.slice(0, historyIndex + 1 < 0 ? h.length : historyIndex + 1);
-          return [...trimmed, prev];
-        });
-        setHistoryIndex((i) => (i < 0 ? 0 : i + 1));
-      } else {
-        // First code, no previous to push
-        setCodeHistory([]);
-        setHistoryIndex(0);
-      }
-      return newCode;
-    });
-  }, [historyIndex]);
-
-  // Increment codeVersion whenever activeCode changes (including undo/redo)
-  useEffect(() => {
-    setCodeVersion((v) => v + 1);
-  }, [activeCode]);
+  // Pending /inspire URL waiting for the user's next message
+  const [pendingInspirationUrl, setPendingInspirationUrl] = useState<string | null>(null);
 
   const { user } = useAuth();
   const { canSendMessage, refreshSubscription } = useSubscription();
@@ -1326,53 +1310,44 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
   }, []);
 
   const clearActiveCode = useCallback(() => {
-    setActiveCodeRaw(null);
-    setCodeHistory([]);
-    setHistoryIndex(-1);
+    dispatchCode({ type: 'clear' });
   }, []);
 
   const canUndo = historyIndex > 0 || (historyIndex === 0 && codeHistory.length > 0);
   const canRedo = activeCode !== null && historyIndex < codeHistory.length - 1;
 
   const undoCode = useCallback(() => {
-    if (!canUndo) return;
-    // Current activeCode goes to the "future" — push it onto history at current position
-    setActiveCodeRaw((current) => {
-      if (!current) return current;
-      setCodeHistory((h) => {
-        const newHistory = [...h];
-        // Store current at historyIndex position (replacing or appending)
-        if (historyIndex < newHistory.length) {
-          newHistory[historyIndex] = current;
-        } else {
-          newHistory.push(current);
-        }
-        return newHistory;
-      });
-      const prevIndex = historyIndex - 1 >= 0 ? historyIndex - 1 : 0;
-      const prevCode = codeHistory[prevIndex];
-      setHistoryIndex(prevIndex);
-      return prevCode || current;
-    });
-  }, [canUndo, historyIndex, codeHistory]);
+    dispatchCode({ type: 'undo' });
+  }, []);
 
   const redoCode = useCallback(() => {
-    if (!canRedo) return;
-    setActiveCodeRaw((current) => {
-      if (!current) return current;
-      const nextIndex = historyIndex + 1;
-      const nextCode = codeHistory[nextIndex];
-      if (!nextCode) return current;
-      // Store current at historyIndex
-      setCodeHistory((h) => {
-        const newHistory = [...h];
-        newHistory[historyIndex] = current;
-        return newHistory;
-      });
-      setHistoryIndex(nextIndex);
-      return nextCode;
-    });
-  }, [canRedo, historyIndex, codeHistory]);
+    dispatchCode({ type: 'redo' });
+  }, []);
+
+  // Persist a user message to the thread without invoking the chat model.
+  // Used by flows that dispatch to a specialized backend (e.g. /research)
+  // and only want the user's utterance to appear in history.
+  const appendUserMessage = useCallback(
+    async (content: string) => {
+      if (!user || !content.trim()) return;
+      try {
+        const { data } = await supabase
+          .from('messages')
+          .insert({ user_id: user.id, project_id: projectId, role: 'user', content: content.trim() })
+          .select()
+          .single();
+        if (data) {
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === (data as Message).id)) return prev;
+            return [...prev, data as Message];
+          });
+        }
+      } catch (err) {
+        console.error('Failed to append user message:', err);
+      }
+    },
+    [user, projectId]
+  );
 
   return {
     messages,
@@ -1392,6 +1367,9 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
     sendInspirationMessage,
     stopStreaming,
     clearActiveCode,
+    appendUserMessage,
+    pendingInspirationUrl,
+    clearPendingInspiration: () => setPendingInspirationUrl(null),
   };
 };
 
