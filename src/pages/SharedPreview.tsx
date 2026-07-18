@@ -13,7 +13,7 @@ const SharedPreview = () => {
     const load = async () => {
       const { data, error } = await supabase
         .from('shared_previews')
-        .select('html_content, title, views')
+        .select('html_content, title, share_id')
         .eq('share_id', shareId)
         .single();
 
@@ -22,12 +22,8 @@ const SharedPreview = () => {
       document.title = data.title ? `${data.title} — GarlicBread.ai` : 'Preview — GarlicBread.ai';
       setHtml(data.html_content);
 
-      // fire-and-forget view increment
-      supabase
-        .from('shared_previews')
-        .update({ views: (data.views || 0) + 1 })
-        .eq('share_id', shareId)
-        .then(() => {});
+      // fire-and-forget view increment via SECURITY DEFINER RPC (only touches views column)
+      supabase.rpc('increment_preview_views', { p_share_id: data.share_id }).then(() => {});
     };
 
     load();

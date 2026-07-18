@@ -146,15 +146,8 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
     node.style.setProperty('overflow-x', 'auto', 'important');
     node.style.setProperty('overflow-y', 'auto', 'important');
     node.style.setProperty('-webkit-overflow-scrolling', 'touch');
-
-    const doc = node.contentDocument;
-    doc?.documentElement?.style.setProperty('overflow', 'auto', 'important');
-    doc?.documentElement?.style.setProperty('overflow-x', 'auto', 'important');
-    doc?.documentElement?.style.setProperty('overflow-y', 'auto', 'important');
-    doc?.body?.style.setProperty('overflow', 'auto', 'important');
-    doc?.body?.style.setProperty('overflow-x', 'auto', 'important');
-    doc?.body?.style.setProperty('overflow-y', 'auto', 'important');
-    doc?.body?.style.setProperty('min-height', '100%', 'important');
+    // Inner document DOM access removed — iframe is sandboxed without allow-same-origin.
+    // Scroll normalization now lives entirely in the injected script inside srcDoc.
   }, []);
 
   useEffect(() => {
@@ -187,55 +180,8 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
     };
   }, [enforceScrollableIframe, isStatic, useFallback, key]);
 
-  const bridgeIframeWheelScroll = useCallback((event: WheelEvent) => {
-    if (event.defaultPrevented || event.ctrlKey) return;
-
-    const previewViewport = previewViewportRef.current;
-    const target = event.target;
-    if (!previewViewport || !(target instanceof Node) || !previewViewport.contains(target)) return;
-
-    const frame = iframeRef.current || previewViewport.querySelector('iframe');
-    if (!(frame instanceof HTMLIFrameElement)) return;
-
-    try {
-      const doc = frame.contentDocument;
-      const scrollElement = (doc?.scrollingElement || doc?.documentElement || doc?.body) as HTMLElement | null;
-      if (!scrollElement) return;
-
-      const deltaMultiplier = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? scrollElement.clientHeight : 1;
-      const deltaY = event.deltaY * deltaMultiplier;
-      const deltaX = event.deltaX * deltaMultiplier;
-      const maxScrollTop = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight);
-      const maxScrollLeft = Math.max(0, scrollElement.scrollWidth - scrollElement.clientWidth);
-
-      if (maxScrollTop === 0 && maxScrollLeft === 0) return;
-
-      const nextScrollTop = Math.min(maxScrollTop, Math.max(0, scrollElement.scrollTop + deltaY));
-      const nextScrollLeft = Math.min(maxScrollLeft, Math.max(0, scrollElement.scrollLeft + deltaX));
-      const didScroll = nextScrollTop !== scrollElement.scrollTop || nextScrollLeft !== scrollElement.scrollLeft;
-
-      if (!didScroll) return;
-
-      event.preventDefault();
-      scrollElement.style.setProperty('overflow-y', 'auto', 'important');
-      scrollElement.style.setProperty('overflow-x', 'hidden', 'important');
-      scrollElement.scrollTop = nextScrollTop;
-      scrollElement.scrollLeft = nextScrollLeft;
-    } catch {
-      return;
-    }
-  }, []);
-
-  useEffect(() => {
-    const previewViewport = previewViewportRef.current;
-    if (!previewViewport) return;
-
-    previewViewport.addEventListener('wheel', bridgeIframeWheelScroll, { passive: false, capture: true });
-
-    return () => {
-      previewViewport.removeEventListener('wheel', bridgeIframeWheelScroll, true);
-    };
-  }, [bridgeIframeWheelScroll]);
+  // Parent-side wheel bridging removed — cross-origin sandboxed iframes cannot be
+  // reached from the parent. Wheel handling happens inside the injected script.
 
   const buildCombinedHTML = useCallback((): string => {
     let css = '';
@@ -712,7 +658,7 @@ ${previewScrollRecoveryScript}
               srcDoc={buildCombinedHTML()}
               className="block w-full h-full border-0"
               style={{ overflowY: 'auto', overflowX: 'auto' }}
-              sandbox="allow-scripts allow-same-origin"
+              sandbox="allow-scripts"
               scrolling="yes"
               title="Preview Fullscreen"
             />
@@ -747,7 +693,7 @@ ${previewScrollRecoveryScript}
           key={`${key}-${codeVersion}`}
           srcDoc={buildCombinedHTML()}
           className="flex-1 w-full border-0"
-          sandbox="allow-scripts allow-same-origin"
+          sandbox="allow-scripts"
           title="Your Preview"
         />
       </div>
@@ -770,7 +716,7 @@ ${previewScrollRecoveryScript}
                 srcDoc={buildCombinedHTML()}
                 className="block"
                 style={{ width: '100%', height: '100%', border: '0', overflowY: 'auto', overflowX: 'auto' }}
-                sandbox="allow-scripts allow-same-origin"
+                sandbox="allow-scripts"
                 scrolling="yes"
                 title="Preview"
               />

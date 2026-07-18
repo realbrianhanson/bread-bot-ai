@@ -1,6 +1,12 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
+import { encryptSecret, decryptSecret } from "../_shared/crypto.ts";
+
+async function readToken(stored: string | null | undefined): Promise<string | null> {
+  if (!stored) return null;
+  try { return await decryptSecret(stored); } catch { return stored; }
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,11 +31,13 @@ async function getValidAccessToken(supabaseAdmin: any, userId: string): Promise<
   // Check if token is still valid (with 5 min buffer)
   const expiry = new Date(integration.token_expiry);
   if (expiry.getTime() - Date.now() > 5 * 60 * 1000) {
-    return integration.access_token;
+    const at = await readToken(integration.access_token);
+    if (at) return at;
   }
 
   // Token expired — refresh it
-  if (!integration.refresh_token) {
+  const refreshTokenPlain = await readToken(integration.refresh_token);
+  if (!refreshTokenPlain) {
     throw new Error('Google refresh token not found. Please reconnect your Google account.');
   }
 
@@ -42,7 +50,7 @@ async function getValidAccessToken(supabaseAdmin: any, userId: string): Promise<
     body: new URLSearchParams({
       client_id: clientId,
       client_secret: clientSecret,
-      refresh_token: integration.refresh_token,
+      refresh_token: refreshTokenPlain,
       grant_type: 'refresh_token',
     }),
   });
@@ -54,9 +62,14 @@ async function getValidAccessToken(supabaseAdmin: any, userId: string): Promise<
 
   const newExpiry = new Date(Date.now() + (refreshData.expires_in || 3600) * 1000).toISOString();
 
+  const encAccess = await encryptSecret(refreshData.access_token);
+  const needsReEncrypt = !(integration.refresh_token as string).includes(':');
+  const update: any = needsReEncrypt
+    ? { access_token: encAccess, refresh_token: await encryptSecret(refreshTokenPlain), token_expiry: newExpiry }
+    : { access_token: encAccess, token_expiry: newExpiry };
   await supabaseAdmin
     .from('user_integrations')
-    .update({ access_token: refreshData.access_token, token_expiry: newExpiry })
+    .update(update)
     .eq('user_id', userId)
     .eq('provider', 'google');
 

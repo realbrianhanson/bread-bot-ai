@@ -18,13 +18,23 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const { action, userId, query, topic, title, content, sourceUrls, tags, sourceTaskId, entryId } = await req.json();
-
-    if (!userId) {
-      return new Response(JSON.stringify({ error: 'userId is required' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // AUTH: derive userId from the caller's JWT. Ignore any userId sent in the body.
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    const { data: { user }, error: authErr } = await supabaseClient.auth.getUser(token);
+    if (authErr || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const userId = user.id;
+
+    const { action, query, topic, title, content, sourceUrls, tags, sourceTaskId, entryId } = await req.json();
 
     switch (action) {
       case 'search': {
