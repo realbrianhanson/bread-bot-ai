@@ -328,6 +328,31 @@ export const useChat = (projectId?: string) => {
     };
   }, [userId, projectId]);
 
+  // Persist a user message to the thread without invoking the chat model.
+  // Used by flows that dispatch to a specialized backend (e.g. /research)
+  // and only want the user's utterance to appear in history.
+  const appendUserMessage = useCallback(
+    async (content: string) => {
+      if (!user || !content.trim()) return;
+      try {
+        const { data } = await supabase
+          .from('messages')
+          .insert({ user_id: user.id, project_id: projectId, role: 'user', content: content.trim() })
+          .select()
+          .single();
+        if (data) {
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === (data as Message).id)) return prev;
+            return [...prev, data as Message];
+          });
+        }
+      } catch (err) {
+        console.error('Failed to append user message:', err);
+      }
+    },
+    [user, projectId]
+  );
+
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
