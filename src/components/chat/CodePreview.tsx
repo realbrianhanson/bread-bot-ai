@@ -146,15 +146,8 @@ const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent =
     node.style.setProperty('overflow-x', 'auto', 'important');
     node.style.setProperty('overflow-y', 'auto', 'important');
     node.style.setProperty('-webkit-overflow-scrolling', 'touch');
-
-    const doc = node.contentDocument;
-    doc?.documentElement?.style.setProperty('overflow', 'auto', 'important');
-    doc?.documentElement?.style.setProperty('overflow-x', 'auto', 'important');
-    doc?.documentElement?.style.setProperty('overflow-y', 'auto', 'important');
-    doc?.body?.style.setProperty('overflow', 'auto', 'important');
-    doc?.body?.style.setProperty('overflow-x', 'auto', 'important');
-    doc?.body?.style.setProperty('overflow-y', 'auto', 'important');
-    doc?.body?.style.setProperty('min-height', '100%', 'important');
+    // Inner document DOM access removed — iframe is sandboxed without allow-same-origin.
+    // Scroll normalization now lives entirely in the injected script inside srcDoc.
   }, []);
 
   useEffect(() => {
