@@ -693,7 +693,7 @@ ${previewScrollRecoveryScript}
           key={`${key}-${codeVersion}`}
           srcDoc={buildCombinedHTML()}
           className="flex-1 w-full border-0"
-          sandbox="allow-scripts allow-same-origin"
+          sandbox="allow-scripts"
           title="Your Preview"
         />
       </div>
@@ -716,7 +716,7 @@ ${previewScrollRecoveryScript}
                 srcDoc={buildCombinedHTML()}
                 className="block"
                 style={{ width: '100%', height: '100%', border: '0', overflowY: 'auto', overflowX: 'auto' }}
-                sandbox="allow-scripts allow-same-origin"
+                sandbox="allow-scripts"
                 scrolling="yes"
                 title="Preview"
               />
