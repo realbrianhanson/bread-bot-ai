@@ -511,6 +511,8 @@ const Dashboard = () => {
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Back to conversations"
+                title="Back to conversations"
                 onClick={() => setActiveConversationId(null)}
                 className="h-10 w-10 shrink-0"
               >
