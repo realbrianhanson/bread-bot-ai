@@ -577,6 +577,7 @@ export type Database = {
         Row: {
           conversation_id: string | null
           created_at: string | null
+          expires_at: string
           form_key: string
           forward_url: string | null
           html_content: string
@@ -591,6 +592,7 @@ export type Database = {
         Insert: {
           conversation_id?: string | null
           created_at?: string | null
+          expires_at?: string
           form_key?: string
           forward_url?: string | null
           html_content: string
@@ -605,6 +607,7 @@ export type Database = {
         Update: {
           conversation_id?: string | null
           created_at?: string | null
+          expires_at?: string
           form_key?: string
           forward_url?: string | null
           html_content?: string

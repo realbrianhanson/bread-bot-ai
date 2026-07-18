@@ -738,7 +738,7 @@ Return a concise report with this structure:
                   className="absolute inset-0"
                   style={{
                     background:
-                      'conic-gradient(from 0deg at 50% 50%, #ff006e, #fb5607, #ffbe0b, #8338ec, #3a86ff, #06d6a0, #ff006e)',
+                      'conic-gradient(from 0deg at 50% 50%, hsl(var(--gradient-from)), hsl(var(--gradient-via)), hsl(var(--gradient-to)), hsl(var(--accent)), hsl(var(--brand-emerald)), hsl(var(--primary)), hsl(var(--gradient-from)))',
                     filter: 'blur(60px) saturate(1.4)',
                     animation: 'spin 18s linear infinite',
                   }}
@@ -747,7 +747,7 @@ Return a concise report with this structure:
                   className="absolute inset-0 opacity-60 mix-blend-overlay"
                   style={{
                     background:
-                      'radial-gradient(circle at 20% 30%, #ff00ff 0%, transparent 40%), radial-gradient(circle at 80% 70%, #00ffff 0%, transparent 40%), radial-gradient(circle at 50% 50%, #ffff00 0%, transparent 35%)',
+                      'radial-gradient(circle at 20% 30%, hsl(var(--brand-warm) / 0.6) 0%, transparent 40%), radial-gradient(circle at 80% 70%, hsl(var(--accent) / 0.6) 0%, transparent 40%), radial-gradient(circle at 50% 50%, hsl(var(--primary) / 0.55) 0%, transparent 35%)',
                     animation: 'spin 25s linear infinite reverse',
                   }}
                 />

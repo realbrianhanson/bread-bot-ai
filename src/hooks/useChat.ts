@@ -111,14 +111,20 @@ async function buildFileContext(files: File[], userId: string, conversationId: s
 
     if (uploadError) {
       console.error('Upload error:', uploadError);
+      toast({
+        title: `Skipped ${file.name}`,
+        description: 'That file could not be uploaded and will not be sent to the AI.',
+        variant: 'destructive',
+      });
       continue;
     }
 
-    const { data: urlData } = supabase.storage
+    // The attachments bucket is private. Mint a 1-hour signed URL so the AI
+    // can reference the file without exposing it publicly.
+    const { data: signed } = await supabase.storage
       .from('attachments')
-      .getPublicUrl(storagePath);
-
-    const url = urlData?.publicUrl || '';
+      .createSignedUrl(storagePath, 60 * 60);
+    const url = signed?.signedUrl || '';
     const sizeStr = formatSize(file.size);
     let preview: string | undefined;
 
@@ -361,12 +367,26 @@ export const useChat = (projectId?: string) => {
     async (code: string, userContent: string) => {
       if (!user) return;
 
-      await supabase.from('messages').insert({
-        user_id: user.id,
-        project_id: projectId,
-        role: 'user',
-        content: userContent,
-      });
+      // Persist and echo the user's /code message locally so it shows up in
+      // the thread immediately — realtime is disabled for `messages`, so
+      // without this the user sees only the assistant reply.
+      const { data: savedUser } = await supabase
+        .from('messages')
+        .insert({
+          user_id: user.id,
+          project_id: projectId,
+          role: 'user',
+          content: userContent,
+        })
+        .select()
+        .single();
+      if (savedUser) {
+        setMessages((prev) =>
+          prev.some((m) => m.id === (savedUser as Message).id)
+            ? prev
+            : [...prev, savedUser as Message],
+        );
+      }
 
       const runningId = crypto.randomUUID();
       setMessages((prev) => [

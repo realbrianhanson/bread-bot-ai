@@ -100,8 +100,22 @@ ${js.trim() ? `<script>\n${js}\n</script>` : ''}
           .eq('user_id', user.id);
         
         const url = `${window.location.origin}/p/${currentSlug}`;
-        await navigator.clipboard.writeText(url);
-        toast.success('Page updated!', { description: url });
+        // Clipboard access can fail silently in incognito, cross-origin
+        // iframes, or on Safari without a user gesture. Publish already
+        // succeeded — never make the user think it failed because their
+        // browser blocked the clipboard write.
+        let copied = false;
+        try {
+          await navigator.clipboard.writeText(url);
+          copied = true;
+        } catch { /* fall through and let the toast show the URL */ }
+        toast.success('Page updated!', {
+          description: copied ? `${url} — copied to clipboard` : url,
+          action: copied ? undefined : {
+            label: 'Copy',
+            onClick: () => { void navigator.clipboard.writeText(url).catch(() => {}); },
+          },
+        });
       } else {
         // Retry on slug collision (unique constraint) up to 5 attempts
         let inserted = false;
@@ -138,8 +152,18 @@ ${js.trim() ? `<script>\n${js}\n</script>` : ''}
         setPublishedSlug(currentSlug);
 
         const url = `${window.location.origin}/p/${currentSlug}`;
-        await navigator.clipboard.writeText(url);
-        toast.success('Page published!', { description: `${url} — copied to clipboard` });
+        let copied = false;
+        try {
+          await navigator.clipboard.writeText(url);
+          copied = true;
+        } catch { /* ignore — see comment above */ }
+        toast.success('Page published!', {
+          description: copied ? `${url} — copied to clipboard` : url,
+          action: copied ? undefined : {
+            label: 'Copy',
+            onClick: () => { void navigator.clipboard.writeText(url).catch(() => {}); },
+          },
+        });
       }
     } catch (err) {
       console.error('Publish error:', err);

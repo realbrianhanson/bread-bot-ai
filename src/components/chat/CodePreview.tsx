@@ -581,7 +581,7 @@ ${previewScrollRecoveryScript}
       <div className="flex gap-1">
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" onClick={onUndo} disabled={!canUndo} className={`h-6 w-6 ${!canUndo ? 'opacity-30 pointer-events-none' : ''}`}>
+            <Button variant="ghost" size="icon" aria-label="Undo last change" onClick={onUndo} disabled={!canUndo} className={`h-6 w-6 ${!canUndo ? 'opacity-30 pointer-events-none' : ''}`}>
               <Undo2 className="h-3 w-3" />
             </Button>
           </TooltipTrigger>
@@ -589,7 +589,7 @@ ${previewScrollRecoveryScript}
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" onClick={onRedo} disabled={!canRedo} className={`h-6 w-6 ${!canRedo ? 'opacity-30 pointer-events-none' : ''}`}>
+            <Button variant="ghost" size="icon" aria-label="Redo change" onClick={onRedo} disabled={!canRedo} className={`h-6 w-6 ${!canRedo ? 'opacity-30 pointer-events-none' : ''}`}>
               <Redo2 className="h-3 w-3" />
             </Button>
           </TooltipTrigger>
@@ -597,7 +597,7 @@ ${previewScrollRecoveryScript}
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" onClick={onPublish} disabled={isPublishing || !onPublish} className="h-6 w-6">
+            <Button variant="ghost" size="icon" aria-label={publishedSlug ? 'Update published page' : 'Publish as live page'} onClick={onPublish} disabled={isPublishing || !onPublish} className="h-6 w-6">
               {isPublishing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Globe className="h-3 w-3" />}
             </Button>
           </TooltipTrigger>
@@ -605,7 +605,7 @@ ${previewScrollRecoveryScript}
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" onClick={handleSharePreview} disabled={isSharing} className="h-6 w-6">
+            <Button variant="ghost" size="icon" aria-label="Share as public link (7 days)" onClick={handleSharePreview} disabled={isSharing} className="h-6 w-6">
               {isSharing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Share2 className="h-3 w-3" />}
             </Button>
           </TooltipTrigger>
@@ -613,8 +613,8 @@ ${previewScrollRecoveryScript}
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" onClick={handleCopyForGHL} className="h-6 w-6">
-              {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+            <Button variant="ghost" size="icon" aria-label="Copy HTML for GoHighLevel" onClick={handleCopyForGHL} className="h-6 w-6">
+              {copied ? <Check className="h-3 w-3 text-accent" /> : <Copy className="h-3 w-3" />}
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="max-w-[220px] text-xs">
@@ -631,16 +631,16 @@ ${previewScrollRecoveryScript}
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" onClick={() => setShowSaveTemplate(true)} className="h-6 w-6">
+            <Button variant="ghost" size="icon" aria-label="Save as reusable template" onClick={() => setShowSaveTemplate(true)} className="h-6 w-6">
               <BookmarkPlus className="h-3 w-3" />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs">Save as reusable template</TooltipContent>
         </Tooltip>
-        <Button variant="ghost" size="icon" onClick={handleRefresh} className="h-6 w-6">
+        <Button variant="ghost" size="icon" aria-label="Refresh preview" title="Refresh preview" onClick={handleRefresh} className="h-6 w-6">
           <RefreshCw className="h-3 w-3" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={handleFullscreen} className="h-6 w-6">
+        <Button variant="ghost" size="icon" aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'} title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'} onClick={handleFullscreen} className="h-6 w-6">
           {isFullscreen ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
         </Button>
       </div>

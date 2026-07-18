@@ -5,6 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Webhook,
@@ -29,6 +33,7 @@ export function WebhookManager() {
   const { webhooks, loading, createWebhook, deleteWebhook, toggleWebhook, testWebhook } = useWebhooks();
   const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     url: "",
@@ -102,9 +107,20 @@ export function WebhookManager() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         {wh.failure_count > 3 ? (
-                          <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                          <AlertCircle
+                            className="h-3.5 w-3.5 text-destructive shrink-0"
+                            aria-label={`Failing — ${wh.failure_count} recent errors`}
+                          />
+                        ) : wh.failure_count > 0 ? (
+                          <AlertCircle
+                            className="h-3.5 w-3.5 text-primary shrink-0"
+                            aria-label={`Degraded — ${wh.failure_count} recent errors`}
+                          />
                         ) : (
-                          <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                          <CheckCircle2
+                            className="h-3.5 w-3.5 text-accent shrink-0"
+                            aria-label="Healthy"
+                          />
                         )}
                         <p className="text-sm font-medium text-foreground truncate">{wh.name}</p>
                       </div>
@@ -136,6 +152,7 @@ export function WebhookManager() {
                         size="icon"
                         className="h-7 w-7"
                         onClick={() => testWebhook(wh.id)}
+                        aria-label={`Send test event to ${wh.name}`}
                         title="Send test"
                       >
                         <Send className="h-3 w-3" />
@@ -144,7 +161,9 @@ export function WebhookManager() {
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7 hover:text-destructive"
-                        onClick={() => deleteWebhook(wh.id)}
+                        onClick={() => setConfirmDeleteId(wh.id)}
+                        aria-label={`Delete webhook ${wh.name}`}
+                        title="Delete webhook"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -225,6 +244,28 @@ export function WebhookManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!confirmDeleteId} onOpenChange={(v) => !v && setConfirmDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this webhook?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Future events won't be delivered to this URL. This can't be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (confirmDeleteId) await deleteWebhook(confirmDeleteId);
+                setConfirmDeleteId(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

@@ -3,6 +3,13 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 
+const DEFAULT_LIMITS = {
+  chatMessagesLimit: 100,
+  browserTasksLimit: 10,
+  codeExecutionsLimit: 5,
+  appBuildsLimit: 3,
+};
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -37,25 +44,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [canUseOwnKeys, setCanUseOwnKeys] = useState(false);
   const [chatMessagesUsed, setChatMessagesUsed] = useState(0);
   const [browserTasksUsed, setBrowserTasksUsed] = useState(0);
-  const [chatMessagesLimit, setChatMessagesLimit] = useState(100);
-  const [browserTasksLimit, setBrowserTasksLimit] = useState(10);
+  const [chatMessagesLimit, setChatMessagesLimit] = useState(DEFAULT_LIMITS.chatMessagesLimit);
+  const [browserTasksLimit, setBrowserTasksLimit] = useState(DEFAULT_LIMITS.browserTasksLimit);
   const [codeExecutionsUsed, setCodeExecutionsUsed] = useState(0);
-  const [codeExecutionsLimit, setCodeExecutionsLimit] = useState(5);
+  const [codeExecutionsLimit, setCodeExecutionsLimit] = useState(DEFAULT_LIMITS.codeExecutionsLimit);
   const [appBuildsUsed, setAppBuildsUsed] = useState(0);
-  const [appBuildsLimit, setAppBuildsLimit] = useState(3);
+  const [appBuildsLimit, setAppBuildsLimit] = useState(DEFAULT_LIMITS.appBuildsLimit);
   const navigate = useNavigate();
   const userId = user?.id ?? null;
 
+  // refreshSubscription is stable — it reads the current session inside so it
+  // never depends on component state. This lets the auth listener subscribe
+  // exactly once (empty deps) instead of tearing down on every user change.
   const refreshSubscription = useCallback(async () => {
-    if (!userId) return;
-
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const currentSession = sessionData?.session;
-      if (!currentSession?.access_token) {
-        console.log('No valid session, skipping subscription check');
-        return;
-      }
+      if (!currentSession?.access_token) return;
 
       const { data, error } = await supabase.functions.invoke('check-subscription');
       if (error) {
@@ -70,47 +75,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setCanUseOwnKeys(data.can_use_own_keys || false);
         setChatMessagesUsed(data.chat_messages_used || 0);
         setBrowserTasksUsed(data.browser_tasks_used || 0);
-        setChatMessagesLimit(data.chat_messages_limit || 100);
-        setBrowserTasksLimit(data.browser_tasks_limit || 10);
+        setChatMessagesLimit(data.chat_messages_limit || DEFAULT_LIMITS.chatMessagesLimit);
+        setBrowserTasksLimit(data.browser_tasks_limit || DEFAULT_LIMITS.browserTasksLimit);
         setCodeExecutionsUsed(data.code_executions_used || 0);
-        setCodeExecutionsLimit(data.code_executions_limit || 5);
+        setCodeExecutionsLimit(data.code_executions_limit || DEFAULT_LIMITS.codeExecutionsLimit);
         setAppBuildsUsed(data.app_builds_used || 0);
-        setAppBuildsLimit(data.app_builds_limit || 3);
+        setAppBuildsLimit(data.app_builds_limit || DEFAULT_LIMITS.appBuildsLimit);
       }
     } catch (error) {
       console.error('Error refreshing subscription, using free tier defaults:', error);
     }
-  }, [userId]);
+  }, []);
 
+  // Subscribe to auth changes exactly ONCE. Never await Supabase calls inside
+  // the onAuthStateChange callback (documented deadlock risk) — always defer.
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      (_event, nextSession) => {
+        setSession(nextSession);
+        setUser(nextSession?.user ?? null);
         setLoading(false);
 
-        if (session?.user && session?.access_token && event === 'SIGNED_IN') {
-          setTimeout(() => {
+        if (nextSession?.user && nextSession?.access_token) {
+          // Defer so we don't run Supabase-heavy work synchronously inside the
+          // auth callback. queueMicrotask is fast and avoids the setTimeout
+          // fire-and-drop closures the previous version relied on.
+          queueMicrotask(() => {
             void refreshSubscription();
-          }, 100);
-        } else if (session?.user && session?.access_token) {
-          await refreshSubscription();
+          });
         }
       }
     );
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      setSession(initialSession);
+      setUser(initialSession?.user ?? null);
       setLoading(false);
-
-      if (session?.user && session?.access_token) {
-        await refreshSubscription();
+      if (initialSession?.user && initialSession?.access_token) {
+        void refreshSubscription();
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [refreshSubscription]);
+    // refreshSubscription is stable — subscribe ONCE for the lifetime of the
+    // provider so the auth listener isn't torn down and re-created on every
+    // user change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!userId) return;
@@ -175,6 +186,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    // Reset plan/usage state so a stale subscription snapshot never leaks
+    // into the next user's session on the same browser tab.
+    setTier('free');
+    setSubscribed(false);
+    setSubscriptionEnd(null);
+    setCanUseOwnKeys(false);
+    setChatMessagesUsed(0);
+    setBrowserTasksUsed(0);
+    setCodeExecutionsUsed(0);
+    setAppBuildsUsed(0);
+    setChatMessagesLimit(DEFAULT_LIMITS.chatMessagesLimit);
+    setBrowserTasksLimit(DEFAULT_LIMITS.browserTasksLimit);
+    setCodeExecutionsLimit(DEFAULT_LIMITS.codeExecutionsLimit);
+    setAppBuildsLimit(DEFAULT_LIMITS.appBuildsLimit);
     navigate('/auth');
   };
 
