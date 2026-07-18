@@ -8,6 +8,7 @@ const corsHeaders = {
 };
 
 import { ANTHROPIC_API_URL, MODELS } from '../_shared/config.ts';
+import { assertSafeUrl } from '../_shared/ssrf.ts';
 const ORCHESTRATOR_MODEL = MODELS.ORCHESTRATOR;
 const ORCHESTRATOR_FALLBACK_MODEL = MODELS.ORCHESTRATOR_FALLBACK;
 
@@ -661,7 +662,13 @@ async function executeTool(
 
       case 'download_file': {
         try {
-          const fileRes = await fetch(toolInput.url);
+          const rawUrl = String(toolInput.url ?? '');
+          const unsafe = await assertSafeUrl(rawUrl);
+          if (unsafe) return `Error downloading file: ${unsafe}`;
+          const ctrl = new AbortController();
+          const t = setTimeout(() => ctrl.abort(), 30_000);
+          const fileRes = await fetch(rawUrl, { redirect: 'error', signal: ctrl.signal });
+          clearTimeout(t);
           if (!fileRes.ok) return `Error downloading file: HTTP ${fileRes.status}`;
           const blob = await fileRes.blob();
           const arrayBuffer = await blob.arrayBuffer();
