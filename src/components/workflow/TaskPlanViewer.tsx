@@ -57,6 +57,7 @@ export function TaskPlanViewer({
       case "running": return "border-primary bg-primary/10";
       case "done": return "border-green-500/50 bg-green-500/5";
       case "failed": return "border-destructive/50 bg-destructive/5";
+      case "skipped": return "border-muted-foreground/30 bg-muted/20 opacity-60";
       default: return "border-border/50";
     }
   };
@@ -66,6 +67,7 @@ export function TaskPlanViewer({
       case "running": return <Loader2 className="h-3.5 w-3.5 text-primary animate-spin" />;
       case "done": return <Check className="h-3.5 w-3.5 text-green-500" />;
       case "failed": return <X className="h-3.5 w-3.5 text-destructive" />;
+      case "skipped": return <span className="h-3.5 w-3.5 rounded-full border-2 border-muted-foreground/40 block" title="Skipped" />;
       default: return <span className="h-3.5 w-3.5 rounded-full border-2 border-muted-foreground/30 block" />;
     }
   };

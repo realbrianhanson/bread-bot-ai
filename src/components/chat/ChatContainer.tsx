@@ -47,6 +47,7 @@ interface ChatContainerProps {
   canRedo?: boolean;
   onUndo?: () => void;
   onRedo?: () => void;
+  onAppendUserMessage?: (content: string) => Promise<void> | void;
 }
 
 const TASK_SOURCE_URL_REGEX = /https?:\/\/[^\s"'`<>]+/g;
@@ -145,6 +146,7 @@ const ChatContainer = ({
   canRedo: _canRedo,
   onUndo: _onUndo,
   onRedo: _onRedo,
+  onAppendUserMessage,
 }: ChatContainerProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -332,7 +334,12 @@ const ChatContainer = ({
     if (researchMatch) {
       const query = researchMatch[2].trim();
       if (query) {
-        onSendMessage(content, options);
+        // Do NOT dispatch to the chat completion — orchestrator handles this
+        // command exclusively. Persist the user's message so it still appears
+        // in the thread.
+        if (onAppendUserMessage) {
+          onAppendUserMessage(content);
+        }
         const history = messages.map((m) => ({ role: m.role, content: m.content }));
         orchestrator.orchestrate(query, history);
         return;
@@ -445,7 +452,15 @@ const ChatContainer = ({
                 {quickCommands.map((cmd) => (
                   <button
                     key={cmd.label}
-                    onClick={() => {}}
+                    onClick={() => {
+                      // Chat with AI = just focus the input; slash commands
+                      // prefill with a trailing space so the user can add args.
+                      if (cmd.label.startsWith('/')) {
+                        setInputPrefill(`${cmd.label} `);
+                      } else {
+                        setInputPrefill('');
+                      }
+                    }}
                     className="flex items-center gap-3 p-3 rounded-xl bg-card/60 border border-border/40 hover:border-primary/30 hover:bg-card/80 transition-all group text-left"
                   >
                     <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/15 transition-colors">
@@ -470,9 +485,12 @@ const ChatContainer = ({
                     <ChatMessage
                       message={message}
                       onInsertImage={activeCode ? (imageUrl: string) => {
-                        const imgTag = `<img src="${imageUrl}" alt="AI generated" style="width:100%;max-width:800px;border-radius:8px;margin:1rem auto;display:block;" />`;
-                        void imgTag;
-                        onSendMessage(`I've inserted the image into the page`, { ghlMode: false });
+                        // Ask the model to actually insert the image into the
+                        // active code. The generator picks up the URL from the
+                        // instruction and updates the page.
+                        handleSendMessage(
+                          `Please insert this image into the current page at a natural spot (hero, feature, or gallery — your choice). Use this exact URL: ${imageUrl}. Set alt text to "AI generated image" and make it responsive (max-width: 800px, centered, border-radius 8px).`
+                        );
                       } : undefined}
                       onRegenerateImage={(prompt: string) => {
                         handleSendMessage(`/image ${prompt}`);

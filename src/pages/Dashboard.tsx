@@ -59,10 +59,10 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const legacyOnboardingKey = "garlicbread-onboarding-done";
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const { messages, isHistoryLoading, isLoading, isStreaming, isInspirationLoading, activeCode, codeVersion, codeHistoryIndex, canUndo, canRedo, undoCode, redoCode, sendMessage, sendInspirationMessage, stopStreaming, clearActiveCode } = useChat(activeConversationId || undefined);
+  const { messages, isHistoryLoading, isLoading, isStreaming, isInspirationLoading, activeCode, codeVersion, codeHistoryIndex, canUndo, canRedo, undoCode, redoCode, sendMessage, sendInspirationMessage, stopStreaming, clearActiveCode, appendUserMessage } = useChat(activeConversationId || undefined);
   const { publish, isPublishing, publishedSlug } = usePublish(activeCode, activeConversationId || undefined);
   const { conversations, createConversation, deleteConversation, renameConversation, autoTitleConversation } = useConversations();
-  const { currentTask, isExecuting, executeTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask();
+  const { currentTask, isExecuting, executeTask, awaitTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask();
   const { entries: codeEntries, isExecuting: isCodeExecuting, clearEntries: clearCodeEntries, sandboxId: codeSandboxId } = useCodeExecution(activeConversationId || undefined);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const { plan, isPlanning, generatePlan, updateStep, removeStep, addStep, reorderSteps, clearPlan } = useTaskPlanner();
@@ -156,17 +156,32 @@ const Dashboard = () => {
 
   const handleExecutePlan = async () => {
     if (!plan) return;
-    for (const step of plan.steps) {
+    const steps = plan.steps;
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
       updateStep(step.id, { status: "running" });
-      await executeTask(step.prompt, activeConversationId || undefined, selectedProfileId || undefined);
-      updateStep(step.id, { status: "done" });
+      try {
+        await awaitTask(step.prompt, activeConversationId || undefined, selectedProfileId || undefined);
+        updateStep(step.id, { status: "done" });
+      } catch (err) {
+        updateStep(step.id, { status: "failed" });
+        for (let j = i + 1; j < steps.length; j++) {
+          updateStep(steps[j].id, { status: "skipped" });
+        }
+        return;
+      }
     }
     clearPlan();
   };
 
   const handleExecuteWorkflow = async (steps: { prompt: string }[]) => {
     for (const step of steps) {
-      await executeTask(step.prompt, activeConversationId || undefined, selectedProfileId || undefined);
+      try {
+        await awaitTask(step.prompt, activeConversationId || undefined, selectedProfileId || undefined);
+      } catch (err) {
+        // Stop on first failure — the failure toast is already surfaced.
+        return;
+      }
     }
   };
 
@@ -560,6 +575,7 @@ const Dashboard = () => {
                    canRedo={canRedo}
                    onUndo={undoCode}
                    onRedo={redoCode}
+                   onAppendUserMessage={appendUserMessage}
                 />
                 {/* Floating preview button on mobile chat view */}
                 {hasPreviewContent && (
@@ -575,7 +591,7 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="flex-1 min-h-0 relative">
-                <CodePreview key={`${activeConversationId || 'mobile-preview'}-${mobilePreviewKey}`} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
+                <CodePreview key={`${activeConversationId || 'mobile-preview'}-${mobilePreviewKey}`} conversationId={activeConversationId} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
               </div>
             )}
           </>
@@ -645,6 +661,7 @@ const Dashboard = () => {
                      canRedo={canRedo}
                      onUndo={undoCode}
                      onRedo={redoCode}
+                     onAppendUserMessage={appendUserMessage}
                   />
                 </div>
               </div>
@@ -699,7 +716,7 @@ const Dashboard = () => {
                   {/* Still show preview below if available */}
                   {hasPreviewContent && (
                     <div className="flex-1 min-h-0 border-t border-border/50">
-                      <CodePreview key={activeConversationId || 'desktop-preview-below'} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
+                      <CodePreview key={activeConversationId || 'desktop-preview-below'} conversationId={activeConversationId} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
                     </div>
                   )}
                 </div>
@@ -721,7 +738,7 @@ const Dashboard = () => {
                   codeVersion={codeVersion}
                 />
               ) : (
-                <CodePreview key={activeConversationId || 'desktop-preview'} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
+                <CodePreview key={activeConversationId || 'desktop-preview'} conversationId={activeConversationId} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
               )}
             </ResizablePanel>
           </ResizablePanelGroup>

@@ -23,6 +23,7 @@ interface CodePreviewProps {
   publishedSlug?: string | null;
   competitorHtml?: string | null;
   codeVersion?: number;
+  conversationId?: string | null;
 }
 
 const SandpackWithFallback = ({ files, template, onFallback }: {
@@ -97,7 +98,7 @@ const SandpackWithFallback = ({ files, template, onFallback }: {
   );
 };
 
-const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent = '', canUndo = false, canRedo = false, onUndo, onRedo, onPublish, isPublishing = false, publishedSlug, competitorHtml, codeVersion = 0 }: CodePreviewProps) => {
+const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent = '', canUndo = false, canRedo = false, onUndo, onRedo, onPublish, isPublishing = false, publishedSlug, competitorHtml, codeVersion = 0, conversationId = null }: CodePreviewProps) => {
   const [key, setKey] = useState(0);
   const [copied, setCopied] = useState(false);
   const [useFallback, setUseFallback] = useState(false);
@@ -489,14 +490,21 @@ ${previewScrollRecoveryScript}
         || html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
       const title = titleMatch?.[1]?.trim() || 'Untitled Page';
 
-      // Check for existing share
-      const { data: existing } = await supabase
-        .from('shared_previews')
-        .select('share_id')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // Look up an existing share scoped to THIS conversation only. Without
+      // the conversation filter, sharing page B would silently overwrite the
+      // already-distributed share link for page A.
+      let existing: { share_id: string } | null = null;
+      if (conversationId) {
+        const { data } = await supabase
+          .from('shared_previews')
+          .select('share_id')
+          .eq('user_id', user.id)
+          .eq('conversation_id', conversationId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        existing = data as { share_id: string } | null;
+      }
 
       let shareId: string;
       if (existing) {
@@ -508,7 +516,7 @@ ${previewScrollRecoveryScript}
       } else {
         const { data, error } = await supabase
           .from('shared_previews')
-          .insert({ user_id: user.id, html_content: html, title })
+          .insert({ user_id: user.id, html_content: html, title, conversation_id: conversationId })
           .select('share_id')
           .single();
         if (error) throw error;

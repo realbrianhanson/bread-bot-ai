@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useReducer } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -181,47 +181,93 @@ async function buildFileContext(files: File[], userId: string, conversationId: s
   return { context: parts.join('\n\n---\n\n'), uploadedFiles, contentBlocks };
 }
 
+// ---------- Code history reducer (atomic, pure) ----------
+type CodeSnapshot = { html: string; css: string; js: string };
+type CodeState = {
+  current: CodeSnapshot | null;
+  history: CodeSnapshot[];
+  index: number;
+  version: number;
+};
+type CodeAction =
+  | { type: 'set'; code: CodeSnapshot | null }
+  | { type: 'clear' }
+  | { type: 'undo' }
+  | { type: 'redo' };
+
+const INITIAL_CODE_STATE: CodeState = { current: null, history: [], index: -1, version: 0 };
+
+function codeHistoryReducer(state: CodeState, action: CodeAction): CodeState {
+  switch (action.type) {
+    case 'set': {
+      if (action.code === null) {
+        return { ...INITIAL_CODE_STATE, version: state.version + 1 };
+      }
+      if (!state.current) {
+        return { current: action.code, history: [], index: 0, version: state.version + 1 };
+      }
+      const trimmed = state.history.slice(0, state.index + 1 < 0 ? state.history.length : state.index + 1);
+      return {
+        current: action.code,
+        history: [...trimmed, state.current],
+        index: state.index < 0 ? 0 : state.index + 1,
+        version: state.version + 1,
+      };
+    }
+    case 'clear':
+      return { ...INITIAL_CODE_STATE, version: state.version + 1 };
+    case 'undo': {
+      if (!state.current) return state;
+      const canUndo = state.index > 0 || (state.index === 0 && state.history.length > 0);
+      if (!canUndo) return state;
+      const newHistory = [...state.history];
+      if (state.index < newHistory.length) newHistory[state.index] = state.current;
+      else newHistory.push(state.current);
+      const prevIndex = state.index - 1 >= 0 ? state.index - 1 : 0;
+      const prevCode = newHistory[prevIndex] ?? state.current;
+      return { current: prevCode, history: newHistory, index: prevIndex, version: state.version + 1 };
+    }
+    case 'redo': {
+      if (!state.current) return state;
+      const canRedo = state.index < state.history.length - 1;
+      if (!canRedo) return state;
+      const nextIndex = state.index + 1;
+      const nextCode = state.history[nextIndex];
+      if (!nextCode) return state;
+      const newHistory = [...state.history];
+      newHistory[state.index] = state.current;
+      return { current: nextCode, history: newHistory, index: nextIndex, version: state.version + 1 };
+    }
+    default:
+      return state;
+  }
+}
+
 export const useChat = (projectId?: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isInspirationLoading, setIsInspirationLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
-  const [activeCode, setActiveCodeRaw] = useState<{ html: string; css: string; js: string } | null>(null);
-  const [codeVersion, setCodeVersion] = useState(0);
-  const [codeHistory, setCodeHistory] = useState<Array<{ html: string; css: string; js: string }>>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
+  // Consolidated code + history + index state — single atomic reducer.
+  // Previous version used 3 separate setState calls that interleaved via
+  // functional updaters, which double-fired in StrictMode (duplicate entries,
+  // double-incremented index) and was timing-fragile. All transitions here
+  // are pure and atomic.
+  const [codeState, dispatchCode] = useReducer(codeHistoryReducer, INITIAL_CODE_STATE);
+  const activeCode = codeState.current;
+  const codeHistory = codeState.history;
+  const historyIndex = codeState.index;
+  const codeVersion = codeState.version;
+  const setActiveCode = useCallback(
+    (newCode: { html: string; css: string; js: string } | null) => {
+      dispatchCode({ type: 'set', code: newCode });
+    },
+    []
+  );
 
-  // Wrap setActiveCode to track history
-  const setActiveCode = useCallback((newCode: { html: string; css: string; js: string } | null) => {
-    if (newCode === null) {
-      setActiveCodeRaw(null);
-      setCodeHistory([]);
-      setHistoryIndex(-1);
-      return;
-    }
-    setActiveCodeRaw((prev) => {
-      // Push previous onto history
-      if (prev) {
-        setCodeHistory((h) => {
-          // Trim any "future" entries when new code arrives after an undo
-          const trimmed = h.slice(0, historyIndex + 1 < 0 ? h.length : historyIndex + 1);
-          return [...trimmed, prev];
-        });
-        setHistoryIndex((i) => (i < 0 ? 0 : i + 1));
-      } else {
-        // First code, no previous to push
-        setCodeHistory([]);
-        setHistoryIndex(0);
-      }
-      return newCode;
-    });
-  }, [historyIndex]);
-
-  // Increment codeVersion whenever activeCode changes (including undo/redo)
-  useEffect(() => {
-    setCodeVersion((v) => v + 1);
-  }, [activeCode]);
+  // Pending /inspire URL waiting for the user's next message
+  const [pendingInspirationUrl, setPendingInspirationUrl] = useState<string | null>(null);
 
   const { user } = useAuth();
   const { canSendMessage, refreshSubscription } = useSubscription();
@@ -281,6 +327,31 @@ export const useChat = (projectId?: string) => {
       isCancelled = true;
     };
   }, [userId, projectId]);
+
+  // Persist a user message to the thread without invoking the chat model.
+  // Used by flows that dispatch to a specialized backend (e.g. /research)
+  // and only want the user's utterance to appear in history.
+  const appendUserMessage = useCallback(
+    async (content: string) => {
+      if (!user || !content.trim()) return;
+      try {
+        const { data } = await supabase
+          .from('messages')
+          .insert({ user_id: user.id, project_id: projectId, role: 'user', content: content.trim() })
+          .select()
+          .single();
+        if (data) {
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === (data as Message).id)) return prev;
+            return [...prev, data as Message];
+          });
+        }
+      } catch (err) {
+        console.error('Failed to append user message:', err);
+      }
+    },
+    [user, projectId]
+  );
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -437,12 +508,22 @@ export const useChat = (projectId?: string) => {
             // Direct generation: /inspire URL content
             await sendInspirationMessage(url, userContent, options?.ghlMode || false);
           } else {
-            // Just URL — user will be prompted via follow-up
+            // Just URL — remember it and prompt the user; the next user message
+            // will be consumed as the inspiration content.
+            setPendingInspirationUrl(url);
+            await appendUserMessage(content.trim());
             toast({ title: 'Inspiration Mode', description: `Got it! Now describe what your page should be about.` });
-            // Store URL for next message (we'll handle via prefill or similar)
           }
           return;
         }
+      }
+
+      // Consume a pending /inspire URL: treat this message as the description.
+      if (pendingInspirationUrl && !content.trim().startsWith('/')) {
+        const url = pendingInspirationUrl;
+        setPendingInspirationUrl(null);
+        await sendInspirationMessage(url, content.trim(), options?.ghlMode || false);
+        return;
       }
 
       // Handle /audit command
@@ -1313,7 +1394,7 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
         refreshSubscription();
       }
     },
-    [user, projectId, canSendMessage, refreshSubscription, executeCode, sendInspirationMessage, activeCode]
+    [user, projectId, canSendMessage, refreshSubscription, executeCode, sendInspirationMessage, activeCode, pendingInspirationUrl, appendUserMessage]
   );
 
   const stopStreaming = useCallback(() => {
@@ -1326,53 +1407,19 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
   }, []);
 
   const clearActiveCode = useCallback(() => {
-    setActiveCodeRaw(null);
-    setCodeHistory([]);
-    setHistoryIndex(-1);
+    dispatchCode({ type: 'clear' });
   }, []);
 
   const canUndo = historyIndex > 0 || (historyIndex === 0 && codeHistory.length > 0);
   const canRedo = activeCode !== null && historyIndex < codeHistory.length - 1;
 
   const undoCode = useCallback(() => {
-    if (!canUndo) return;
-    // Current activeCode goes to the "future" — push it onto history at current position
-    setActiveCodeRaw((current) => {
-      if (!current) return current;
-      setCodeHistory((h) => {
-        const newHistory = [...h];
-        // Store current at historyIndex position (replacing or appending)
-        if (historyIndex < newHistory.length) {
-          newHistory[historyIndex] = current;
-        } else {
-          newHistory.push(current);
-        }
-        return newHistory;
-      });
-      const prevIndex = historyIndex - 1 >= 0 ? historyIndex - 1 : 0;
-      const prevCode = codeHistory[prevIndex];
-      setHistoryIndex(prevIndex);
-      return prevCode || current;
-    });
-  }, [canUndo, historyIndex, codeHistory]);
+    dispatchCode({ type: 'undo' });
+  }, []);
 
   const redoCode = useCallback(() => {
-    if (!canRedo) return;
-    setActiveCodeRaw((current) => {
-      if (!current) return current;
-      const nextIndex = historyIndex + 1;
-      const nextCode = codeHistory[nextIndex];
-      if (!nextCode) return current;
-      // Store current at historyIndex
-      setCodeHistory((h) => {
-        const newHistory = [...h];
-        newHistory[historyIndex] = current;
-        return newHistory;
-      });
-      setHistoryIndex(nextIndex);
-      return nextCode;
-    });
-  }, [canRedo, historyIndex, codeHistory]);
+    dispatchCode({ type: 'redo' });
+  }, []);
 
   return {
     messages,
@@ -1392,6 +1439,9 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
     sendInspirationMessage,
     stopStreaming,
     clearActiveCode,
+    appendUserMessage,
+    pendingInspirationUrl,
+    clearPendingInspiration: () => setPendingInspirationUrl(null),
   };
 };
 

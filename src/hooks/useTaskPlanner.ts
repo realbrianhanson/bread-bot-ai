@@ -7,7 +7,7 @@ export interface PlanStep {
   title: string;
   description: string;
   prompt: string;
-  status: "pending" | "running" | "done" | "failed";
+  status: "pending" | "running" | "done" | "failed" | "skipped";
   order: number;
 }
 
