@@ -62,7 +62,7 @@ const Dashboard = () => {
   const { messages, isHistoryLoading, isLoading, isStreaming, isInspirationLoading, activeCode, codeVersion, codeHistoryIndex, canUndo, canRedo, undoCode, redoCode, sendMessage, sendInspirationMessage, stopStreaming, clearActiveCode } = useChat(activeConversationId || undefined);
   const { publish, isPublishing, publishedSlug } = usePublish(activeCode, activeConversationId || undefined);
   const { conversations, createConversation, deleteConversation, renameConversation, autoTitleConversation } = useConversations();
-  const { currentTask, isExecuting, executeTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask();
+  const { currentTask, isExecuting, executeTask, awaitTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask();
   const { entries: codeEntries, isExecuting: isCodeExecuting, clearEntries: clearCodeEntries, sandboxId: codeSandboxId } = useCodeExecution(activeConversationId || undefined);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const { plan, isPlanning, generatePlan, updateStep, removeStep, addStep, reorderSteps, clearPlan } = useTaskPlanner();
@@ -156,17 +156,32 @@ const Dashboard = () => {
 
   const handleExecutePlan = async () => {
     if (!plan) return;
-    for (const step of plan.steps) {
+    const steps = plan.steps;
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
       updateStep(step.id, { status: "running" });
-      await executeTask(step.prompt, activeConversationId || undefined, selectedProfileId || undefined);
-      updateStep(step.id, { status: "done" });
+      try {
+        await awaitTask(step.prompt, activeConversationId || undefined, selectedProfileId || undefined);
+        updateStep(step.id, { status: "done" });
+      } catch (err) {
+        updateStep(step.id, { status: "failed" });
+        for (let j = i + 1; j < steps.length; j++) {
+          updateStep(steps[j].id, { status: "skipped" });
+        }
+        return;
+      }
     }
     clearPlan();
   };
 
   const handleExecuteWorkflow = async (steps: { prompt: string }[]) => {
     for (const step of steps) {
-      await executeTask(step.prompt, activeConversationId || undefined, selectedProfileId || undefined);
+      try {
+        await awaitTask(step.prompt, activeConversationId || undefined, selectedProfileId || undefined);
+      } catch (err) {
+        // Stop on first failure — the failure toast is already surfaced.
+        return;
+      }
     }
   };
 
