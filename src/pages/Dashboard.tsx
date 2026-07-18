@@ -575,6 +575,7 @@ const Dashboard = () => {
                    canRedo={canRedo}
                    onUndo={undoCode}
                    onRedo={redoCode}
+                   onAppendUserMessage={appendUserMessage}
                 />
                 {/* Floating preview button on mobile chat view */}
                 {hasPreviewContent && (
@@ -660,6 +661,7 @@ const Dashboard = () => {
                      canRedo={canRedo}
                      onUndo={undoCode}
                      onRedo={redoCode}
+                     onAppendUserMessage={appendUserMessage}
                   />
                 </div>
               </div>
