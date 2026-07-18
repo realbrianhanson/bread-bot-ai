@@ -184,8 +184,14 @@ const ChatContainer = ({
     }
   };
 
+  // Only auto-follow the stream while the user is actually at the bottom.
+  // If they scrolled up to read earlier output, respect that and stop
+  // yanking the view back on every streamed token.
   useEffect(() => {
-    scrollToBottom();
+    if (!scrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 120;
+    if (isNearBottom) scrollToBottom();
   }, [messages, currentTask, firecrawlResults]);
 
   const handleScroll = () => {

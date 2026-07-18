@@ -148,7 +148,7 @@ export default function Pricing() {
   const faqs = [
     { q: 'What counts as a browser task?', a: 'Each Browser Use automation run (opening a session, executing steps, and returning a result) counts as one browser task, regardless of how many pages it visits during that run.' },
     { q: 'Can I cancel anytime?', a: 'Yes. Manage or cancel your subscription from Settings → Manage billing at any time. You keep access through the end of your current billing period.' },
-    { q: 'What happens when I hit my monthly limit?', a: 'New requests to that feature are blocked for the rest of your billing period with a 402 response. Other features keep working. Upgrading takes effect immediately.' },
+    { q: 'What happens when I hit my monthly limit?', a: "Nothing runs over your limit — you'll be prompted to upgrade before that feature can be used again. Other features on your plan keep working, and upgrading takes effect immediately." },
     { q: 'Do unused credits roll over?', a: 'No. Limits reset at the start of each billing period. Annual plans still bill limits monthly.' },
     { q: 'Can I use my own API keys?', a: 'Business plan users can add their own Anthropic, OpenAI, Browser Use, E2B, and Firecrawl keys under Settings. Requests using your keys do not count against your monthly limits.' },
   ];
