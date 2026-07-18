@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
 import { encryptSecret, decryptSecret } from "../_shared/crypto.ts";
+import { fetchWithTimeout, TIMEOUT_DEFAULT_MS } from "../_shared/config.ts";
 
 async function readToken(stored: string | null | undefined): Promise<string | null> {
   if (!stored) return null;
@@ -42,7 +43,7 @@ async function getValidAccessToken(supabaseAdmin: any, userId: string): Promise<
   const clientId = Deno.env.get('GOOGLE_CLIENT_ID') ?? '';
   const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET') ?? '';
 
-  const refreshRes = await fetch(GOOGLE_TOKEN_URL, {
+  const refreshRes = await fetchWithTimeout(GOOGLE_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -51,7 +52,7 @@ async function getValidAccessToken(supabaseAdmin: any, userId: string): Promise<
       refresh_token: refreshTokenPlain,
       grant_type: 'refresh_token',
     }),
-  });
+  }, TIMEOUT_DEFAULT_MS);
 
   const refreshData = await refreshRes.json();
   if (refreshData.error) {
@@ -112,7 +113,7 @@ serve(async (req) => {
     const accessToken = await getValidAccessToken(supabaseAdmin, user.id);
 
     // Step 1: Create the spreadsheet
-    const createRes = await fetch(GOOGLE_SHEETS_API, {
+    const createRes = await fetchWithTimeout(GOOGLE_SHEETS_API, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -122,7 +123,7 @@ serve(async (req) => {
         properties: { title },
         sheets: [{ properties: { title: 'Sheet1' } }],
       }),
-    });
+    }, TIMEOUT_DEFAULT_MS);
 
     if (!createRes.ok) {
       const errText = await createRes.text();
@@ -145,7 +146,7 @@ serve(async (req) => {
 
     if (values.length > 0) {
       const range = `Sheet1!A1`;
-      const updateRes = await fetch(
+      const updateRes = await fetchWithTimeout(
         `${GOOGLE_SHEETS_API}/${spreadsheetId}/values/${range}?valueInputOption=USER_ENTERED`,
         {
           method: 'PUT',
@@ -154,7 +155,7 @@ serve(async (req) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ range, majorDimension: 'ROWS', values }),
-        },
+        }, TIMEOUT_DEFAULT_MS,
       );
 
       if (!updateRes.ok) {
@@ -166,10 +167,10 @@ serve(async (req) => {
     // Step 3: Move to folder if specified
     if (folderId) {
       try {
-        await fetch(`https://www.googleapis.com/drive/v3/files/${spreadsheetId}?addParents=${folderId}`, {
+        await fetchWithTimeout(`https://www.googleapis.com/drive/v3/files/${spreadsheetId}?addParents=${folderId}`, {
           method: 'PATCH',
           headers: { Authorization: `Bearer ${accessToken}` },
-        });
+        }, TIMEOUT_DEFAULT_MS);
       } catch (e) {
         console.error('[CREATE-GOOGLE-SHEET] Move to folder failed:', e);
       }

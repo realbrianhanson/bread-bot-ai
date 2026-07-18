@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
+import { BROWSER_USE_API_URL, fetchWithTimeout, TIMEOUT_DEFAULT_MS } from "../_shared/config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -43,14 +44,14 @@ Deno.serve(async (req) => {
     if (action === 'create') {
       console.log('Creating new browser profile:', name);
 
-      const createResponse = await fetch('https://api.browser-use.com/api/v3/browser-profiles', {
+      const createResponse = await fetchWithTimeout(`${BROWSER_USE_API_URL}/browser-profiles`, {
         method: 'POST',
         headers: {
            'X-Browser-Use-API-Key': browserUseApiKey,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ profile_name: name || 'Default Profile' }),
-      });
+      }, TIMEOUT_DEFAULT_MS);
 
       if (!createResponse.ok) {
         const errorText = await createResponse.text();
@@ -128,14 +129,14 @@ Deno.serve(async (req) => {
       }
 
       if (profile.browser_use_profile_id) {
-        const deleteResponse = await fetch(
-          `https://api.browser-use.com/api/v3/browser-profiles/${profile.browser_use_profile_id}`,
+        const deleteResponse = await fetchWithTimeout(
+          `${BROWSER_USE_API_URL}/browser-profiles/${profile.browser_use_profile_id}`,
           {
             method: 'DELETE',
             headers: {
               'X-Browser-Use-API-Key': browserUseApiKey,
             },
-          }
+          }, TIMEOUT_DEFAULT_MS
         );
 
         if (!deleteResponse.ok) {

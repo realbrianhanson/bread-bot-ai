@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
+import { fetchWithTimeout, TIMEOUT_DEFAULT_MS } from "../_shared/config.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -67,11 +68,11 @@ serve(async (req) => {
 
     console.log("[GHL-WEBHOOK] Sending contact to GHL:", { email, firstName, lastName });
 
-    const response = await fetch(GHL_WEBHOOK_URL, {
+    const response = await fetchWithTimeout(GHL_WEBHOOK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(ghlPayload),
-    });
+    }, TIMEOUT_DEFAULT_MS);
 
     if (!response.ok) {
       const text = await response.text();

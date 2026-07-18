@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
 import { Sandbox } from "npm:e2b@1.13.0";
 import { DESIGN_CONSTITUTION, FORMS_INSTRUCTIONS } from "../_shared/design-constitution.ts";
+import { BUILDER_MODEL_WHITELIST, MODELS } from "../_shared/config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1062,7 +1063,7 @@ serve(async (req) => {
 
     if (action === 'create') {
       const prompt = (body.prompt || '').trim();
-      const model = ['claude-sonnet-4-6', 'claude-fable-5'].includes(body.model) ? body.model : 'claude-sonnet-4-6';
+      const model = BUILDER_MODEL_WHITELIST.includes(body.model) ? body.model : MODELS.BUILDER_FAST;
       const designMd = typeof body.designMd === 'string' ? body.designMd.slice(0, 8000) : '';
       const marketingMd = typeof body.marketingMd === 'string' ? body.marketingMd.slice(0, 8000) : '';
       if (!prompt || prompt.length < 10) {
@@ -1118,7 +1119,7 @@ serve(async (req) => {
 
     if (action === 'edit') {
       const prompt = (body.prompt || '').trim();
-      const model = ['claude-sonnet-4-6', 'claude-fable-5'].includes(body.model) ? body.model : 'claude-sonnet-4-6';
+      const model = BUILDER_MODEL_WHITELIST.includes(body.model) ? body.model : MODELS.BUILDER_FAST;
       const designMd = typeof body.designMd === 'string' ? body.designMd.slice(0, 8000) : '';
       const marketingMd = typeof body.marketingMd === 'string' ? body.marketingMd.slice(0, 8000) : '';
       const parentTaskId = body.taskId;
@@ -1448,7 +1449,7 @@ serve(async (req) => {
       // Relaunch a sandbox from a saved snapshot as a brand new edit lineage entry.
       // Uses the atomic edit path with a "no-op" prompt so the model just re-verifies.
       const parentTaskId = body.taskId;
-      const model = ['claude-sonnet-4-6', 'claude-fable-5'].includes(body.model) ? body.model : 'claude-sonnet-4-6';
+      const model = BUILDER_MODEL_WHITELIST.includes(body.model) ? body.model : MODELS.BUILDER_FAST;
       if (!parentTaskId) return new Response(JSON.stringify({ error: 'taskId required' }), { status: 400, headers: jsonHeaders });
       const { data: parent } = await supabase.from('tasks').select('*').eq('id', parentTaskId).eq('user_id', user.id).single();
       if (!parent || parent.task_type !== 'app_build') return new Response(JSON.stringify({ error: 'Build not found' }), { status: 404, headers: jsonHeaders });

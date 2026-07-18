@@ -87,14 +87,22 @@ export default function Settings() {
   const handleConnectGoogle = async () => {
     if (!user) return;
     setConnectingGoogle(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-    if (!token) { setConnectingGoogle(false); return; }
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-oauth/authorize?token=${token}`;
-    const popup = window.open(url, 'google-oauth', 'width=600,height=700,popup=yes');
-    const interval = setInterval(() => {
-      if (popup?.closed) { clearInterval(interval); setConnectingGoogle(false); loadGoogleIntegration(); }
-    }, 500);
+    try {
+      // Ask the edge function for a signed Google auth URL. The user's JWT is
+      // sent in the Authorization header (via supabase.functions.invoke) so it
+      // never appears in a URL query string, referrer, or server access log.
+      const { data, error } = await supabase.functions.invoke('google-oauth/authorize', { method: 'POST' });
+      if (error || !data?.authUrl) {
+        setConnectingGoogle(false);
+        return;
+      }
+      const popup = window.open(data.authUrl, 'google-oauth', 'width=600,height=700,popup=yes');
+      const interval = setInterval(() => {
+        if (popup?.closed) { clearInterval(interval); setConnectingGoogle(false); loadGoogleIntegration(); }
+      }, 500);
+    } catch {
+      setConnectingGoogle(false);
+    }
   };
 
   const handleDisconnectGoogle = async () => {

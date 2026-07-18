@@ -27,7 +27,30 @@ export const MODELS = {
   BROWSER_USE: 'bu-ultra',
   // Whisper replacement
   TRANSCRIBE: 'gpt-4o-mini-transcribe',
+  // Task planner / short reasoning via Lovable AI Gateway
+  PLANNER: 'google/gemini-3-flash-preview',
+  // Auto-title generator (Lovable AI Gateway)
+  TITLE: 'google/gemini-3-flash-preview',
+  // Image generation (Lovable AI Gateway)
+  IMAGE_GEN: 'google/gemini-3.1-flash-image-preview',
 } as const;
+
+// Lovable AI Gateway base
+export const LOVABLE_AI_GATEWAY_URL = 'https://ai.gateway.lovable.dev/v1';
+
+// App builder / anthropic-proxy: the models the proxy is allowed to forward.
+export const ANTHROPIC_ALLOWED_MODELS: readonly string[] = [
+  MODELS.BUILDER_FAST,
+  MODELS.BUILDER_QUALITY,
+  MODELS.ORCHESTRATOR_FALLBACK,
+  MODELS.CLASSIFIER,
+];
+
+// App builder: models a user may select for a build.
+export const BUILDER_MODEL_WHITELIST: readonly string[] = [
+  MODELS.BUILDER_FAST,
+  MODELS.BUILDER_QUALITY,
+];
 
 // Timeouts (ms)
 export const TIMEOUT_AI_MS = 90_000;
@@ -74,4 +97,15 @@ export function timeoutErrorResponse(corsHeaders: Record<string, string>, messag
 
 export function isAbortError(err: unknown): boolean {
   return err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError');
+}
+
+/** Constant-time string comparison (defends against timing side-channels). */
+export function safeStringEqual(a: string, b: string): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return mismatch === 0;
 }

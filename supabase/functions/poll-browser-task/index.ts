@@ -1,13 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
 import { decryptSecret } from "../_shared/crypto.ts";
+import { BROWSER_USE_API_URL, fetchWithTimeout, TIMEOUT_DEFAULT_MS, TIMEOUT_AI_MS } from "../_shared/config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
-
-const BROWSER_USE_API_URL = 'https://api.browser-use.com/api/v3';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -111,9 +110,9 @@ serve(async (req) => {
     }
 
     // Poll Browser Use v3 API for session status
-    const sessionResponse = await fetch(`${BROWSER_USE_API_URL}/sessions/${browserUseTaskId}`, {
+    const sessionResponse = await fetchWithTimeout(`${BROWSER_USE_API_URL}/sessions/${browserUseTaskId}`, {
       headers: { 'X-Browser-Use-API-Key': browserUseApiKey },
-    });
+    }, TIMEOUT_DEFAULT_MS);
 
     if (!sessionResponse.ok) {
       const errText = await sessionResponse.text();
@@ -186,9 +185,9 @@ serve(async (req) => {
       // On completion, fetch screenshots
       if (mappedStatus === 'completed') {
         try {
-          const filesResponse = await fetch(`${BROWSER_USE_API_URL}/sessions/${browserUseTaskId}/files?includeUrls=true`, {
+          const filesResponse = await fetchWithTimeout(`${BROWSER_USE_API_URL}/sessions/${browserUseTaskId}/files?includeUrls=true`, {
             headers: { 'X-Browser-Use-API-Key': browserUseApiKey },
-          });
+          }, TIMEOUT_DEFAULT_MS);
 
           if (filesResponse.ok) {
             const filesData = await filesResponse.json();
@@ -199,7 +198,7 @@ serve(async (req) => {
               const file = files[i];
               if (!file.url) continue;
               try {
-                const imgResponse = await fetch(file.url);
+                const imgResponse = await fetchWithTimeout(file.url, {}, TIMEOUT_DEFAULT_MS);
                 if (!imgResponse.ok) continue;
                 const imageBlob = await imgResponse.blob();
                 const fileName = `${taskId}/screenshot-${i}.png`;
@@ -209,10 +208,14 @@ serve(async (req) => {
                   .upload(fileName, imageBlob, { contentType: 'image/png', upsert: true });
 
                 if (!uploadError) {
-                  const { data: { publicUrl } } = supabaseClient.storage
+                  // browser-screenshots is a private bucket; use short-lived signed URLs
+                  // instead of publicUrl (which would 404 without a public policy).
+                  const { data: signed } = await supabaseClient.storage
                     .from('browser-screenshots')
-                    .getPublicUrl(fileName);
-                  screenshotUrls.push(publicUrl);
+                    .createSignedUrl(fileName, 60 * 60);
+                  if (signed?.signedUrl) {
+                    screenshotUrls.push(signed.signedUrl);
+                  }
                 }
               } catch (e) {
                 console.error('[POLL-BROWSER-TASK] Screenshot upload error:', e);
@@ -236,11 +239,12 @@ serve(async (req) => {
         const webhookEvent = mappedStatus === 'completed' ? 'task.completed' : 'task.failed';
         try {
           const dispatchUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/dispatch-webhook`;
-          await fetch(dispatchUrl, {
+          await fetchWithTimeout(dispatchUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+              'x-webhook-secret': Deno.env.get('WEBHOOK_SECRET') ?? '',
             },
             body: JSON.stringify({
               userId: user.id,
@@ -252,7 +256,7 @@ serve(async (req) => {
                 description: sessionData.output || updatePayload.error_message || 'Task event',
               },
             }),
-          });
+          }, TIMEOUT_DEFAULT_MS);
           console.log('[POLL-BROWSER-TASK] Dispatched webhooks for:', webhookEvent);
         } catch (dispatchErr) {
           console.error('[POLL-BROWSER-TASK] Webhook dispatch error:', dispatchErr);

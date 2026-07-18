@@ -28,28 +28,28 @@ async function getHonchoContext(userId: string): Promise<string> {
   const headers = { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
 
   try {
-    await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}`, {
+    await fetchWithTimeout(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}`, {
       method: 'PUT',
       headers,
       body: JSON.stringify({ configuration: { observe_me: true } }),
-    });
+    }, TIMEOUT_DEFAULT_MS);
 
-    await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/assistant`, {
+    await fetchWithTimeout(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/assistant`, {
       method: 'PUT',
       headers,
       body: JSON.stringify({ configuration: { observe_me: false } }),
-    });
+    }, TIMEOUT_DEFAULT_MS);
 
-    const sessionRes = await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions`, {
+    const sessionRes = await fetchWithTimeout(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ metadata: { source: 'chat' } }),
-    });
+    }, TIMEOUT_DEFAULT_MS);
     const session = await sessionRes.json();
 
-    const contextRes = await fetch(
+    const contextRes = await fetchWithTimeout(
       `${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions/${session.id}/context`,
-      { method: 'POST', headers, body: JSON.stringify({ max_tokens: 2000 }) },
+      { method: 'POST', headers, body: JSON.stringify({ max_tokens: 2000 }) }, TIMEOUT_DEFAULT_MS,
     );
     const contextData = await contextRes.json();
     return contextData?.context || contextData?.content || '';
@@ -67,21 +67,21 @@ async function storeHonchoMessages(userId: string, userMessage: string, assistan
   const headers = { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
 
   try {
-    const sessionRes = await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions`, {
+    const sessionRes = await fetchWithTimeout(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ metadata: { source: 'chat_store' } }),
-    });
+    }, TIMEOUT_DEFAULT_MS);
     const session = await sessionRes.json();
 
-    await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions/${session.id}/messages`, {
+    await fetchWithTimeout(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions/${session.id}/messages`, {
       method: 'POST',
       headers,
       body: JSON.stringify([
         { peer_id: userId, content: userMessage },
         { peer_id: 'assistant', content: assistantMessage },
       ]),
-    });
+    }, TIMEOUT_DEFAULT_MS);
   } catch (err) {
     console.error('[CHAT] Honcho store error:', err);
   }
@@ -522,7 +522,7 @@ When the user's message includes sections labeled "CURRENT HTML:", "CURRENT CSS:
         try {
           const classificationPrompt = `Classify this website request into ONE category. Return ONLY the category name, nothing else.\nCategories: saas, agency, ecommerce, healthcare, restaurant, real-estate, legal, beauty-spa, fitness, education, coaching, fintech, portfolio, nonprofit, event, local-business, general\nRequest: "${latestUserMsg}"`;
 
-          const classRes = await fetch('https://api.anthropic.com/v1/messages', {
+          const classRes = await fetchWithTimeout(ANTHROPIC_API_URL, {
             method: 'POST',
             headers: {
               'x-api-key': anthropicApiKey,
@@ -530,11 +530,11 @@ When the user's message includes sections labeled "CURRENT HTML:", "CURRENT CSS:
               'content-type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'claude-haiku-4-5-20251001',
+              model: MODELS.CLASSIFIER,
               max_tokens: 20,
               messages: [{ role: 'user', content: classificationPrompt }],
             }),
-          });
+          }, TIMEOUT_AI_MS);
 
           if (classRes.ok) {
             const classData = await classRes.json();

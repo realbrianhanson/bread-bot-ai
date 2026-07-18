@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
+import { fetchWithTimeout, TIMEOUT_AI_MS, TIMEOUT_DEFAULT_MS } from "../_shared/config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -83,10 +84,21 @@ serve(async (req) => {
 
     // Try to reuse existing sandbox
     if (sandboxId) {
-      try {
-        const checkRes = await fetch(`${E2B_API}/sandboxes/${sandboxId}`, {
+      // Verify caller owns the sandbox they're trying to reuse.
+      const { data: ownership } = await supabase
+        .from('code_sandboxes')
+        .select('user_id')
+        .eq('sandbox_id', sandboxId)
+        .maybeSingle();
+      if (!ownership) {
+        // Unknown sandbox id — treat as expired and create a fresh one.
+        sandboxId = null;
+      } else if (ownership.user_id !== user.id) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: jsonHeaders });
+      } else try {
+        const checkRes = await fetchWithTimeout(`${E2B_API}/sandboxes/${sandboxId}`, {
           headers: { 'X-API-Key': e2bApiKey },
-        });
+        }, TIMEOUT_DEFAULT_MS);
         if (!checkRes.ok) {
           sandboxId = null; // sandbox expired/dead
           await checkRes.text(); // consume body
@@ -100,11 +112,11 @@ serve(async (req) => {
 
     // Create new sandbox if needed
     if (!sandboxId) {
-      const createRes = await fetch(`${E2B_API}/sandboxes`, {
+      const createRes = await fetchWithTimeout(`${E2B_API}/sandboxes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-API-Key': e2bApiKey },
         body: JSON.stringify({ templateID: 'code-interpreter-v1', timeout: SANDBOX_TIMEOUT_S }),
-      });
+      }, TIMEOUT_DEFAULT_MS);
 
       if (!createRes.ok) {
         const errText = await createRes.text();
@@ -114,6 +126,11 @@ serve(async (req) => {
       const sandboxData = await createRes.json();
       sandboxId = sandboxData.sandboxID ?? sandboxData.id;
       isNewSandbox = true;
+
+      // Record ownership so future reuse can be validated.
+      if (sandboxId) {
+        await supabase.from('code_sandboxes').insert({ sandbox_id: sandboxId, user_id: user.id });
+      }
     }
 
     const clientID = sandboxId; // for URL construction
@@ -122,11 +139,11 @@ serve(async (req) => {
 
     console.log(`[EXECUTE-CODE] Running ${language} on sandbox ${sandboxId} (new=${isNewSandbox})`);
 
-    const execRes = await fetch(`${sandboxHost}/code/execution`, {
+    const execRes = await fetchWithTimeout(`${sandboxHost}/code/execution`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-API-Key': e2bApiKey },
       body: JSON.stringify({ code, language }),
-    });
+    }, TIMEOUT_AI_MS);
 
     const execData = await execRes.json();
     const executionTime = Date.now() - startTime;
