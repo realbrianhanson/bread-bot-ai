@@ -1369,7 +1369,7 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
         refreshSubscription();
       }
     },
-    [user, projectId, canSendMessage, refreshSubscription, executeCode, sendInspirationMessage, activeCode]
+    [user, projectId, canSendMessage, refreshSubscription, executeCode, sendInspirationMessage, activeCode, pendingInspirationUrl, appendUserMessage]
   );
 
   const stopStreaming = useCallback(() => {
