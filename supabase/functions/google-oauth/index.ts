@@ -1,5 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
+import { encryptSecret, decryptSecret } from "../_shared/crypto.ts";
+
+async function encryptToken(t: string | null | undefined): Promise<string | null> {
+  if (!t) return null;
+  return await encryptSecret(t);
+}
+async function readToken(stored: string | null | undefined): Promise<string | null> {
+  if (!stored) return null;
+  try { return await decryptSecret(stored); }
+  catch { return stored; } // legacy plaintext row — treat as-is; caller will re-save encrypted
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -137,13 +148,15 @@ serve(async (req) => {
       const tokenExpiry = new Date(Date.now() + expiresIn * 1000).toISOString();
 
       // Upsert into user_integrations
+      const encAccess = await encryptToken(tokenData.access_token);
+      const encRefresh = await encryptToken(tokenData.refresh_token || null);
       const { error: dbError } = await supabaseAdmin
         .from('user_integrations')
         .upsert({
           user_id: userId,
           provider: 'google',
-          access_token: tokenData.access_token,
-          refresh_token: tokenData.refresh_token || null,
+          access_token: encAccess,
+          refresh_token: encRefresh,
           token_expiry: tokenExpiry,
           scopes: ['documents', 'spreadsheets', 'drive.file', 'userinfo.email'],
           provider_email: userInfo.email || null,
@@ -217,6 +230,12 @@ serve(async (req) => {
           status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
+      const refreshTokenPlain = await readToken(integration.refresh_token);
+      if (!refreshTokenPlain) {
+        return new Response(JSON.stringify({ error: 'No Google refresh token found' }), {
+          status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
 
       const refreshRes = await fetch(GOOGLE_TOKEN_URL, {
         method: 'POST',
@@ -224,7 +243,7 @@ serve(async (req) => {
         body: new URLSearchParams({
           client_id: clientId,
           client_secret: clientSecret,
-          refresh_token: integration.refresh_token,
+          refresh_token: refreshTokenPlain,
           grant_type: 'refresh_token',
         }),
       });
@@ -237,12 +256,15 @@ serve(async (req) => {
       const expiresIn = refreshData.expires_in || 3600;
       const tokenExpiry = new Date(Date.now() + expiresIn * 1000).toISOString();
 
+      const encAccess = await encryptToken(refreshData.access_token);
+      // Re-encrypt refresh_token if it was stored as legacy plaintext
+      const needsReEncrypt = !(integration.refresh_token as string).includes(':');
+      const refreshUpdate = needsReEncrypt
+        ? { access_token: encAccess, refresh_token: await encryptToken(refreshTokenPlain), token_expiry: tokenExpiry }
+        : { access_token: encAccess, token_expiry: tokenExpiry };
       await supabaseAdmin
         .from('user_integrations')
-        .update({
-          access_token: refreshData.access_token,
-          token_expiry: tokenExpiry,
-        })
+        .update(refreshUpdate)
         .eq('user_id', user.id)
         .eq('provider', 'google');
 
