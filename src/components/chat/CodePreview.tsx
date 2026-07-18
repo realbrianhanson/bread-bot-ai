@@ -712,7 +712,7 @@ ${previewScrollRecoveryScript}
               srcDoc={buildCombinedHTML()}
               className="block w-full h-full border-0"
               style={{ overflowY: 'auto', overflowX: 'auto' }}
-              sandbox="allow-scripts allow-same-origin"
+              sandbox="allow-scripts"
               scrolling="yes"
               title="Preview Fullscreen"
             />
