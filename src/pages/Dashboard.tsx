@@ -59,7 +59,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const legacyOnboardingKey = "garlicbread-onboarding-done";
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const { messages, isHistoryLoading, isLoading, isStreaming, isInspirationLoading, activeCode, codeVersion, codeHistoryIndex, canUndo, canRedo, undoCode, redoCode, sendMessage, sendInspirationMessage, stopStreaming, clearActiveCode } = useChat(activeConversationId || undefined);
+  const { messages, isHistoryLoading, isLoading, isStreaming, isInspirationLoading, activeCode, codeVersion, codeHistoryIndex, canUndo, canRedo, undoCode, redoCode, sendMessage, sendInspirationMessage, stopStreaming, clearActiveCode, appendUserMessage } = useChat(activeConversationId || undefined);
   const { publish, isPublishing, publishedSlug } = usePublish(activeCode, activeConversationId || undefined);
   const { conversations, createConversation, deleteConversation, renameConversation, autoTitleConversation } = useConversations();
   const { currentTask, isExecuting, executeTask, awaitTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask();
@@ -590,7 +590,7 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="flex-1 min-h-0 relative">
-                <CodePreview key={`${activeConversationId || 'mobile-preview'}-${mobilePreviewKey}`} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
+                <CodePreview key={`${activeConversationId || 'mobile-preview'}-${mobilePreviewKey}`} conversationId={activeConversationId} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
               </div>
             )}
           </>
@@ -714,7 +714,7 @@ const Dashboard = () => {
                   {/* Still show preview below if available */}
                   {hasPreviewContent && (
                     <div className="flex-1 min-h-0 border-t border-border/50">
-                      <CodePreview key={activeConversationId || 'desktop-preview-below'} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
+                      <CodePreview key={activeConversationId || 'desktop-preview-below'} conversationId={activeConversationId} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
                     </div>
                   )}
                 </div>
@@ -736,7 +736,7 @@ const Dashboard = () => {
                   codeVersion={codeVersion}
                 />
               ) : (
-                <CodePreview key={activeConversationId || 'desktop-preview'} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
+                <CodePreview key={activeConversationId || 'desktop-preview'} conversationId={activeConversationId} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
               )}
             </ResizablePanel>
           </ResizablePanelGroup>
