@@ -47,6 +47,7 @@ interface ChatContainerProps {
   canRedo?: boolean;
   onUndo?: () => void;
   onRedo?: () => void;
+  onAppendUserMessage?: (content: string) => Promise<void> | void;
 }
 
 const TASK_SOURCE_URL_REGEX = /https?:\/\/[^\s"'`<>]+/g;
