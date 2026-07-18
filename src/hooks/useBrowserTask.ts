@@ -206,6 +206,23 @@ export const useBrowserTask = () => {
   const { user } = useAuth();
   const { canRunBrowserTask, refreshSubscription } = useSubscription();
   const currentTaskIdRef = useRef<string | null>(null);
+  // Pending awaiters keyed by taskId — resolved/rejected when the task
+  // reaches a terminal state (completed | failed | stopped). Enables callers
+  // like the plan/workflow runner to run steps strictly sequentially.
+  const pendingAwaitersRef = useRef<
+    Map<string, { resolve: (taskId: string) => void; reject: (err: Error) => void }>
+  >(new Map());
+
+  const resolveAwaiter = useCallback(
+    (taskId: string, status: 'completed' | 'failed' | 'stopped', errorMessage?: string) => {
+      const awaiter = pendingAwaitersRef.current.get(taskId);
+      if (!awaiter) return;
+      pendingAwaitersRef.current.delete(taskId);
+      if (status === 'completed') awaiter.resolve(taskId);
+      else awaiter.reject(new Error(errorMessage || `Task ${status}`));
+    },
+    []
+  );
 
   // Determine intervention reason from task data
   const getInterventionReason = (outputData: any): { reason: InterventionReason; message: string } => {
@@ -603,14 +620,19 @@ export const useBrowserTask = () => {
         },
         (payload) => {
           const data = payload.new as any;
-          if (!currentTaskIdRef.current || data.id !== currentTaskIdRef.current) return;
+          const isCurrent = currentTaskIdRef.current === data.id;
+          const hasAwaiter = pendingAwaitersRef.current.has(data.id);
+          if (!isCurrent && !hasAwaiter) return;
 
-          const task = buildBrowserTaskFromRow(data);
-          setCurrentTask(task);
+          if (isCurrent) {
+            const task = buildBrowserTaskFromRow(data);
+            setCurrentTask(task);
+          }
 
           // Handle terminal states
           if (data.status === 'completed' || data.status === 'failed' || data.status === 'stopped') {
-            setIsExecuting(false);
+            if (isCurrent) setIsExecuting(false);
+            resolveAwaiter(data.id, data.status, data.error_message);
 
             if (data.status === 'completed') {
               toast({ title: 'Task Completed', description: 'Browser automation finished successfully' });
@@ -633,7 +655,7 @@ export const useBrowserTask = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, resolveAwaiter]);
 
   // Polling — checks Browser Use API for task status updates
   useEffect(() => {
@@ -672,6 +694,7 @@ export const useBrowserTask = () => {
           setIsExecuting(false);
           setActivePollingTaskId(null);
           clearInterval(pollInterval);
+          resolveAwaiter(freshRow.id, freshRow.status as any, freshRow.error_message || undefined);
         }
       } catch (err) {
         console.error('[POLL] Error polling task status:', err);
@@ -679,7 +702,7 @@ export const useBrowserTask = () => {
     }, 5000);
 
     return () => clearInterval(pollInterval);
-  }, [isExecuting, activePollingTaskId]);
+  }, [isExecuting, activePollingTaskId, resolveAwaiter]);
 
   const executeTask = useCallback(
     async (task: string, projectId?: string, profileId?: string) => {
@@ -736,9 +759,29 @@ export const useBrowserTask = () => {
         setCurrentTask(null);
         currentTaskIdRef.current = null;
         refreshSubscription();
+        throw error;
       }
     },
     [user, canRunBrowserTask, refreshSubscription]
+  );
+
+  // Promise variant: resolves only when the started task reaches a terminal
+  // state. Rejects if the task fails/stops or if launching failed.
+  const awaitTask = useCallback(
+    (task: string, projectId?: string, profileId?: string): Promise<string> => {
+      return new Promise<string>((resolve, reject) => {
+        executeTask(task, projectId, profileId)
+          .then((taskId) => {
+            if (!taskId) {
+              reject(new Error('Failed to start task'));
+              return;
+            }
+            pendingAwaitersRef.current.set(taskId, { resolve, reject });
+          })
+          .catch((err) => reject(err instanceof Error ? err : new Error(String(err))));
+      });
+    },
+    [executeTask]
   );
 
   const stopTask = useCallback(
@@ -880,6 +923,7 @@ export const useBrowserTask = () => {
     isPausing,
     isResuming,
     executeTask,
+    awaitTask,
     stopTask,
     pauseTask,
     resumeTask,
