@@ -483,12 +483,22 @@ export const useChat = (projectId?: string) => {
             // Direct generation: /inspire URL content
             await sendInspirationMessage(url, userContent, options?.ghlMode || false);
           } else {
-            // Just URL — user will be prompted via follow-up
+            // Just URL — remember it and prompt the user; the next user message
+            // will be consumed as the inspiration content.
+            setPendingInspirationUrl(url);
+            await appendUserMessage(content.trim());
             toast({ title: 'Inspiration Mode', description: `Got it! Now describe what your page should be about.` });
-            // Store URL for next message (we'll handle via prefill or similar)
           }
           return;
         }
+      }
+
+      // Consume a pending /inspire URL: treat this message as the description.
+      if (pendingInspirationUrl && !content.trim().startsWith('/')) {
+        const url = pendingInspirationUrl;
+        setPendingInspirationUrl(null);
+        await sendInspirationMessage(url, content.trim(), options?.ghlMode || false);
+        return;
       }
 
       // Handle /audit command
