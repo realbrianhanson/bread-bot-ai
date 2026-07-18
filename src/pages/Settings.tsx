@@ -12,6 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSubscription } from '@/hooks/useSubscription';
+import { openBillingPortal } from '@/lib/checkout';
 import { AnalyticsDashboard } from '@/components/settings/AnalyticsDashboard';
 import { SecurityScanner } from '@/components/settings/SecurityScanner';
 import { DocumentationSearch } from '@/components/settings/DocumentationSearch';
@@ -134,16 +135,16 @@ export default function Settings() {
 
   const handleManageSubscription = async () => {
     setManagingSubscription(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('customer-portal');
-      if (error) throw error;
-      if (data?.url) window.open(data.url, '_blank');
-    } catch { toast.error('Unable to open subscription portal'); }
-    finally { setManagingSubscription(false); }
+    const result = await openBillingPortal();
+    if (!result.success) toast.error('Unable to open subscription portal');
+    setManagingSubscription(false);
   };
 
+  // Treat legacy 'lifetime' rows as Business-equivalent.
+  const isBusinessTier = tier === 'enterprise' || tier === 'business' || tier === 'lifetime';
+  const tierLabel = isBusinessTier ? 'Business' : tier.charAt(0).toUpperCase() + tier.slice(1);
   const getTierBadgeVariant = () => {
-    if (tier === 'lifetime') return 'default' as const;
+    if (isBusinessTier) return 'default' as const;
     if (tier === 'pro') return 'secondary' as const;
     return 'outline' as const;
   };
@@ -225,7 +226,7 @@ export default function Settings() {
             <Card className="glass-strong border-white/20">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  {tier === 'lifetime' && <Crown className="h-5 w-5 text-yellow-500" />}
+                  {isBusinessTier && <Crown className="h-5 w-5 text-yellow-500" />}
                   Plan & Usage
                 </CardTitle>
                 <CardDescription>Current billing period usage and subscription management</CardDescription>
@@ -236,9 +237,9 @@ export default function Settings() {
                     <Label>Current Plan</Label>
                     <div className="flex items-center gap-2 mt-1">
                       <Badge variant={getTierBadgeVariant()}>
-                        {tier === 'lifetime' ? 'Lifetime' : tier.charAt(0).toUpperCase() + tier.slice(1)}
+                        {tierLabel}
                       </Badge>
-                      {subscribed && subscriptionEnd && tier !== 'lifetime' && (
+                      {subscribed && subscriptionEnd && (
                         <p className="text-xs text-muted-foreground">Renews {new Date(subscriptionEnd).toLocaleDateString()}</p>
                       )}
                     </div>
@@ -265,7 +266,7 @@ export default function Settings() {
                 </div>
 
                 <div className="flex gap-2">
-                  {subscribed && tier !== 'lifetime' && (
+                  {subscribed && (
                     <Button variant="outline" onClick={handleManageSubscription} disabled={managingSubscription} className="flex-1">
                       Manage Subscription
                     </Button>
@@ -289,14 +290,14 @@ export default function Settings() {
                 <CardDescription>
                   {canUseOwnKeys
                     ? 'Use your own API keys for unlimited usage. Keys are encrypted before storage.'
-                    : 'Upgrade to Lifetime tier to use your own API keys.'}
+                    : 'Upgrade to the Business plan to use your own API keys.'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
                 {!canUseOwnKeys ? (
                   <div className="text-center py-8 space-y-3">
                     <Key className="h-10 w-10 mx-auto text-muted-foreground/30" />
-                    <p className="text-sm text-muted-foreground">Custom API keys are available on the Lifetime plan.</p>
+                    <p className="text-sm text-muted-foreground">Custom API keys are available on the Business plan.</p>
                     <Button size="sm" variant="outline" onClick={() => navigate('/pricing')}>View Plans</Button>
                   </div>
                 ) : (

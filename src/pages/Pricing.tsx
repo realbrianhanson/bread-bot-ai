@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Check, X, ArrowLeft } from 'lucide-react';
+import { Check, X, ArrowLeft, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSubscription } from '@/hooks/useSubscription';
 import { toast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { useAuth } from '@/contexts/AuthContext';
+import { createCheckout, checkCheckoutSuccess, checkCheckoutCancelled, clearCheckoutParams } from '@/lib/checkout';
 
 type PlanId = 'free' | 'pro' | 'enterprise';
 
@@ -72,45 +74,64 @@ function isRealPriceId(id: string | null | undefined): id is string {
 
 export default function Pricing() {
   const navigate = useNavigate();
-  const { tier, subscribed } = useSubscription();
+  const { tier, refreshSubscription } = useSubscription();
+  const { user } = useAuth();
   const [loading, setLoading] = useState<string | null>(null);
   const [priceIds, setPriceIds] = useState<Record<string, string | null>>({});
   const [priceIdsAnnual, setPriceIdsAnnual] = useState<Record<string, string | null>>({});
   const [annual, setAnnual] = useState(false);
+  const [priceLoadError, setPriceLoadError] = useState(false);
+
+  const loadPrices = useCallback(async () => {
+    setPriceLoadError(false);
+    const { data, error } = await supabase
+      .from('tier_limits')
+      .select('tier, stripe_price_id, stripe_price_id_annual');
+    if (error || !data) {
+      setPriceLoadError(true);
+      toast({
+        title: 'Could not load pricing',
+        description: 'We hit a snag fetching plan details. Please retry.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const monthly: Record<string, string | null> = {};
+    const yearly: Record<string, string | null> = {};
+    for (const row of data as any[]) {
+      monthly[row.tier] = row.stripe_price_id;
+      yearly[row.tier] = row.stripe_price_id_annual ?? null;
+    }
+    setPriceIds(monthly);
+    setPriceIdsAnnual(yearly);
+  }, []);
 
   useEffect(() => {
-    supabase
-      .from('tier_limits')
-      .select('tier, stripe_price_id, stripe_price_id_annual')
-      .then(({ data }) => {
-        if (!data) return;
-        const monthly: Record<string, string | null> = {};
-        const yearly: Record<string, string | null> = {};
-        for (const row of data as any[]) {
-          monthly[row.tier] = row.stripe_price_id;
-          yearly[row.tier] = row.stripe_price_id_annual ?? null;
-        }
-        setPriceIds(monthly);
-        setPriceIdsAnnual(yearly);
-      });
-  }, []);
+    loadPrices();
+  }, [loadPrices]);
+
+  // Refresh subscription after returning from Stripe checkout
+  useEffect(() => {
+    if (checkCheckoutSuccess()) {
+      toast({ title: 'Checkout complete', description: 'Refreshing your plan…' });
+      refreshSubscription?.();
+      clearCheckoutParams();
+    } else if (checkCheckoutCancelled()) {
+      toast({ title: 'Checkout cancelled', description: 'No changes were made.' });
+      clearCheckoutParams();
+    }
+  }, [refreshSubscription]);
 
   const handleCheckout = async (priceId: string, planId: string) => {
     setLoading(planId);
-    try {
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId },
-      });
-      if (error) throw error;
-      if (data?.url) window.open(data.url, '_blank');
-    } catch {
+    const result = await createCheckout({ priceId });
+    if (!result.success) {
       toast({ title: 'Checkout Failed', description: 'Unable to start checkout. Please try again.', variant: 'destructive' });
-    } finally {
-      setLoading(null);
     }
+    setLoading(null);
   };
 
-  const isCurrentPlan = (planId: string) => tier.toLowerCase() === planId.toLowerCase();
+  const isCurrentPlan = (planId: string) => !!user && tier.toLowerCase() === planId.toLowerCase();
 
   const comparisonRows: Array<{ label: string; free: React.ReactNode; pro: React.ReactNode; business: React.ReactNode }> = [
     { label: 'Chat messages / month', free: '100', pro: '8,000', business: '25,000' },
@@ -170,10 +191,10 @@ export default function Pricing() {
               key={plan.id}
               className={`relative flex flex-col ${isCurrentPlan(plan.id) ? 'border-primary border-2' : ''} ${plan.popular ? 'shadow-lg shadow-primary/10' : ''}`}
             >
-              {isCurrentPlan(plan.id) && (
+              {user && isCurrentPlan(plan.id) && (
                 <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">Your Plan</Badge>
               )}
-              {plan.popular && !isCurrentPlan(plan.id) && (
+              {plan.popular && !(user && isCurrentPlan(plan.id)) && (
                 <Badge className="absolute -top-3 left-1/2 -translate-x-1/2" variant="secondary">Most Popular</Badge>
               )}
               <CardHeader>
@@ -205,18 +226,25 @@ export default function Pricing() {
                     variant="outline"
                     className="w-full"
                     onClick={() => navigate('/auth')}
-                    disabled={isCurrentPlan(plan.id)}
+                    disabled={!!user && isCurrentPlan(plan.id)}
                   >
-                    {isCurrentPlan(plan.id) ? 'Current Plan' : 'Get Started'}
+                    {user ? (isCurrentPlan(plan.id) ? 'Current Plan' : 'Get Started') : 'Get started free'}
                   </Button>
                 ) : hasRealPrice ? (
                   <Button
                     className="w-full"
                     variant={plan.popular ? 'default' : 'outline'}
-                    onClick={() => handleCheckout(priceId!, plan.id)}
-                    disabled={loading === plan.id || isCurrentPlan(plan.id)}
+                    onClick={() => (user ? handleCheckout(priceId!, plan.id) : navigate('/auth'))}
+                    disabled={loading === plan.id || (!!user && isCurrentPlan(plan.id))}
                   >
-                    {isCurrentPlan(plan.id) ? 'Current Plan' : loading === plan.id ? 'Loading...' : `Upgrade to ${plan.name}`}
+                    {user
+                      ? (isCurrentPlan(plan.id) ? 'Current Plan' : loading === plan.id ? 'Loading...' : `Upgrade to ${plan.name}`)
+                      : `Get ${plan.name}`}
+                  </Button>
+                ) : priceLoadError ? (
+                  <Button variant="outline" className="w-full" onClick={loadPrices}>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Retry loading price
                   </Button>
                 ) : (
                   <Button variant="outline" className="w-full" disabled>
