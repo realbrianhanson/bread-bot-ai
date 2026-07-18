@@ -77,6 +77,24 @@ export type Database = {
         }
         Relationships: []
       }
+      code_sandboxes: {
+        Row: {
+          created_at: string
+          sandbox_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          sandbox_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          sandbox_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       custom_domains: {
         Row: {
           created_at: string
@@ -358,6 +376,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      oauth_states: {
+        Row: {
+          created_at: string
+          expires_at: string
+          nonce: string
+          provider: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          nonce: string
+          provider: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          nonce?: string
+          provider?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -755,6 +797,30 @@ export type Database = {
           stripe_price_id?: string | null
           stripe_price_id_annual?: string | null
           tier?: Database["public"]["Enums"]["subscription_tier"]
+        }
+        Relationships: []
+      }
+      usage_counters: {
+        Row: {
+          count: number
+          period_start: string
+          updated_at: string
+          usage_type: string
+          user_id: string
+        }
+        Insert: {
+          count?: number
+          period_start: string
+          updated_at?: string
+          usage_type: string
+          user_id: string
+        }
+        Update: {
+          count?: number
+          period_start?: string
+          updated_at?: string
+          usage_type?: string
+          user_id?: string
         }
         Relationships: []
       }

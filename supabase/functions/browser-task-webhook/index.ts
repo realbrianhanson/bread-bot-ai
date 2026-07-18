@@ -227,6 +227,7 @@ serve(async (req) => {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+            'x-webhook-secret': Deno.env.get('WEBHOOK_SECRET') ?? '',
           },
           body: JSON.stringify({
             userId: task.user_id,

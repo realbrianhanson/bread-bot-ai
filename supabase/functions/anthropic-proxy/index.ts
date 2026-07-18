@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
+import { ANTHROPIC_API_URL, ANTHROPIC_ALLOWED_MODELS, MODELS, fetchWithTimeout, TIMEOUT_AI_MS } from "../_shared/config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,7 +9,6 @@ const corsHeaders = {
 };
 const jsonHeaders = { ...corsHeaders, 'Content-Type': 'application/json' };
 
-const ALLOWED_MODELS = ['claude-sonnet-4-6', 'claude-fable-5', 'claude-opus-4-8', 'claude-haiku-4-5-20251001'];
 const MAX_TOKENS_CAP = 16384;
 const RATE_LIMIT_PER_MIN = 120;
 
@@ -74,8 +74,8 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    if (!ALLOWED_MODELS.includes(body.model)) {
-      body.model = 'claude-sonnet-4-6';
+    if (!ANTHROPIC_ALLOWED_MODELS.includes(body.model)) {
+      body.model = MODELS.BUILDER_FAST;
     }
     if (typeof body.max_tokens !== 'number' || body.max_tokens > MAX_TOKENS_CAP) {
       body.max_tokens = MAX_TOKENS_CAP;
@@ -86,7 +86,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }), { status: 500, headers: jsonHeaders });
     }
 
-    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+    const upstream = await fetchWithTimeout(ANTHROPIC_API_URL, {
       method: 'POST',
       headers: {
         'x-api-key': anthropicKey,
@@ -94,7 +94,7 @@ serve(async (req) => {
         'content-type': 'application/json',
       },
       body: JSON.stringify(body),
-    });
+    }, TIMEOUT_AI_MS);
 
     return new Response(upstream.body, {
       status: upstream.status,

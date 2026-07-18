@@ -7,13 +7,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-import { ANTHROPIC_API_URL, MODELS } from '../_shared/config.ts';
+import { ANTHROPIC_API_URL, HONCHO_API_URL, MODELS, fetchWithTimeout, TIMEOUT_AI_MS, TIMEOUT_DEFAULT_MS } from '../_shared/config.ts';
 import { assertSafeUrl } from '../_shared/ssrf.ts';
 const ORCHESTRATOR_MODEL = MODELS.ORCHESTRATOR;
 const ORCHESTRATOR_FALLBACK_MODEL = MODELS.ORCHESTRATOR_FALLBACK;
 
 // --- Honcho helpers ---
-const HONCHO_API_BASE = 'https://api.honcho.dev/v1';
+const HONCHO_API_BASE = HONCHO_API_URL;
 
 async function getHonchoContext(userId: string): Promise<string> {
   const apiKey = Deno.env.get('HONCHO_API_KEY');
@@ -24,31 +24,31 @@ async function getHonchoContext(userId: string): Promise<string> {
 
   try {
     // Get or create user peer
-    await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}`, {
+    await fetchWithTimeout(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}`, {
       method: 'PUT',
       headers,
       body: JSON.stringify({ configuration: { observe_me: true } }),
-    });
+    }, TIMEOUT_DEFAULT_MS);
 
     // Ensure assistant peer exists
-    await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/assistant`, {
+    await fetchWithTimeout(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/assistant`, {
       method: 'PUT',
       headers,
       body: JSON.stringify({ configuration: { observe_me: false } }),
-    });
+    }, TIMEOUT_DEFAULT_MS);
 
     // Create a session for this orchestration
-    const sessionRes = await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions`, {
+    const sessionRes = await fetchWithTimeout(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ metadata: { source: 'orchestrator' } }),
-    });
+    }, TIMEOUT_DEFAULT_MS);
     const sessionData = await sessionRes.json();
 
     // Get context
-    const contextRes = await fetch(
+    const contextRes = await fetchWithTimeout(
       `${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions/${sessionData.id}/context`,
-      { method: 'POST', headers, body: JSON.stringify({ max_tokens: 2000 }) },
+      { method: 'POST', headers, body: JSON.stringify({ max_tokens: 2000 }) }, TIMEOUT_DEFAULT_MS,
     );
     const contextData = await contextRes.json();
     return contextData?.context || contextData?.content || '';
@@ -66,21 +66,21 @@ async function storeHonchoMessages(userId: string, userMessage: string, assistan
   const headers = { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
 
   try {
-    const sessionRes = await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions`, {
+    const sessionRes = await fetchWithTimeout(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ metadata: { source: 'orchestrator_store' } }),
-    });
+    }, TIMEOUT_DEFAULT_MS);
     const session = await sessionRes.json();
 
-    await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions/${session.id}/messages`, {
+    await fetchWithTimeout(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/sessions/${session.id}/messages`, {
       method: 'POST',
       headers,
       body: JSON.stringify([
         { peer_id: userId, content: userMessage },
         { peer_id: 'assistant', content: assistantMessage },
       ]),
-    });
+    }, TIMEOUT_DEFAULT_MS);
   } catch (err) {
     console.error('[ORCHESTRATE] Honcho store failed:', err);
   }
@@ -92,11 +92,11 @@ async function queryHonchoMemory(userId: string, query: string): Promise<string>
   if (!apiKey || !workspaceId) return 'Memory system unavailable.';
 
   try {
-    const res = await fetch(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/chat`, {
+    const res = await fetchWithTimeout(`${HONCHO_API_BASE}/workspaces/${workspaceId}/peers/${userId}/chat`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ query }),
-    });
+    }, TIMEOUT_DEFAULT_MS);
     const data = await res.json();
     return data?.response || data?.content || 'No information found about this topic.';
   } catch (err) {
@@ -430,11 +430,11 @@ async function executeTool(
   try {
     switch (toolName) {
       case 'search_web': {
-        const res = await fetch(`${supabaseUrl}/functions/v1/firecrawl-search`, {
+        const res = await fetchWithTimeout(`${supabaseUrl}/functions/v1/firecrawl-search`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
           body: JSON.stringify({ query: toolInput.query, options: { limit: toolInput.limit || 5 } }),
-        });
+        }, TIMEOUT_DEFAULT_MS);
         const data = await res.json();
         if (!data.success && data.error) return `Error: ${data.error}`;
         const results = data.data || [];
@@ -445,11 +445,11 @@ async function executeTool(
       }
 
       case 'scrape_url': {
-        const res = await fetch(`${supabaseUrl}/functions/v1/firecrawl-scrape`, {
+        const res = await fetchWithTimeout(`${supabaseUrl}/functions/v1/firecrawl-scrape`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
           body: JSON.stringify({ url: toolInput.url, options: { formats: toolInput.formats || ['markdown'] } }),
-        });
+        }, TIMEOUT_DEFAULT_MS);
         const data = await res.json();
         if (!data.success && data.error) return `Error: ${data.error}`;
         const markdown = data.data?.markdown || data.markdown || '';
@@ -457,14 +457,14 @@ async function executeTool(
       }
 
       case 'crawl_site': {
-        const res = await fetch(`${supabaseUrl}/functions/v1/firecrawl-crawl`, {
+        const res = await fetchWithTimeout(`${supabaseUrl}/functions/v1/firecrawl-crawl`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
           body: JSON.stringify({
             url: toolInput.url,
             options: { limit: toolInput.limit || 20, maxDepth: toolInput.maxDepth || 3 },
           }),
-        });
+        }, TIMEOUT_DEFAULT_MS);
         const data = await res.json();
         if (!data.success && data.error) return `Error: ${data.error}`;
         return JSON.stringify(data).slice(0, 15000);
@@ -472,11 +472,11 @@ async function executeTool(
 
       case 'browse_web': {
         // Start the browser task
-        const startRes = await fetch(`${supabaseUrl}/functions/v1/browser-task`, {
+        const startRes = await fetchWithTimeout(`${supabaseUrl}/functions/v1/browser-task`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
           body: JSON.stringify({ task: toolInput.task }),
-        });
+        }, TIMEOUT_DEFAULT_MS);
         const startData = await startRes.json();
         if (startData.error) return `Error: ${startData.error}`;
         const taskId = startData.taskId;
@@ -491,11 +491,11 @@ async function executeTool(
           await new Promise(resolve => setTimeout(resolve, 5000));
           pollCount++;
           try {
-            const pollRes = await fetch(`${supabaseUrl}/functions/v1/poll-browser-task`, {
+            const pollRes = await fetchWithTimeout(`${supabaseUrl}/functions/v1/poll-browser-task`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
               body: JSON.stringify({ taskId }),
-            });
+            }, TIMEOUT_DEFAULT_MS);
             const pollData = await pollRes.json();
             const task = pollData?.task;
             if (!task) continue;
@@ -529,7 +529,7 @@ async function executeTool(
       }
 
       case 'synthesize': {
-        const synthResponse = await fetch(ANTHROPIC_API_URL, {
+        const synthResponse = await fetchWithTimeout(ANTHROPIC_API_URL, {
           method: 'POST',
           headers: {
             'x-api-key': anthropicApiKey,
@@ -544,7 +544,7 @@ async function executeTool(
               content: `${toolInput.instruction}\n\nHere is the data to work with:\n\n${toolInput.data}`,
             }],
           }),
-        });
+        }, TIMEOUT_AI_MS);
         if (!synthResponse.ok) {
           const errText = await synthResponse.text();
           return `Synthesis error: ${errText}`;
@@ -554,7 +554,7 @@ async function executeTool(
       }
 
       case 'generate_file': {
-        const res = await fetch(`${supabaseUrl}/functions/v1/generate-file`, {
+        const res = await fetchWithTimeout(`${supabaseUrl}/functions/v1/generate-file`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
           body: JSON.stringify({
@@ -563,14 +563,14 @@ async function executeTool(
             title: toolInput.filename,
             filename: toolInput.filename.replace(/\.[^.]+$/, '') || toolInput.filename,
           }),
-        });
+        }, TIMEOUT_DEFAULT_MS);
         const data = await res.json();
         if (data.error) return `Error: ${data.error}`;
         return JSON.stringify({ success: true, fileUrl: data.fileUrl, filename: data.filename, size: data.size });
       }
 
       case 'execute_code': {
-        const res = await fetch(`${supabaseUrl}/functions/v1/code-sandbox`, {
+        const res = await fetchWithTimeout(`${supabaseUrl}/functions/v1/code-sandbox`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
           body: JSON.stringify({
@@ -579,7 +579,7 @@ async function executeTool(
             files: toolInput.files || [],
             timeout: 45000,
           }),
-        });
+        }, TIMEOUT_AI_MS);
         const data = await res.json();
         if (!data.success) return `Execution error: ${data.error || data.output?.stderr || 'Unknown'}`;
         const out = data.output;
@@ -595,7 +595,7 @@ async function executeTool(
       }
 
       case 'generate_slides': {
-        const res = await fetch(`${supabaseUrl}/functions/v1/generate-slides`, {
+        const res = await fetchWithTimeout(`${supabaseUrl}/functions/v1/generate-slides`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
           body: JSON.stringify({
@@ -603,7 +603,7 @@ async function executeTool(
             content: toolInput.content,
             numSlides: toolInput.numSlides || 10,
           }),
-        });
+        }, TIMEOUT_DEFAULT_MS);
         const data = await res.json();
         if (data.error) return `Error generating slides: ${data.error}`;
         let result = `Presentation generated successfully!\n`;
@@ -613,14 +613,14 @@ async function executeTool(
       }
 
       case 'create_google_doc': {
-        const res = await fetch(`${supabaseUrl}/functions/v1/create-google-doc`, {
+        const res = await fetchWithTimeout(`${supabaseUrl}/functions/v1/create-google-doc`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
           body: JSON.stringify({
             title: toolInput.title,
             content: toolInput.content,
           }),
-        });
+        }, TIMEOUT_DEFAULT_MS);
         const data = await res.json();
         if (data.error) return `Error creating Google Doc: ${data.error}`;
         return `Google Doc created successfully!\nTitle: ${data.title}\nURL: ${data.url}\nDocument ID: ${data.documentId}`;
@@ -631,7 +631,7 @@ async function executeTool(
       }
 
       case 'create_google_sheet': {
-        const res = await fetch(`${supabaseUrl}/functions/v1/create-google-sheet`, {
+        const res = await fetchWithTimeout(`${supabaseUrl}/functions/v1/create-google-sheet`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
           body: JSON.stringify({
@@ -639,14 +639,14 @@ async function executeTool(
             headers: toolInput.headers,
             rows: toolInput.rows,
           }),
-        });
+        }, TIMEOUT_DEFAULT_MS);
         const data = await res.json();
         if (data.error) return `Error creating Google Sheet: ${data.error}`;
         return `Google Sheet created successfully!\nTitle: ${data.title}\nURL: ${data.url}\nRows: ${data.rowCount}`;
       }
 
       case 'send_email': {
-        const res = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+        const res = await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-email`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
           body: JSON.stringify({
@@ -654,7 +654,7 @@ async function executeTool(
             subject: toolInput.subject,
             html: toolInput.html,
           }),
-        });
+        }, TIMEOUT_DEFAULT_MS);
         const data = await res.json();
         if (data.error) return `Error sending email: ${data.error}`;
         return `Email sent successfully to ${toolInput.to}! Message ID: ${data.messageId}`;
@@ -665,10 +665,7 @@ async function executeTool(
           const rawUrl = String(toolInput.url ?? '');
           const unsafe = await assertSafeUrl(rawUrl);
           if (unsafe) return `Error downloading file: ${unsafe}`;
-          const ctrl = new AbortController();
-          const t = setTimeout(() => ctrl.abort(), 30_000);
-          const fileRes = await fetch(rawUrl, { redirect: 'error', signal: ctrl.signal });
-          clearTimeout(t);
+          const fileRes = await fetchWithTimeout(rawUrl, { redirect: 'error' }, TIMEOUT_DEFAULT_MS);
           if (!fileRes.ok) return `Error downloading file: HTTP ${fileRes.status}`;
           const blob = await fileRes.blob();
           const arrayBuffer = await blob.arrayBuffer();
@@ -707,11 +704,11 @@ async function executeTool(
       }
 
       case 'knowledge_search': {
-        const res = await fetch(`${supabaseUrl}/functions/v1/knowledge-base`, {
+        const res = await fetchWithTimeout(`${supabaseUrl}/functions/v1/knowledge-base`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
           body: JSON.stringify({ action: 'search', userId, query: toolInput.query }),
-        });
+        }, TIMEOUT_DEFAULT_MS);
         const data = await res.json();
         if (data.error) return `Knowledge search error: ${data.error}`;
         const entries = data.entries || [];
@@ -720,7 +717,7 @@ async function executeTool(
       }
 
       case 'knowledge_store': {
-        const res = await fetch(`${supabaseUrl}/functions/v1/knowledge-base`, {
+        const res = await fetchWithTimeout(`${supabaseUrl}/functions/v1/knowledge-base`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
           body: JSON.stringify({
@@ -731,18 +728,18 @@ async function executeTool(
             content: toolInput.content,
             tags: toolInput.tags || [],
           }),
-        });
+        }, TIMEOUT_DEFAULT_MS);
         const data = await res.json();
         if (data.error) return `Knowledge store error: ${data.error}`;
         return `Successfully saved "${toolInput.title}" to the knowledge base under topic "${toolInput.topic}".`;
       }
 
       case 'build_app': {
-        const res = await fetch(`${supabaseUrl}/functions/v1/sandbox-manager`, {
+        const res = await fetchWithTimeout(`${supabaseUrl}/functions/v1/sandbox-manager`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
           body: JSON.stringify({ action: 'create', prompt: toolInput.prompt, model: toolInput.model || MODELS.BUILDER_FAST }),
-        });
+        }, TIMEOUT_DEFAULT_MS);
         const data = await res.json();
         if (data.error) return `Build error: ${data.message || data.error}`;
         return `App build started (task id: ${data.taskId}). It is now building in a live sandbox and will take a few minutes. The user can watch it build in real time on the App Builder page at /builder. Do not wait for it in this run — let the user know it is underway and that the preview will appear there.`;
@@ -810,7 +807,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         error: `Monthly limit of ${usage.chat_messages_limit} messages reached. Please upgrade.`,
         limit_exceeded: true,
-      }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // --- API key ---
@@ -888,7 +885,7 @@ serve(async (req) => {
     for (let i = 0; i < MAX_ITERATIONS; i++) {
       console.log(`[ORCHESTRATE] Iteration ${i + 1}`);
 
-      const anthropicResponse = await fetch(ANTHROPIC_API_URL, {
+      const anthropicResponse = await fetchWithTimeout(ANTHROPIC_API_URL, {
         method: 'POST',
         headers: {
           'x-api-key': anthropicApiKey,
@@ -902,7 +899,7 @@ serve(async (req) => {
           tools: toolDefinitions,
           messages,
         }),
-      });
+      }, TIMEOUT_AI_MS);
 
       if (!anthropicResponse.ok) {
         const errText = await anthropicResponse.text();
@@ -926,7 +923,7 @@ serve(async (req) => {
       // Retry the identical request once on Opus 4.8.
       if (result.stop_reason === 'refusal') {
         console.log('[ORCHESTRATE] Fable 5 refusal — retrying with Opus 4.8 fallback');
-        const fallbackResponse = await fetch(ANTHROPIC_API_URL, {
+        const fallbackResponse = await fetchWithTimeout(ANTHROPIC_API_URL, {
           method: 'POST',
           headers: {
             'x-api-key': anthropicApiKey,
@@ -940,7 +937,7 @@ serve(async (req) => {
             tools: toolDefinitions,
             messages,
           }),
-        });
+        }, TIMEOUT_AI_MS);
         if (fallbackResponse.ok) {
           result = await fallbackResponse.json();
         }

@@ -2,6 +2,7 @@ import { decryptSecret } from "../_shared/crypto.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
+import { fetchWithTimeout, TIMEOUT_AI_MS, TIMEOUT_DEFAULT_MS } from "../_shared/config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -101,11 +102,11 @@ serve(async (req) => {
     try {
       // ── 1. Create sandbox ──────────────────────────────
       console.log('[CODE-SANDBOX] Creating sandbox for user', user.id);
-      const createRes = await fetch(`${E2B_API}/sandboxes`, {
+      const createRes = await fetchWithTimeout(`${E2B_API}/sandboxes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-API-Key': E2B_API_KEY },
         body: JSON.stringify({ templateID: 'code-interpreter-v1', timeout: Math.ceil(effectiveTimeout / 1000) }),
-      });
+      }, TIMEOUT_DEFAULT_MS);
 
       if (!createRes.ok) {
         const errText = await createRes.text();
@@ -123,21 +124,21 @@ serve(async (req) => {
       if (files && Array.isArray(files)) {
         for (const f of files) {
           console.log('[CODE-SANDBOX] Writing file:', f.name);
-          await fetch(`${sandboxHost}/files`, {
+          await fetchWithTimeout(`${sandboxHost}/files`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-API-Key': E2B_API_KEY },
             body: JSON.stringify({ path: `/home/user/${f.name}`, content: f.content }),
-          });
+          }, TIMEOUT_DEFAULT_MS);
         }
       }
 
       // ── 3. Execute code ────────────────────────────────
       console.log('[CODE-SANDBOX] Executing', language, 'code');
-      const execRes = await fetch(`${sandboxHost}/code/execution`, {
+      const execRes = await fetchWithTimeout(`${sandboxHost}/code/execution`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-API-Key': E2B_API_KEY },
         body: JSON.stringify({ code, language }),
-      });
+      }, TIMEOUT_AI_MS);
 
       const execData = await execRes.json();
       const executionTime = Date.now() - startTime;
@@ -219,10 +220,10 @@ serve(async (req) => {
       if (sandboxId) {
         console.log('[CODE-SANDBOX] Killing sandbox', sandboxId);
         try {
-          await fetch(`${E2B_API}/sandboxes/${sandboxId}`, {
+          await fetchWithTimeout(`${E2B_API}/sandboxes/${sandboxId}`, {
             method: 'DELETE',
             headers: { 'X-API-Key': E2B_API_KEY },
-          });
+          }, TIMEOUT_DEFAULT_MS);
         } catch (killErr) {
           console.error('[CODE-SANDBOX] Failed to kill sandbox:', killErr);
         }

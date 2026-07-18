@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
 import { encryptSecret, decryptSecret } from "../_shared/crypto.ts";
+import { fetchWithTimeout, TIMEOUT_DEFAULT_MS } from "../_shared/config.ts";
 
 async function encryptToken(t: string | null | undefined): Promise<string | null> {
   if (!t) return null;
@@ -43,16 +44,17 @@ serve(async (req) => {
     auth: { persistSession: false },
   });
 
-  // GET /google-oauth/authorize — start OAuth flow
-  if (req.method === 'GET' && (pathname.endsWith('/authorize') || pathname.endsWith('/authorize/'))) {
-    // Validate user identity via token query param (since this is a redirect flow)
-    const userToken = url.searchParams.get('token');
-    if (!userToken) {
+  // POST /google-oauth/authorize — start OAuth flow.
+  // Accepts the user's JWT via the Authorization header so it never appears in
+  // the URL / logs / referrers. Returns a Google auth URL the client can open.
+  if (req.method === 'POST' && (pathname.endsWith('/authorize') || pathname.endsWith('/authorize/'))) {
+    const authHeader = req.headers.get('Authorization') || '';
+    if (!authHeader.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Authentication token required' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
+    const userToken = authHeader.replace('Bearer ', '');
     const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.getUser(userToken);
     if (authError || !authUser) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -62,10 +64,17 @@ serve(async (req) => {
 
     const userId = authUser.id;
 
-    // Generate CSRF nonce for state parameter
+    // Persist a single-use CSRF nonce; the callback must present the same value.
     const nonce = crypto.randomUUID();
-    const statePayload = JSON.stringify({ userId, nonce });
-    const stateEncoded = btoa(statePayload);
+    const { error: nonceErr } = await supabaseAdmin
+      .from('oauth_states')
+      .insert({ nonce, user_id: userId, provider: 'google' });
+    if (nonceErr) {
+      console.error('[GOOGLE-OAUTH] Failed to persist state nonce:', nonceErr);
+      return new Response(JSON.stringify({ error: 'Failed to start OAuth flow' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const redirectUri = `${supabaseUrl}/functions/v1/google-oauth/callback`;
     const scopes = [
@@ -75,6 +84,7 @@ serve(async (req) => {
       'https://www.googleapis.com/auth/userinfo.email',
     ].join(' ');
 
+    // state carries only the nonce — the user id is looked up server-side.
     const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     authUrl.searchParams.set('client_id', clientId);
     authUrl.searchParams.set('redirect_uri', redirectUri);
@@ -82,15 +92,17 @@ serve(async (req) => {
     authUrl.searchParams.set('scope', scopes);
     authUrl.searchParams.set('access_type', 'offline');
     authUrl.searchParams.set('prompt', 'consent');
-    authUrl.searchParams.set('state', stateEncoded);
+    authUrl.searchParams.set('state', nonce);
 
-    return Response.redirect(authUrl.toString(), 302);
+    return new Response(JSON.stringify({ authUrl: authUrl.toString() }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
   // GET /google-oauth/callback — handle OAuth callback
   if (req.method === 'GET' && (pathname.endsWith('/callback') || pathname.endsWith('/callback/'))) {
     const code = url.searchParams.get('code');
-    const state = url.searchParams.get('state'); // user_id
+    const state = url.searchParams.get('state'); // CSRF nonce
     const error = url.searchParams.get('error');
 
     if (error) {
@@ -105,22 +117,33 @@ serve(async (req) => {
       });
     }
 
-    // Parse state to extract userId
-    let userId: string;
-    try {
-      const statePayload = JSON.parse(atob(state));
-      userId = statePayload.userId;
-      if (!userId) throw new Error('Missing userId in state');
-    } catch {
-      return new Response(`<html><body><h2>Invalid state parameter</h2><script>window.close();</script></body></html>`, {
+    // Validate the CSRF nonce and derive the user id from the persisted row
+    // (single-use: we delete the row on successful lookup).
+    const { data: stateRow, error: stateLookupErr } = await supabaseAdmin
+      .from('oauth_states')
+      .select('user_id, expires_at')
+      .eq('nonce', state)
+      .eq('provider', 'google')
+      .maybeSingle();
+    if (stateLookupErr || !stateRow) {
+      return new Response(`<html><body><h2>Invalid or expired state</h2><script>window.close();</script></body></html>`, {
         headers: { 'Content-Type': 'text/html' },
       });
     }
+    if (new Date(stateRow.expires_at).getTime() < Date.now()) {
+      await supabaseAdmin.from('oauth_states').delete().eq('nonce', state);
+      return new Response(`<html><body><h2>State expired — please try again</h2><script>window.close();</script></body></html>`, {
+        headers: { 'Content-Type': 'text/html' },
+      });
+    }
+    const userId = stateRow.user_id;
+    // Consume the nonce so it can't be replayed.
+    await supabaseAdmin.from('oauth_states').delete().eq('nonce', state);
     try {
       const redirectUri = `${supabaseUrl}/functions/v1/google-oauth/callback`;
 
       // Exchange code for tokens
-      const tokenRes = await fetch(GOOGLE_TOKEN_URL, {
+      const tokenRes = await fetchWithTimeout(GOOGLE_TOKEN_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -130,7 +153,7 @@ serve(async (req) => {
           redirect_uri: redirectUri,
           grant_type: 'authorization_code',
         }),
-      });
+      }, TIMEOUT_DEFAULT_MS);
 
       const tokenData = await tokenRes.json();
       if (tokenData.error) {
@@ -138,9 +161,9 @@ serve(async (req) => {
       }
 
       // Get user email
-      const userInfoRes = await fetch(GOOGLE_USERINFO_URL, {
+      const userInfoRes = await fetchWithTimeout(GOOGLE_USERINFO_URL, {
         headers: { Authorization: `Bearer ${tokenData.access_token}` },
-      });
+      }, TIMEOUT_DEFAULT_MS);
       const userInfo = await userInfoRes.json();
 
       // Calculate token expiry
@@ -237,7 +260,7 @@ serve(async (req) => {
         });
       }
 
-      const refreshRes = await fetch(GOOGLE_TOKEN_URL, {
+      const refreshRes = await fetchWithTimeout(GOOGLE_TOKEN_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -246,7 +269,7 @@ serve(async (req) => {
           refresh_token: refreshTokenPlain,
           grant_type: 'refresh_token',
         }),
-      });
+      }, TIMEOUT_DEFAULT_MS);
 
       const refreshData = await refreshRes.json();
       if (refreshData.error) {

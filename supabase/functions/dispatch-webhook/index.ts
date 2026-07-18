@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
+import { fetchWithTimeout, TIMEOUT_DEFAULT_MS, safeStringEqual } from "../_shared/config.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,18 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // Internal-only endpoint: must be invoked server-to-server with our shared secret.
+    // Without this check, anyone with the gateway anon key could forge task events
+    // for another user and cause their Discord / webhook secret to sign malicious payloads.
+    const provided = req.headers.get("x-webhook-secret") || "";
+    const expected = Deno.env.get("WEBHOOK_SECRET") || "";
+    if (!expected || !safeStringEqual(provided, expected)) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { userId, event, taskData } = await req.json();
 
     if (!userId || !event) {
@@ -103,11 +116,11 @@ serve(async (req) => {
             })
           : JSON.stringify(payload);
 
-        const response = await fetch(webhook.url, {
+        const response = await fetchWithTimeout(webhook.url, {
           method: "POST",
           headers,
           body,
-        });
+        }, TIMEOUT_DEFAULT_MS);
 
         if (response.ok) {
           dispatched++;

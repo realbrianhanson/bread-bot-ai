@@ -36,6 +36,19 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Atomic quota check — Firecrawl calls burn billable credits.
+    // Tracked under 'chat_message' to match orchestrate-task's scraping bucket.
+    const { data: quota } = await supabase.rpc('check_and_increment_usage', {
+      p_user_id: user.id, p_usage_type: 'chat_message',
+    });
+    if (quota && !quota.allowed) {
+      return new Response(JSON.stringify({
+        success: false, error: 'quota_exceeded',
+        message: `You have used all ${quota.limit} requests for this billing period. Please upgrade your plan.`,
+        usage: { used: quota.used, limit: quota.limit },
+      }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     const { url, options } = await req.json();
 
     if (!url) {

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
+import { LOVABLE_AI_GATEWAY_URL, MODELS, fetchWithTimeout, TIMEOUT_AI_MS } from "../_shared/config.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -63,14 +64,14 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetchWithTimeout(`${LOVABLE_AI_GATEWAY_URL}/chat/completions`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: MODELS.PLANNER,
         messages: [
           {
             role: "system",
@@ -124,7 +125,7 @@ Return your plan using the suggest_steps tool.`,
         ],
         tool_choice: { type: "function", function: { name: "suggest_steps" } },
       }),
-    });
+    }, TIMEOUT_AI_MS);
 
     if (!aiResponse.ok) {
       if (aiResponse.status === 429) {

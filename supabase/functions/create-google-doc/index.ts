@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.84.0";
 import { encryptSecret, decryptSecret } from "../_shared/crypto.ts";
+import { fetchWithTimeout, TIMEOUT_DEFAULT_MS } from "../_shared/config.ts";
 
 async function readToken(stored: string | null | undefined): Promise<string | null> {
   if (!stored) return null;
@@ -44,7 +45,7 @@ async function getValidAccessToken(supabaseAdmin: any, userId: string): Promise<
   const clientId = Deno.env.get('GOOGLE_CLIENT_ID') ?? '';
   const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET') ?? '';
 
-  const refreshRes = await fetch(GOOGLE_TOKEN_URL, {
+  const refreshRes = await fetchWithTimeout(GOOGLE_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -53,7 +54,7 @@ async function getValidAccessToken(supabaseAdmin: any, userId: string): Promise<
       refresh_token: refreshTokenPlain,
       grant_type: 'refresh_token',
     }),
-  });
+  }, TIMEOUT_DEFAULT_MS);
 
   const refreshData = await refreshRes.json();
   if (refreshData.error) {
@@ -199,14 +200,14 @@ serve(async (req) => {
     const accessToken = await getValidAccessToken(supabaseAdmin, user.id);
 
     // Step 1: Create the document
-    const createRes = await fetch(GOOGLE_DOCS_API, {
+    const createRes = await fetchWithTimeout(GOOGLE_DOCS_API, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ title }),
-    });
+    }, TIMEOUT_DEFAULT_MS);
 
     if (!createRes.ok) {
       const errText = await createRes.text();
@@ -222,14 +223,14 @@ serve(async (req) => {
     const requests = markdownToGoogleDocsRequests(content);
 
     if (requests.length > 0) {
-      const updateRes = await fetch(`${GOOGLE_DOCS_API}/${documentId}:batchUpdate`, {
+      const updateRes = await fetchWithTimeout(`${GOOGLE_DOCS_API}/${documentId}:batchUpdate`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ requests }),
-      });
+      }, TIMEOUT_DEFAULT_MS);
 
       if (!updateRes.ok) {
         const errText = await updateRes.text();
@@ -241,10 +242,10 @@ serve(async (req) => {
     // Step 3: Move to folder if specified
     if (folderId) {
       try {
-        await fetch(`https://www.googleapis.com/drive/v3/files/${documentId}?addParents=${folderId}`, {
+        await fetchWithTimeout(`https://www.googleapis.com/drive/v3/files/${documentId}?addParents=${folderId}`, {
           method: 'PATCH',
           headers: { Authorization: `Bearer ${accessToken}` },
-        });
+        }, TIMEOUT_DEFAULT_MS);
       } catch (e) {
         console.error('[CREATE-GOOGLE-DOC] Move to folder failed:', e);
       }
