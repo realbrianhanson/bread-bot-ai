@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/contexts/AuthContext';
 import { lovable } from '@/integrations/lovable/index';
@@ -17,6 +17,10 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 export default function Auth() {
   const { signIn, signUp, user, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Preserve the route the user was trying to reach before being bounced to
+  // /auth so sign-in returns them there instead of the generic /dashboard.
+  const redirectTo = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/dashboard';
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [signupPassword, setSignupPassword] = useState('');
@@ -28,9 +32,9 @@ export default function Auth() {
   // Redirect to dashboard if already authenticated
   useEffect(() => {
     if (!loading && user) {
-      navigate('/dashboard', { replace: true });
+      navigate(redirectTo, { replace: true });
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, redirectTo]);
 
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -96,8 +100,8 @@ export default function Auth() {
         // Browser will redirect to Google — don't reset loading
         return;
       }
-      // Session was set successfully, navigate to dashboard
-      navigate('/dashboard', { replace: true });
+      // Session was set successfully — go back to the intended destination.
+      navigate(redirectTo, { replace: true });
     } catch {
       toast.error('Google sign-in failed. Please try again.');
     }

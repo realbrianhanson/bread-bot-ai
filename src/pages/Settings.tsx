@@ -175,12 +175,12 @@ export default function Settings() {
 
   return (
     <div className="min-h-screen bg-background" style={{ background: 'linear-gradient(135deg, hsl(var(--gradient-from) / 0.03), hsl(var(--gradient-to) / 0.02))' }}>
-      <header className="border-b border-white/10 glass">
+      <header className="border-b border-border/40 glass">
         <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')} className="text-white hover:bg-white/10">
+          <Button variant="ghost" size="icon" aria-label="Back to dashboard" title="Back to dashboard" onClick={() => navigate('/dashboard')} className="text-foreground hover:bg-muted/50">
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-2xl font-bold text-white">Settings</h1>
+          <h1 className="text-2xl font-bold text-foreground">Settings</h1>
         </div>
       </header>
 
@@ -252,7 +252,7 @@ export default function Settings() {
                       )}
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => refreshSubscription()}>
+                  <Button variant="outline" size="icon" aria-label="Refresh plan and usage" title="Refresh plan and usage" onClick={() => refreshSubscription()}>
                     <RefreshCw className="h-4 w-4" />
                   </Button>
                 </div>
@@ -324,6 +324,8 @@ export default function Settings() {
                           <Button
                             variant="outline"
                             size="icon"
+                            aria-label={showKeys[field.id] ? `Hide ${field.label}` : `Show ${field.label}`}
+                            title={showKeys[field.id] ? 'Hide key' : 'Show key'}
                             onClick={() => setShowKeys(prev => ({ ...prev, [field.id]: !prev[field.id] }))}
                           >
                             {showKeys[field.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

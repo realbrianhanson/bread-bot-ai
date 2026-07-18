@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { GeneratedFile } from '@/components/chat/OrchestrationProgress';
 import { toast } from '@/hooks/use-toast';
@@ -55,40 +55,13 @@ export const useOrchestrator = () => {
     }
   }, []);
 
-  const subscribeToTask = useCallback((taskId: string) => {
-    cleanupChannel();
-    const channel = supabase
-      .channel(`task-progress-${taskId}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'tasks',
-        filter: `id=eq.${taskId}`,
-      }, (payload) => {
-        const outputData = payload.new?.output_data as any;
-        if (!outputData) return;
-
-        if (outputData.current_step) {
-          setCurrentStep(outputData.current_step);
-          if (outputData.current_step.includes('Synthesizing')) {
-            setStatus('synthesizing');
-          }
-        }
-
-        const log: any[] = outputData.execution_log || [];
-        if (log.length > 0) {
-          const steps: ToolStep[] = log.map((entry: any) => ({
-            tool: entry.tool,
-            status: 'completed' as const,
-            label: TOOL_LABELS[entry.tool] || entry.tool,
-            result: entry.output_preview,
-          }));
-          setToolChain(steps);
-        }
-      })
-      .subscribe();
-
-    channelRef.current = channel;
+  // Ensure the realtime channel is torn down if the component unmounts while
+  // an orchestration run is still in flight — otherwise the subscription
+  // leaks for the lifetime of the tab.
+  useEffect(() => {
+    return () => {
+      cleanupChannel();
+    };
   }, [cleanupChannel]);
 
   const orchestrate = useCallback(async (message: string, conversationHistory?: { role: string; content: string }[]) => {
@@ -193,7 +166,7 @@ export const useOrchestrator = () => {
     } finally {
       setIsOrchestrating(false);
     }
-  }, [cleanupChannel, subscribeToTask]);
+  }, [cleanupChannel]);
 
   const reset = useCallback(() => {
     cleanupChannel();

@@ -395,8 +395,8 @@ const Dashboard = () => {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="relative hidden sm:flex items-center">
-                    <Brain className="h-4 w-4 text-purple-400" />
-                    <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-green-500 border border-background" />
+                    <Brain className="h-4 w-4 text-primary" />
+                    <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-accent border border-background" />
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">

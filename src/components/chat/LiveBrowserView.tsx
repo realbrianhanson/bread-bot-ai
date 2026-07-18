@@ -145,9 +145,9 @@ const LiveBrowserView = ({
   // Show analyzing state
   if (status === 'analyzing') {
     return (
-      <Card className="p-4 bg-purple-500/10 backdrop-blur-sm border-purple-500/30">
+      <Card className="p-4 bg-primary/10 backdrop-blur-sm border-primary/30">
         <div className="flex items-center gap-3">
-          <Brain className="h-5 w-5 animate-pulse text-purple-500" />
+          <Brain className="h-5 w-5 animate-pulse text-primary" />
           <div>
             <h3 className="font-semibold text-sm">Analyzing Task</h3>
             <p className="text-xs text-muted-foreground">Understanding your request and planning actions...</p>
@@ -160,9 +160,9 @@ const LiveBrowserView = ({
   // Show gathering info state
   if (status === 'gathering_info') {
     return (
-      <Card className="p-4 bg-cyan-500/10 backdrop-blur-sm border-cyan-500/30">
+      <Card className="p-4 bg-accent/10 backdrop-blur-sm border-accent/30">
         <div className="flex items-center gap-3">
-          <Search className="h-5 w-5 animate-pulse text-cyan-500" />
+          <Search className="h-5 w-5 animate-pulse text-accent" />
           <div>
             <h3 className="font-semibold text-sm">Gathering Information</h3>
             <p className="text-xs text-muted-foreground">Collecting data from the page...</p>
@@ -195,9 +195,9 @@ const LiveBrowserView = ({
 
         <Card className="p-4 bg-muted/30 backdrop-blur-sm border-border/50">
           <div className="flex items-center gap-2 mb-3">
-            <Monitor className="h-4 w-4 text-orange-500" />
+            <Monitor className="h-4 w-4 text-primary" />
             <h3 className="font-semibold text-sm">Live Browser Session</h3>
-            <div className="flex items-center gap-1 ml-auto text-xs text-orange-500">
+            <div className="flex items-center gap-1 ml-auto text-xs text-primary">
               <Pause className="h-3 w-3" />
               <span>Paused</span>
             </div>
@@ -207,7 +207,7 @@ const LiveBrowserView = ({
             <iframe 
               src={liveUrl}
               className="w-full h-[500px]"
-              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"
+              sandbox="allow-same-origin allow-scripts allow-forms"
               allow="clipboard-write; clipboard-read"
               title="Live Browser Automation"
             />
@@ -249,10 +249,10 @@ const LiveBrowserView = ({
 
         <Card className="p-4 bg-muted/30 backdrop-blur-sm border-border/50">
           <div className="flex items-center gap-2 mb-3">
-            <Monitor className="h-4 w-4 animate-pulse text-green-500" />
+            <Monitor className="h-4 w-4 animate-pulse text-accent" />
             <h3 className="font-semibold text-sm">Live Browser Session</h3>
-            <div className="flex items-center gap-1 ml-auto text-xs text-green-500">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <div className="flex items-center gap-1 ml-auto text-xs text-accent">
+              <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
               <span>Active</span>
             </div>
             {taskId && onPauseTask && (
@@ -303,7 +303,7 @@ const LiveBrowserView = ({
             <iframe 
               src={liveUrl}
               className="w-full h-[500px]"
-              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"
+              sandbox="allow-same-origin allow-scripts allow-forms"
               allow="clipboard-write; clipboard-read"
               title="Live Browser Automation"
             />
