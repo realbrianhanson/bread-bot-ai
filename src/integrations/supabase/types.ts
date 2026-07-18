@@ -976,6 +976,10 @@ export type Database = {
         Returns: boolean
       }
       increment_page_views: { Args: { p_slug: string }; Returns: undefined }
+      increment_preview_views: {
+        Args: { p_share_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user"
