@@ -66,12 +66,12 @@ const Index = () => {
       <div aria-hidden className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[80rem] h-[40rem] rounded-full bg-primary/10 blur-3xl" />
 
       {/* Nav */}
-      <nav className="relative z-20 flex items-center justify-between px-6 md:px-12 py-5">
-        <div className="flex items-center gap-3">
+      <nav className="relative z-20 flex items-center justify-between gap-3 px-4 sm:px-6 md:px-12 py-5">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-shrink">
           <GarlicLogo size={28} />
-          <span className="font-display text-lg font-semibold tracking-tight text-foreground">GarlicBread.ai</span>
+          <span className="font-display text-base sm:text-lg font-semibold tracking-tight text-foreground truncate">GarlicBread.ai</span>
         </div>
-        <div className="flex items-center gap-1 sm:gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           <ThemeToggle />
           <Button variant="ghost" onClick={() => navigate("/pricing")} className="text-muted-foreground hover:text-foreground">
             Pricing
