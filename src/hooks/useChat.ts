@@ -181,8 +181,69 @@ async function buildFileContext(files: File[], userId: string, conversationId: s
   return { context: parts.join('\n\n---\n\n'), uploadedFiles, contentBlocks };
 }
 
+// ---------- Code history reducer (atomic, pure) ----------
+type CodeSnapshot = { html: string; css: string; js: string };
+type CodeState = {
+  current: CodeSnapshot | null;
+  history: CodeSnapshot[];
+  index: number;
+  version: number;
+};
+type CodeAction =
+  | { type: 'set'; code: CodeSnapshot | null }
+  | { type: 'clear' }
+  | { type: 'undo' }
+  | { type: 'redo' };
+
+const INITIAL_CODE_STATE: CodeState = { current: null, history: [], index: -1, version: 0 };
+
+function codeHistoryReducer(state: CodeState, action: CodeAction): CodeState {
+  switch (action.type) {
+    case 'set': {
+      if (action.code === null) {
+        return { ...INITIAL_CODE_STATE, version: state.version + 1 };
+      }
+      if (!state.current) {
+        return { current: action.code, history: [], index: 0, version: state.version + 1 };
+      }
+      const trimmed = state.history.slice(0, state.index + 1 < 0 ? state.history.length : state.index + 1);
+      return {
+        current: action.code,
+        history: [...trimmed, state.current],
+        index: state.index < 0 ? 0 : state.index + 1,
+        version: state.version + 1,
+      };
+    }
+    case 'clear':
+      return { ...INITIAL_CODE_STATE, version: state.version + 1 };
+    case 'undo': {
+      if (!state.current) return state;
+      const canUndo = state.index > 0 || (state.index === 0 && state.history.length > 0);
+      if (!canUndo) return state;
+      const newHistory = [...state.history];
+      if (state.index < newHistory.length) newHistory[state.index] = state.current;
+      else newHistory.push(state.current);
+      const prevIndex = state.index - 1 >= 0 ? state.index - 1 : 0;
+      const prevCode = newHistory[prevIndex] ?? state.current;
+      return { current: prevCode, history: newHistory, index: prevIndex, version: state.version + 1 };
+    }
+    case 'redo': {
+      if (!state.current) return state;
+      const canRedo = state.index < state.history.length - 1;
+      if (!canRedo) return state;
+      const nextIndex = state.index + 1;
+      const nextCode = state.history[nextIndex];
+      if (!nextCode) return state;
+      const newHistory = [...state.history];
+      newHistory[state.index] = state.current;
+      return { current: nextCode, history: newHistory, index: nextIndex, version: state.version + 1 };
+    }
+    default:
+      return state;
+  }
+}
+
 export const useChat = (projectId?: string) => {
-  // no-op placeholder below; reducer defined at module scope
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
