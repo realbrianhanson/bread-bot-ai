@@ -1,0 +1,2 @@
+ALTER TABLE public.usage_tracking DROP CONSTRAINT usage_tracking_usage_type_check;
+ALTER TABLE public.usage_tracking ADD CONSTRAINT usage_tracking_usage_type_check CHECK (usage_type = ANY (ARRAY['task_execution','api_call','storage','chat_message','browser_task','code_execution','app_build']::text[]));
