@@ -1,32 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 
 const SharedPreview = () => {
   const { shareId } = useParams<{ shareId: string }>();
-  const [html, setHtml] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     if (!shareId) { setNotFound(true); return; }
-
-    const load = async () => {
-      const { data, error } = await supabase
-        .from('shared_previews')
-        .select('html_content, title, share_id')
-        .eq('share_id', shareId)
-        .single();
-
-      if (error || !data) { setNotFound(true); return; }
-
-      document.title = data.title ? `${data.title} — GarlicBread.ai` : 'Preview — GarlicBread.ai';
-      setHtml(data.html_content);
-
-      // fire-and-forget view increment via SECURITY DEFINER RPC (only touches views column)
-      supabase.rpc('increment_preview_views', { p_share_id: data.share_id }).then(() => {});
-    };
-
-    load();
+    document.title = 'Preview — GarlicBread.ai';
+    // Verify existence via HEAD so we can show a friendly not-found state.
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/share-preview?token=${encodeURIComponent(shareId)}`;
+    fetch(url, { method: 'GET' })
+      .then((r) => { if (!r.ok) setNotFound(true); else setReady(true); })
+      .catch(() => setNotFound(true));
   }, [shareId]);
 
   if (notFound) {
@@ -40,7 +27,7 @@ const SharedPreview = () => {
     );
   }
 
-  if (html === null) {
+  if (!ready) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <div className="h-8 w-8 rounded-full border-4 border-muted border-t-primary animate-spin" />
@@ -51,7 +38,7 @@ const SharedPreview = () => {
 
   return (
     <iframe
-      srcDoc={html}
+      src={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/share-preview?token=${encodeURIComponent(shareId!)}`}
       title="Shared Preview"
       style={{ display: 'block', width: '100vw', height: '100vh', border: 'none', margin: 0, padding: 0 }}
       sandbox="allow-scripts"
