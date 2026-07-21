@@ -395,7 +395,7 @@ const Dashboard = () => {
             aria-label="Open conversations"
             title="Open conversations"
             onClick={() => setMobileDrawerOpen(true)}
-            className="md:hidden h-8 w-8"
+            className="lg:hidden h-8 w-8"
           >
             <Menu className="h-4 w-4" />
           </Button>
@@ -419,7 +419,7 @@ const Dashboard = () => {
           )}
         </div>
         {/* Desktop: full toolbar */}
-        <div className="hidden md:flex items-center gap-1.5">
+        <div className="hidden lg:flex items-center gap-1.5">
           <TaskTemplatesPanel onSelectTemplate={handleQuickStart} />
           <WorkflowBuilder onExecuteWorkflow={handleExecuteWorkflow} />
           <ScheduledTasksPanel />
@@ -454,7 +454,7 @@ const Dashboard = () => {
           </AlertDialog>
         </div>
         {/* Mobile: scrollable icon row */}
-        <div className="flex md:hidden items-center gap-1 overflow-x-auto scrollbar-none">
+        <div className="flex lg:hidden items-center gap-1 overflow-x-auto scrollbar-none">
           <TaskTemplatesPanel onSelectTemplate={handleQuickStart} />
           <WorkflowBuilder onExecuteWorkflow={handleExecuteWorkflow} />
           <ScheduledTasksPanel />
@@ -515,7 +515,7 @@ const Dashboard = () => {
       </Sheet>
 
       {/* Mobile View */}
-      <div className="flex-1 flex flex-col md:hidden min-h-0 overflow-hidden">
+      <div className="flex-1 flex flex-col lg:hidden min-h-0 overflow-hidden">
         {(activeConversationId || messages.length > 0) ? (
           <>
             {/* Mobile top bar with back arrow + Chat/Preview tabs */}
@@ -615,7 +615,7 @@ const Dashboard = () => {
       </div>
 
       {/* Desktop View */}
-      <div className="flex-1 hidden md:flex min-h-0 overflow-hidden">
+      <div className="flex-1 hidden lg:flex min-h-0 overflow-hidden">
         {(activeConversationId || messages.length > 0) ? (
           <ResizablePanelGroup direction="horizontal" className="h-full w-full">
           {/* Conversation History Sidebar — collapsible */}
