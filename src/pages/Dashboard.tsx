@@ -73,6 +73,18 @@ const Dashboard = () => {
   const [historySidebarOpen, setHistorySidebarOpen] = useState(true);
   const [queuedPrompt, setQueuedPrompt] = useState<string | null>(null);
   const isMobile = useIsMobile();
+  // Below `lg` (1024px) we render the stacked/tabbed mobile-style layout
+  // — this keeps tablets from being crammed into the 3-panel desktop view.
+  const [isBelowLg, setIsBelowLg] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 1023px)').matches : false
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mql = window.matchMedia('(max-width: 1023px)');
+    const onChange = () => setIsBelowLg(mql.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
   const lastAutoOpenedPreviewMessageId = useRef<string | null>(null);
   const [mobilePreviewKey, setMobilePreviewKey] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -291,12 +303,12 @@ const Dashboard = () => {
       return;
     }
 
-    if (!isMobile || !latestGeneratedMessageId) return;
+    if (!isBelowLg || !latestGeneratedMessageId) return;
     if (lastAutoOpenedPreviewMessageId.current === latestGeneratedMessageId) return;
 
     setMobileView('preview');
     lastAutoOpenedPreviewMessageId.current = latestGeneratedMessageId;
-  }, [hasPreviewContent, isMobile, latestGeneratedMessageId]);
+  }, [hasPreviewContent, isBelowLg, latestGeneratedMessageId]);
 
   const recentChats = useMemo(() => conversations.slice(0, 5), [conversations]);
 
@@ -304,7 +316,7 @@ const Dashboard = () => {
 
   const EmptyState = ({ mobile = false }: { mobile?: boolean }) => (
     <div className="h-full flex items-center justify-center p-6 overflow-y-auto">
-      <div className={`w-full ${mobile ? 'max-w-sm flex flex-col gap-6' : 'max-w-3xl grid grid-cols-2 gap-10 items-start'}`}>
+      <div className={`w-full ${mobile ? 'max-w-sm flex flex-col gap-6' : 'max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 items-start'}`}>
         {/* Left: CTA + Quick Starts */}
         <div className="flex flex-col items-center text-center gap-6">
           <div className="relative">
@@ -383,7 +395,7 @@ const Dashboard = () => {
             aria-label="Open conversations"
             title="Open conversations"
             onClick={() => setMobileDrawerOpen(true)}
-            className="md:hidden h-8 w-8"
+            className="lg:hidden h-8 w-8"
           >
             <Menu className="h-4 w-4" />
           </Button>
@@ -407,7 +419,7 @@ const Dashboard = () => {
           )}
         </div>
         {/* Desktop: full toolbar */}
-        <div className="hidden md:flex items-center gap-1.5">
+        <div className="hidden lg:flex items-center gap-1.5">
           <TaskTemplatesPanel onSelectTemplate={handleQuickStart} />
           <WorkflowBuilder onExecuteWorkflow={handleExecuteWorkflow} />
           <ScheduledTasksPanel />
@@ -442,7 +454,7 @@ const Dashboard = () => {
           </AlertDialog>
         </div>
         {/* Mobile: scrollable icon row */}
-        <div className="flex md:hidden items-center gap-1 overflow-x-auto scrollbar-none">
+        <div className="flex lg:hidden items-center gap-1 overflow-x-auto scrollbar-none">
           <TaskTemplatesPanel onSelectTemplate={handleQuickStart} />
           <WorkflowBuilder onExecuteWorkflow={handleExecuteWorkflow} />
           <ScheduledTasksPanel />
@@ -503,7 +515,7 @@ const Dashboard = () => {
       </Sheet>
 
       {/* Mobile View */}
-      <div className="flex-1 flex flex-col md:hidden min-h-0 overflow-hidden">
+      <div className="flex-1 flex flex-col lg:hidden min-h-0 overflow-hidden">
         {(activeConversationId || messages.length > 0) ? (
           <>
             {/* Mobile top bar with back arrow + Chat/Preview tabs */}
@@ -603,7 +615,7 @@ const Dashboard = () => {
       </div>
 
       {/* Desktop View */}
-      <div className="flex-1 hidden md:flex min-h-0 overflow-hidden">
+      <div className="flex-1 hidden lg:flex min-h-0 overflow-hidden">
         {(activeConversationId || messages.length > 0) ? (
           <ResizablePanelGroup direction="horizontal" className="h-full w-full">
           {/* Conversation History Sidebar — collapsible */}
