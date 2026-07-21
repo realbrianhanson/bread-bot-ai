@@ -1,0 +1,17 @@
+# GarlicBread.ai
+
+> AI browser automation and code generation for operators and developers. Run real browsers, generate working web apps, extract structured data, and publish to a custom domain from a single prompt.
+
+GarlicBread.ai is a SaaS platform that combines multi-step AI agents, live headless browsers (Browser Use v3), a code sandbox, and an app builder in one workspace. Free tier available; Pro ($20/mo) and Business ($99/mo, BYOK) plans extend limits.
+
+## Pages
+- [Home](/): Product overview, features, how it works.
+- [Pricing](/pricing): Free, Pro, and Business plans with feature comparison and FAQ.
+
+## Legal
+- [Terms of Service](/terms): Acceptable use, accounts, billing, and liability terms.
+- [Privacy Policy](/privacy): What we collect, how we use it, subprocessors, and user rights.
+
+## Optional
+- [Sign in](/auth): Authentication (not intended for indexing).
+- [Lead capture](/lead): Contact form for sales inquiries.

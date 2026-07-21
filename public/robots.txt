@@ -12,3 +12,8 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /settings
+
+Sitemap: https://garlicbread.ai/sitemap.xml

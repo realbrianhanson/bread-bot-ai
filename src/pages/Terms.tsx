@@ -2,11 +2,21 @@
 // GarlicBread.ai. It is NOT legal advice. Have qualified counsel review
 // and tailor it to your jurisdiction and business before relying on it.
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { GarlicLogo } from '@/components/ui/logo-icon';
 
 export default function Terms() {
   return (
     <main className="min-h-screen bg-background text-foreground">
+      <Helmet>
+        <title>Terms of Service — GarlicBread.ai</title>
+        <meta name="description" content="GarlicBread.ai Terms of Service: acceptable use, accounts, billing, and liability for our AI browser automation and code generation platform." />
+        <link rel="canonical" href="https://garlicbread.ai/terms" />
+        <meta property="og:title" content="Terms of Service — GarlicBread.ai" />
+        <meta property="og:description" content="Terms governing use of GarlicBread.ai's AI automation platform." />
+        <meta property="og:url" content="https://garlicbread.ai/terms" />
+        <meta property="og:type" content="website" />
+      </Helmet>
       <header className="border-b border-border/40">
         <div className="max-w-3xl mx-auto flex items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-2">

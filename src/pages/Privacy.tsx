@@ -2,11 +2,21 @@
 // GarlicBread.ai. It is NOT legal advice. Have qualified counsel review
 // it against applicable laws (GDPR, CCPA, etc.) before publishing.
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { GarlicLogo } from '@/components/ui/logo-icon';
 
 export default function Privacy() {
   return (
     <main className="min-h-screen bg-background text-foreground">
+      <Helmet>
+        <title>Privacy Policy — GarlicBread.ai</title>
+        <meta name="description" content="How GarlicBread.ai collects, uses, and protects your data across our AI browser automation and code generation platform." />
+        <link rel="canonical" href="https://garlicbread.ai/privacy" />
+        <meta property="og:title" content="Privacy Policy — GarlicBread.ai" />
+        <meta property="og:description" content="How GarlicBread.ai handles your data, subprocessors, and user rights." />
+        <meta property="og:url" content="https://garlicbread.ai/privacy" />
+        <meta property="og:type" content="website" />
+      </Helmet>
       <header className="border-b border-border/40">
         <div className="max-w-3xl mx-auto flex items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-2">
