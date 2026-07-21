@@ -167,6 +167,23 @@ export default function Pricing() {
         <meta name="twitter:title" content="Pricing — GarlicBread.ai" />
         <meta name="twitter:description" content="Simple plans for AI browser automation and code generation." />
         <meta name="twitter:image" content="https://garlicbread.ai/og-image.png" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: faqs.map(f => ({
+            "@type": "Question",
+            name: f.q,
+            acceptedAnswer: { "@type": "Answer", text: f.a }
+          }))
+        })}</script>
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Home", item: "https://garlicbread.ai/" },
+            { "@type": "ListItem", position: 2, name: "Pricing", item: "https://garlicbread.ai/pricing" }
+          ]
+        })}</script>
       </Helmet>
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
