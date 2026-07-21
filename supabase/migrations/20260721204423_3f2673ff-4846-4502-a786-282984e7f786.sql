@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Anon can read shared previews" ON public.shared_previews;
