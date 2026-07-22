@@ -318,6 +318,55 @@ const Dashboard = () => {
 
   if (!user) return null;
 
+  // During an active build/stream, keep the preview area minimal: show
+  // "Loading..." instead of streaming partial code into Sandpack. On error,
+  // show a clear error card. When idle, render the real CodePreview.
+  const isBuilding = isLoading || isStreaming || isInspirationLoading;
+  const renderPreview = (keyStr: string) => {
+    if (buildError && !isBuilding) {
+      return (
+        <div className="h-full w-full flex items-center justify-center p-6 bg-background">
+          <div className="max-w-md w-full rounded-xl border border-destructive/40 bg-destructive/5 p-5 text-center">
+            <h3 className="text-sm font-semibold text-destructive mb-1">Build failed</h3>
+            <p className="text-xs text-muted-foreground break-words">{buildError}</p>
+            <Button size="sm" variant="outline" className="mt-4" onClick={clearBuildError}>
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      );
+    }
+    if (isBuilding) {
+      return (
+        <div className="h-full w-full flex items-center justify-center bg-background">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <RefreshCw className="h-4 w-4 animate-spin text-primary" />
+            <span>Loading...</span>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <CodePreview
+        key={keyStr}
+        conversationId={activeConversationId}
+        files={deferredParsedCode.files}
+        mainFile={deferredParsedCode.mainFile}
+        template={deferredParsedCode.template}
+        responseContent={latestPreviewMessage?.content}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undoCode}
+        onRedo={redoCode}
+        onPublish={activeCode ? publish : undefined}
+        isPublishing={isPublishing}
+        publishedSlug={publishedSlug}
+        competitorHtml={competitorHtml}
+        codeVersion={codeVersion}
+      />
+    );
+  };
+
   const EmptyState = ({ mobile = false }: { mobile?: boolean }) => (
     <div className="h-full flex items-center justify-center p-6 overflow-y-auto">
       <div className={`w-full ${mobile ? 'max-w-sm flex flex-col gap-6' : 'max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 items-start'}`}>
