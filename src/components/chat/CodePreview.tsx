@@ -24,6 +24,7 @@ interface CodePreviewProps {
   competitorHtml?: string | null;
   codeVersion?: number;
   conversationId?: string | null;
+  isStreaming?: boolean;
 }
 
 const SandpackWithFallback = ({ files, template, onFallback }: {
@@ -98,7 +99,7 @@ const SandpackWithFallback = ({ files, template, onFallback }: {
   );
 };
 
-const CodePreview = ({ files: filesProp, mainFile, template = 'react-ts', responseContent: responseContentProp = '', canUndo = false, canRedo = false, onUndo, onRedo, onPublish, isPublishing = false, publishedSlug, competitorHtml, codeVersion = 0, conversationId = null }: CodePreviewProps) => {
+const CodePreview = ({ files: filesProp, mainFile, template = 'react-ts', responseContent: responseContentProp = '', canUndo = false, canRedo = false, onUndo, onRedo, onPublish, isPublishing = false, publishedSlug, competitorHtml, codeVersion = 0, conversationId = null, isStreaming = false }: CodePreviewProps) => {
   // Defer rapidly-changing props during AI streaming so React can drop
   // intermediate renders instead of rebuilding the Sandpack iframe / srcDoc
   // on every token. The preview still converges to the final value.
