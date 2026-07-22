@@ -691,6 +691,9 @@ ${previewScrollRecoveryScript}
 
   // Static/vanilla: use iframe srcdoc directly (no Sandpack)
   const CompareView = () => (
+    null as any
+  );
+  const _compareView = () => (
     <div className="flex-1 relative min-h-0 flex">
       <div className="w-1/2 flex flex-col border-r border-border/50">
         <div className="px-2 py-1 bg-muted/50 text-[10px] font-medium text-muted-foreground text-center border-b border-border/30">Competitor</div>
