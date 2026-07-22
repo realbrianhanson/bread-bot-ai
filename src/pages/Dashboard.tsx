@@ -805,7 +805,7 @@ const Dashboard = () => {
                   codeVersion={codeVersion}
                 />
               ) : (
-                {renderPreview(`${activeConversationId || 'desktop-preview'}-${codeVersion}`)}
+                renderPreview(`${activeConversationId || 'desktop-preview'}-${codeVersion}`)
               )}
             </ResizablePanel>
           </ResizablePanelGroup>
