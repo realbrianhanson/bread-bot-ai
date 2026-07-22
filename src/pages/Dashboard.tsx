@@ -59,7 +59,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const legacyOnboardingKey = "garlicbread-onboarding-done";
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const { messages, isHistoryLoading, isLoading, isStreaming, isInspirationLoading, activeCode, codeVersion, codeHistoryIndex, canUndo, canRedo, undoCode, redoCode, sendMessage, sendInspirationMessage, stopStreaming, clearActiveCode, appendUserMessage } = useChat(activeConversationId || undefined);
+  const { messages, isHistoryLoading, isLoading, isStreaming, buildError, clearBuildError, isInspirationLoading, activeCode, codeVersion, codeHistoryIndex, canUndo, canRedo, undoCode, redoCode, sendMessage, sendInspirationMessage, stopStreaming, clearActiveCode, appendUserMessage } = useChat(activeConversationId || undefined);
   const { publish, isPublishing, publishedSlug } = usePublish(activeCode, activeConversationId || undefined);
   const { conversations, createConversation, deleteConversation, renameConversation, autoTitleConversation } = useConversations();
   const { currentTask, isExecuting, executeTask, awaitTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask();
