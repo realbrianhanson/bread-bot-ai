@@ -720,7 +720,9 @@ ${previewScrollRecoveryScript}
         <FullscreenOverlay />
         <div className="absolute inset-0 flex flex-col bg-background">
           <Toolbar />
-          {compareMode && competitorHtml ? (
+          {isStreaming ? (
+            <LoadingState />
+          ) : compareMode && competitorHtml ? (
             <CompareView />
           ) : (
             <div ref={previewViewportRef} className="flex-1 relative min-h-0 overflow-y-auto overflow-x-hidden">
@@ -748,6 +750,9 @@ ${previewScrollRecoveryScript}
       <FullscreenOverlay />
       <div className="absolute inset-0 flex flex-col bg-background">
         <Toolbar />
+        {isStreaming ? (
+          <LoadingState />
+        ) : (
         <div ref={previewViewportRef} className="flex-1 relative min-h-0 overflow-y-auto overflow-x-hidden">
           <SandpackWithFallback
             key={`${key}-${codeVersion}`}
@@ -756,6 +761,7 @@ ${previewScrollRecoveryScript}
             onFallback={() => setUseFallback(true)}
           />
         </div>
+        )}
         <SaveTemplateDialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate} files={previewFiles} />
       </div>
     </>
