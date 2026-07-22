@@ -59,7 +59,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const legacyOnboardingKey = "garlicbread-onboarding-done";
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const { messages, isHistoryLoading, isLoading, isStreaming, isInspirationLoading, activeCode, codeVersion, codeHistoryIndex, canUndo, canRedo, undoCode, redoCode, sendMessage, sendInspirationMessage, stopStreaming, clearActiveCode, appendUserMessage } = useChat(activeConversationId || undefined);
+  const { messages, isHistoryLoading, isLoading, isStreaming, buildError, clearBuildError, isInspirationLoading, activeCode, codeVersion, codeHistoryIndex, canUndo, canRedo, undoCode, redoCode, sendMessage, sendInspirationMessage, stopStreaming, clearActiveCode, appendUserMessage } = useChat(activeConversationId || undefined);
   const { publish, isPublishing, publishedSlug } = usePublish(activeCode, activeConversationId || undefined);
   const { conversations, createConversation, deleteConversation, renameConversation, autoTitleConversation } = useConversations();
   const { currentTask, isExecuting, executeTask, awaitTask, stopTask, pauseTask, resumeTask, isStopping, isPausing, isResuming } = useBrowserTask();
@@ -317,6 +317,55 @@ const Dashboard = () => {
   const recentChats = useMemo(() => conversations.slice(0, 5), [conversations]);
 
   if (!user) return null;
+
+  // During an active build/stream, keep the preview area minimal: show
+  // "Loading..." instead of streaming partial code into Sandpack. On error,
+  // show a clear error card. When idle, render the real CodePreview.
+  const isBuilding = isLoading || isStreaming || isInspirationLoading;
+  const renderPreview = (keyStr: string) => {
+    if (buildError && !isBuilding) {
+      return (
+        <div className="h-full w-full flex items-center justify-center p-6 bg-background">
+          <div className="max-w-md w-full rounded-xl border border-destructive/40 bg-destructive/5 p-5 text-center">
+            <h3 className="text-sm font-semibold text-destructive mb-1">Build failed</h3>
+            <p className="text-xs text-muted-foreground break-words">{buildError}</p>
+            <Button size="sm" variant="outline" className="mt-4" onClick={clearBuildError}>
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      );
+    }
+    if (isBuilding) {
+      return (
+        <div className="h-full w-full flex items-center justify-center bg-background">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <RefreshCw className="h-4 w-4 animate-spin text-primary" />
+            <span>Loading...</span>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <CodePreview
+        key={keyStr}
+        conversationId={activeConversationId}
+        files={deferredParsedCode.files}
+        mainFile={deferredParsedCode.mainFile}
+        template={deferredParsedCode.template}
+        responseContent={latestPreviewMessage?.content}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undoCode}
+        onRedo={redoCode}
+        onPublish={activeCode ? publish : undefined}
+        isPublishing={isPublishing}
+        publishedSlug={publishedSlug}
+        competitorHtml={competitorHtml}
+        codeVersion={codeVersion}
+      />
+    );
+  };
 
   const EmptyState = ({ mobile = false }: { mobile?: boolean }) => (
     <div className="h-full flex items-center justify-center p-6 overflow-y-auto">
@@ -609,7 +658,7 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="flex-1 min-h-0 relative">
-                <CodePreview key={`${activeConversationId || 'mobile-preview'}-${mobilePreviewKey}-${codeVersion}`} conversationId={activeConversationId} files={deferredParsedCode.files} mainFile={deferredParsedCode.mainFile} template={deferredParsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
+                {renderPreview(`${activeConversationId || 'mobile-preview'}-${mobilePreviewKey}-${codeVersion}`)}
               </div>
             )}
           </>
@@ -734,7 +783,7 @@ const Dashboard = () => {
                   {/* Still show preview below if available */}
                   {hasPreviewContent && (
                     <div className="flex-1 min-h-0 border-t border-border/50">
-                      <CodePreview key={`${activeConversationId || 'desktop-preview-below'}-${codeVersion}`} conversationId={activeConversationId} files={deferredParsedCode.files} mainFile={deferredParsedCode.mainFile} template={deferredParsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
+                      {renderPreview(`${activeConversationId || 'desktop-preview-below'}-${codeVersion}`)}
                     </div>
                   )}
                 </div>
@@ -756,7 +805,7 @@ const Dashboard = () => {
                   codeVersion={codeVersion}
                 />
               ) : (
-                <CodePreview key={`${activeConversationId || 'desktop-preview'}-${codeVersion}`} conversationId={activeConversationId} files={deferredParsedCode.files} mainFile={deferredParsedCode.mainFile} template={deferredParsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
+                renderPreview(`${activeConversationId || 'desktop-preview'}-${codeVersion}`)
               )}
             </ResizablePanel>
           </ResizablePanelGroup>
