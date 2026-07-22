@@ -269,6 +269,10 @@ const Dashboard = () => {
 
   const parsedCode = useMemo(() => parseCodeFromMessages(messages), [messages]);
 
+  // Defer preview inputs so token-by-token message updates don't force
+  // synchronous CodePreview / Sandpack re-renders during streaming.
+  const deferredParsedCode = useDeferredValue(parsedCode);
+
   const latestPreviewMessage = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
       const message = messages[i];
