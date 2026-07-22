@@ -253,7 +253,6 @@ export const useChat = (projectId?: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [buildError, setBuildError] = useState<string | null>(null);
   const [isInspirationLoading, setIsInspirationLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   // Consolidated code + history + index state — single atomic reducer.
@@ -517,8 +516,6 @@ export const useChat = (projectId?: string) => {
       if (!canSendMessage()) {
         return;
       }
-
-      setBuildError(null);
 
       // Handle /inspire command
       if (content.trim().startsWith('/inspire ')) {
@@ -1374,7 +1371,6 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
           console.log('Request aborted (stall watchdog or user stop)');
         } else {
           console.error('Error sending message:', error);
-          setBuildError(error?.message || 'Failed to generate');
         }
 
         // Salvage partial generation instead of dropping it
@@ -1450,8 +1446,6 @@ IMPORTANT: Return the FULL updated code (all three blocks: html, css, javascript
     isHistoryLoading,
     isLoading,
     isStreaming,
-    buildError,
-    clearBuildError: () => setBuildError(null),
     isInspirationLoading,
     activeCode,
     codeVersion,
