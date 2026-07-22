@@ -2,7 +2,7 @@ import { SandpackProvider, SandpackLayout, SandpackPreview } from '@codesandbox/
 import { Maximize2, Minimize2, RefreshCw, Copy, Download, Check, BookmarkPlus, X, Share2, Loader2, Undo2, Redo2, Globe, Columns2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, useDeferredValue } from 'react';
 import { toast } from 'sonner';
 import { fixContrastIssues } from '@/lib/contrastFixer';
 import { SaveTemplateDialog } from '@/components/chat/SaveTemplateDialog';
@@ -98,7 +98,12 @@ const SandpackWithFallback = ({ files, template, onFallback }: {
   );
 };
 
-const CodePreview = ({ files, mainFile, template = 'react-ts', responseContent = '', canUndo = false, canRedo = false, onUndo, onRedo, onPublish, isPublishing = false, publishedSlug, competitorHtml, codeVersion = 0, conversationId = null }: CodePreviewProps) => {
+const CodePreview = ({ files: filesProp, mainFile, template = 'react-ts', responseContent: responseContentProp = '', canUndo = false, canRedo = false, onUndo, onRedo, onPublish, isPublishing = false, publishedSlug, competitorHtml, codeVersion = 0, conversationId = null }: CodePreviewProps) => {
+  // Defer rapidly-changing props during AI streaming so React can drop
+  // intermediate renders instead of rebuilding the Sandpack iframe / srcDoc
+  // on every token. The preview still converges to the final value.
+  const files = useDeferredValue(filesProp);
+  const responseContent = useDeferredValue(responseContentProp);
   const [key, setKey] = useState(0);
   const [copied, setCopied] = useState(false);
   const [useFallback, setUseFallback] = useState(false);
