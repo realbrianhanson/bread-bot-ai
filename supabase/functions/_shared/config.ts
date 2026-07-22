@@ -15,6 +15,8 @@ export const RESEND_GATEWAY_URL = 'https://connector-gateway.lovable.dev/resend'
 export const MODELS = {
   // Main chat model (upgraded)
   CHAT: 'claude-sonnet-5',
+  // Fast chat model — used for trivial/conversational turns (no code generation)
+  CHAT_FAST: 'claude-haiku-4-5-20251001',
   // Fast classifier / short tasks
   CLASSIFIER: 'claude-haiku-4-5-20251001',
   // App builder / creative

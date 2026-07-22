@@ -4,6 +4,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.84.0";
 import { ANTHROPIC_API_URL, HONCHO_API_URL, MODELS, fetchWithTimeout, TIMEOUT_AI_MS, TIMEOUT_DEFAULT_MS, isAbortError } from "../_shared/config.ts";
 import { decryptSecret } from "../_shared/crypto.ts";
 import { DESIGN_CONSTITUTION, TOKEN_TEMPLATE_HSL, FORMS_INSTRUCTIONS } from "../_shared/design-constitution.ts";
+import { routeChatModel } from "../_shared/routeModel.ts";
 
 const FORM_ENDPOINT_URL = `${Deno.env.get('SUPABASE_URL') ?? ''}/functions/v1/submit-form`;
 // At chat/generation time the site's form_key is not yet known — the runner
@@ -581,7 +582,11 @@ When the user's message includes sections labeled "CURRENT HTML:", "CURRENT CSS:
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: MODELS.CHAT,
+        model: routeChatModel(messages, {
+          ghlMode: !!ghlMode,
+          hasDesignMd: !!clientDesignMd,
+          hasMarketingMd: !!marketingMd,
+        }),
         max_tokens: 32000,
         system: enrichedPrompt,
         messages,
