@@ -24,6 +24,7 @@ interface CodePreviewProps {
   competitorHtml?: string | null;
   codeVersion?: number;
   conversationId?: string | null;
+  isStreaming?: boolean;
 }
 
 const SandpackWithFallback = ({ files, template, onFallback }: {
@@ -98,7 +99,7 @@ const SandpackWithFallback = ({ files, template, onFallback }: {
   );
 };
 
-const CodePreview = ({ files: filesProp, mainFile, template = 'react-ts', responseContent: responseContentProp = '', canUndo = false, canRedo = false, onUndo, onRedo, onPublish, isPublishing = false, publishedSlug, competitorHtml, codeVersion = 0, conversationId = null }: CodePreviewProps) => {
+const CodePreview = ({ files: filesProp, mainFile, template = 'react-ts', responseContent: responseContentProp = '', canUndo = false, canRedo = false, onUndo, onRedo, onPublish, isPublishing = false, publishedSlug, competitorHtml, codeVersion = 0, conversationId = null, isStreaming = false }: CodePreviewProps) => {
   // Defer rapidly-changing props during AI streaming so React can drop
   // intermediate renders instead of rebuilding the Sandpack iframe / srcDoc
   // on every token. The preview still converges to the final value.
@@ -688,6 +689,14 @@ ${previewScrollRecoveryScript}
     );
   };
 
+  const LoadingState = () => (
+    <div className="flex-1 flex flex-col items-center justify-center gap-3 bg-background text-muted-foreground">
+      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <span className="text-sm font-medium">Loading…</span>
+      <span className="text-xs opacity-70">Preparing your preview</span>
+    </div>
+  );
+
   // Static/vanilla: use iframe srcdoc directly (no Sandpack)
   const CompareView = () => (
     <div className="flex-1 relative min-h-0 flex">
@@ -719,7 +728,9 @@ ${previewScrollRecoveryScript}
         <FullscreenOverlay />
         <div className="absolute inset-0 flex flex-col bg-background">
           <Toolbar />
-          {compareMode && competitorHtml ? (
+          {isStreaming ? (
+            <LoadingState />
+          ) : compareMode && competitorHtml ? (
             <CompareView />
           ) : (
             <div ref={previewViewportRef} className="flex-1 relative min-h-0 overflow-y-auto overflow-x-hidden">
@@ -747,6 +758,9 @@ ${previewScrollRecoveryScript}
       <FullscreenOverlay />
       <div className="absolute inset-0 flex flex-col bg-background">
         <Toolbar />
+        {isStreaming ? (
+          <LoadingState />
+        ) : (
         <div ref={previewViewportRef} className="flex-1 relative min-h-0 overflow-y-auto overflow-x-hidden">
           <SandpackWithFallback
             key={`${key}-${codeVersion}`}
@@ -755,6 +769,7 @@ ${previewScrollRecoveryScript}
             onFallback={() => setUseFallback(true)}
           />
         </div>
+        )}
         <SaveTemplateDialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate} files={previewFiles} />
       </div>
     </>
