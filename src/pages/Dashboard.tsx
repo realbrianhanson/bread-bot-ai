@@ -34,7 +34,7 @@ import { useCodeExecution } from "@/hooks/useCodeExecution";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { parseCodeFromMessages } from "@/lib/codeParser";
 import { hasRenderablePreviewContent } from "@/lib/previewContent";
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, useDeferredValue } from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { PlanBadge } from "@/components/ui/plan-badge";
 import { CommandPalette } from "@/components/ui/command-palette";
