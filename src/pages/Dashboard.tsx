@@ -34,7 +34,7 @@ import { useCodeExecution } from "@/hooks/useCodeExecution";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { parseCodeFromMessages } from "@/lib/codeParser";
 import { hasRenderablePreviewContent } from "@/lib/previewContent";
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, useDeferredValue } from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { PlanBadge } from "@/components/ui/plan-badge";
 import { CommandPalette } from "@/components/ui/command-palette";
@@ -268,6 +268,10 @@ const Dashboard = () => {
   };
 
   const parsedCode = useMemo(() => parseCodeFromMessages(messages), [messages]);
+
+  // Defer preview inputs so token-by-token message updates don't force
+  // synchronous CodePreview / Sandpack re-renders during streaming.
+  const deferredParsedCode = useDeferredValue(parsedCode);
 
   const latestPreviewMessage = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
@@ -605,7 +609,7 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="flex-1 min-h-0 relative">
-                <CodePreview key={`${activeConversationId || 'mobile-preview'}-${mobilePreviewKey}-${codeVersion}`} conversationId={activeConversationId} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
+                <CodePreview key={`${activeConversationId || 'mobile-preview'}-${mobilePreviewKey}-${codeVersion}`} conversationId={activeConversationId} files={deferredParsedCode.files} mainFile={deferredParsedCode.mainFile} template={deferredParsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
               </div>
             )}
           </>
@@ -730,7 +734,7 @@ const Dashboard = () => {
                   {/* Still show preview below if available */}
                   {hasPreviewContent && (
                     <div className="flex-1 min-h-0 border-t border-border/50">
-                      <CodePreview key={`${activeConversationId || 'desktop-preview-below'}-${codeVersion}`} conversationId={activeConversationId} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
+                      <CodePreview key={`${activeConversationId || 'desktop-preview-below'}-${codeVersion}`} conversationId={activeConversationId} files={deferredParsedCode.files} mainFile={deferredParsedCode.mainFile} template={deferredParsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
                     </div>
                   )}
                 </div>
@@ -752,7 +756,7 @@ const Dashboard = () => {
                   codeVersion={codeVersion}
                 />
               ) : (
-                <CodePreview key={`${activeConversationId || 'desktop-preview'}-${codeVersion}`} conversationId={activeConversationId} files={parsedCode.files} mainFile={parsedCode.mainFile} template={parsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
+                <CodePreview key={`${activeConversationId || 'desktop-preview'}-${codeVersion}`} conversationId={activeConversationId} files={deferredParsedCode.files} mainFile={deferredParsedCode.mainFile} template={deferredParsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
               )}
             </ResizablePanel>
           </ResizablePanelGroup>
