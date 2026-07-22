@@ -658,7 +658,7 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="flex-1 min-h-0 relative">
-                <CodePreview key={`${activeConversationId || 'mobile-preview'}-${mobilePreviewKey}-${codeVersion}`} conversationId={activeConversationId} files={deferredParsedCode.files} mainFile={deferredParsedCode.mainFile} template={deferredParsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
+                {renderPreview(`${activeConversationId || 'mobile-preview'}-${mobilePreviewKey}-${codeVersion}`)}
               </div>
             )}
           </>
@@ -783,7 +783,7 @@ const Dashboard = () => {
                   {/* Still show preview below if available */}
                   {hasPreviewContent && (
                     <div className="flex-1 min-h-0 border-t border-border/50">
-                      <CodePreview key={`${activeConversationId || 'desktop-preview-below'}-${codeVersion}`} conversationId={activeConversationId} files={deferredParsedCode.files} mainFile={deferredParsedCode.mainFile} template={deferredParsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
+                      {renderPreview(`${activeConversationId || 'desktop-preview-below'}-${codeVersion}`)}
                     </div>
                   )}
                 </div>
@@ -805,7 +805,7 @@ const Dashboard = () => {
                   codeVersion={codeVersion}
                 />
               ) : (
-                <CodePreview key={`${activeConversationId || 'desktop-preview'}-${codeVersion}`} conversationId={activeConversationId} files={deferredParsedCode.files} mainFile={deferredParsedCode.mainFile} template={deferredParsedCode.template} responseContent={latestPreviewMessage?.content} canUndo={canUndo} canRedo={canRedo} onUndo={undoCode} onRedo={redoCode} onPublish={activeCode ? publish : undefined} isPublishing={isPublishing} publishedSlug={publishedSlug} competitorHtml={competitorHtml} codeVersion={codeVersion} />
+                {renderPreview(`${activeConversationId || 'desktop-preview'}-${codeVersion}`)}
               )}
             </ResizablePanel>
           </ResizablePanelGroup>
