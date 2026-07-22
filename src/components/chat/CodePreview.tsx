@@ -689,6 +689,14 @@ ${previewScrollRecoveryScript}
     );
   };
 
+  const LoadingState = () => (
+    <div className="flex-1 flex flex-col items-center justify-center gap-3 bg-background text-muted-foreground">
+      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <span className="text-sm font-medium">Loading…</span>
+      <span className="text-xs opacity-70">Preparing your preview</span>
+    </div>
+  );
+
   // Static/vanilla: use iframe srcdoc directly (no Sandpack)
   const CompareView = () => (
     <div className="flex-1 relative min-h-0 flex">
