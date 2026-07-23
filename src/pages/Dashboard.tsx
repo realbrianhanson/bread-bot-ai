@@ -34,7 +34,7 @@ import { useCodeExecution } from "@/hooks/useCodeExecution";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { parseCodeFromMessages } from "@/lib/codeParser";
 import { hasRenderablePreviewContent } from "@/lib/previewContent";
-import { useState, useMemo, useCallback, useEffect, useRef, useDeferredValue } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, useDeferredValue, startTransition } from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { PlanBadge } from "@/components/ui/plan-badge";
 import { CommandPalette } from "@/components/ui/command-palette";
@@ -267,10 +267,27 @@ const Dashboard = () => {
     if (activeConversationId === id) setActiveConversationId(null);
   };
 
-  const parsedCode = useMemo(() => parseCodeFromMessages(messages), [messages]);
+  // Parse code off the render path via startTransition, and only after the
+  // stream finishes. This keeps token-by-token streaming from thrashing
+  // Sandpack / iframe rebuilds and keeps the main thread responsive at
+  // completion. A per-message-id cache prevents re-parsing the same
+  // finalized assistant message.
+  const parseCacheRef = useRef<{ key: string; value: ReturnType<typeof parseCodeFromMessages> } | null>(null);
+  const [parsedCode, setParsedCode] = useState(() => parseCodeFromMessages(messages));
+  useEffect(() => {
+    if (isStreaming) return;
+    const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
+    const cacheKey = `${lastAssistant?.id ?? 'none'}:${lastAssistant?.content.length ?? 0}`;
+    if (parseCacheRef.current?.key === cacheKey) {
+      return;
+    }
+    startTransition(() => {
+      const next = parseCodeFromMessages(messages);
+      parseCacheRef.current = { key: cacheKey, value: next };
+      setParsedCode(next);
+    });
+  }, [messages, isStreaming]);
 
-  // Defer preview inputs so token-by-token message updates don't force
-  // synchronous CodePreview / Sandpack re-renders during streaming.
   const deferredParsedCode = useDeferredValue(parsedCode);
 
   const latestPreviewMessage = useMemo(() => {
