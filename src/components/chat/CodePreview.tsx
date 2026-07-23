@@ -712,7 +712,7 @@ ${previewScrollRecoveryScript}
       <div className="w-1/2 flex flex-col">
         <div className="px-2 py-1 bg-primary/10 text-[10px] font-medium text-primary text-center border-b border-border/30">Your Version</div>
         <iframe
-          key={`${key}-${codeVersion}`}
+          key={`compare-${key}`}
           srcDoc={buildCombinedHTML()}
           className="flex-1 w-full border-0"
           sandbox="allow-scripts"
@@ -735,7 +735,7 @@ ${previewScrollRecoveryScript}
           ) : (
             <div ref={previewViewportRef} className="flex-1 relative min-h-0 overflow-y-auto overflow-x-hidden">
               <iframe
-                key={`${key}-${codeVersion}`}
+                key={`static-${key}`}
                 ref={enforceScrollableIframe}
                 srcDoc={buildCombinedHTML()}
                 className="block"
@@ -763,7 +763,7 @@ ${previewScrollRecoveryScript}
         ) : (
         <div ref={previewViewportRef} className="flex-1 relative min-h-0 overflow-y-auto overflow-x-hidden">
           <SandpackWithFallback
-            key={`${key}-${codeVersion}`}
+            key={`sandpack-${key}`}
             files={previewFiles}
             template="react-ts"
             onFallback={() => setUseFallback(true)}
